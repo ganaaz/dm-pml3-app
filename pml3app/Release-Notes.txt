@@ -1,0 +1,410 @@
+Version : 1.0.22.5
+Date : 13-Feb-25
+
+Changes
+
+- Remove the Expiry date is printed in log
+- Update the ABT Server response parsing based on new response received
+
+=============================================================================================
+
+Version : 1.0.22.4
+Date : 10-Jan-25
+
+Changes
+
+- Expiry date is printed in log
+
+=============================================================================================
+
+Version : 1.0.22.3
+Date : 01-Jan-25
+
+Changes
+
+- TxnDevice is sent as secs from today
+- House keeping is implemented and associated config in json
+- TUID is returned on card processed
+- UTC time sent on card processed
+- When there is a ETPass ABT Server NOK or error, host retry is increased
+- Default Reversal 100 / ABT 1 / Port 443
+- Details about the messages are available here https://docs.google.com/document/d/14aBvh4Gfyh5Yev3f2ymjJiTMyYDdtjB_OTAjk-QQzRA/edit#bookmark=id.qt0jzsmal4be
+
+
+=============================================================================================
+
+Version : 1.0.22.2
+Date : 20-Nov-24
+
+Changes
+
+- Taps are now pushed to the ETPass ABT server
+- Configurations are avaialble in app_config.json to be updated
+
+=============================================================================================
+
+Version : 1.0.22.1
+Date : 19-Jul-24
+
+Changes
+
+- Base ABT is implemented
+- EMV Config is upgraded to json file
+- New config params added for ABT in app_config.json
+- Flag added in app_config to enable / disable abt
+- Details about the messages are available here https://docs.google.com/document/d/14aBvh4Gfyh5Yev3f2ymjJiTMyYDdtjB_OTAjk-QQzRA/edit#bookmark=id.qt0jzsmal4be
+
+=============================================================================================
+
+Version : 1.0.22
+Date : 12-Feb-24
+
+Changes
+
+- Mac Recalc was doing in batch mode like offline sale due to which all the records are not captured
+- Fixed and now works on sequential records and all the data are updated
+
+=============================================================================================
+
+Version : 1.0.21
+Date : 5-Feb-24
+
+Changes
+
+- New API recalc_mac is added, there is no parameter for the api, only set the cmd 
+- This will read all the pending host transactions and then calculate the mac again and update it back in db
+- Further when a host communication happens new data will be sent
+
+=============================================================================================
+
+Version : 1.0.20
+Date : 19-Dec-23
+
+Changes
+
+- Tags 57 and 5A If present are removed from the ICC Data and sent the updated ICC Data in all online messages
+
+=============================================================================================
+
+Version : 1.0.19
+Date : 23-Oct-23
+
+Changes
+
+- Change_ip command when invoked using serial port is not working and default to data socket mode, which is fixed
+
+
+=============================================================================================
+
+Version : 1.0.18
+Date : 20-Sep-23
+
+Changes
+
+- New command added to get firmware version "get_firmware_version"
+- New command added to get article number "get_product_order_number"
+- Details of the both the command and response available here https://docs.google.com/document/d/14aBvh4Gfyh5Yev3f2ymjJiTMyYDdtjB_OTAjk-QQzRA/edit#heading=h.ih39e8pmj1q6
+- Debug data of of signature which is saved for every transaction here /root/ffdc/rupay_sbt_* is removed
+- get_pending_offline_summary response will now have the amounts summed up in these fields
+    - totalPendingTransactions_amount
+    - failureTransactions_amount
+    - timeOutTransactions_amount
+    - pendingWithHostTransactions_amount
+- Details of this is available in the request / response sample
+
+=============================================================================================
+
+Version : 1.0.17
+Date : 7-Sep-23
+
+Changes
+
+- New command added to change only ip (change_only_ip)
+- New command added to change only dns resolv.conf file (change_only_dns)
+- Details of the both the command and response available here https://docs.google.com/document/d/14aBvh4Gfyh5Yev3f2ymjJiTMyYDdtjB_OTAjk-QQzRA/edit#heading=h.ih39e8pmj1q6
+- On network interface file and resolve.conf file changes, permissions are made as +rwx to all so any app can read / write
+- Following additional config with default data is added for narration data
+    - deviceCode
+    - stationId
+    - stationName
+- Also the following additional two fields are added in line with MMRDA
+    - equipmentType
+    - equipmentCode
+- Paytm log files will be rotated based on the size and count configured in the config file
+- Configurations used are
+    - paytmLogCount (default 2)
+    - paytmMaxLogSizeKb (default 100)
+- Paytm log file names generated would be paytm.log.x
+
+=============================================================================================
+
+Version : 1.0.16
+Date : 15-Aug-23
+
+Changes
+
+- Socket timeout is added in the config (socketTimeout) with the default value of -1
+- When socket timeout is -1, it wont be used or else the value will be used after which the socket will be disconnected
+- 4 more dns added to the change_ip command
+- Search domain is added to the change_ip command 
+- Now config autoReadCard is added with default value of true if not present, this will make the read automatically after a transaction without lifiting as default behaviour
+- Card removed event is added, when a card is removed inbetween the transaction this event is returned similar to MMRDA
+- Log file can be deleted with the delete_file command (only paytm.log or l3app.log.*)
+- Request / Response document updated for the change_ip and delete_file command
+
+=============================================================================================
+
+Version : 1.0.15
+Date : 22-Jul-23
+
+Changes
+
+- Added config enableApdu to allow to capture the apdu log in logs folder
+- Install.in modified to create this logs folder and permissions
+- Log file name generated would be logs/log_<unique trx id returned in processed>.txt
+
+=============================================================================================
+
+Version : 1.0.14
+Date : 06-Jul-23
+
+Changes
+
+- Expiry date format is changed to YYMM for all paytm communications
+
+=============================================================================================
+
+Version : 1.0.13
+Date : 01-Jul-23
+
+Changes
+
+- Fetch Clear not deleting all the records is fixed now
+- Print the paytm request and response complete in new log file
+- Memory issue fix for crash of Offline and fetch auth scenarios
+
+=============================================================================================
+
+Version : 1.0.12
+Date : 24-Jun-23
+
+Changes
+
+- Bio connect is changed to SSL Connect now to avoid connect issues happening in specific env
+- On Stan 0 there should not be any crash, Fixed, but cannot test due to paytm unavailable
+- Command name is set back on the following messages
+	get_reversal
+	set_time
+	clear_reversal
+	reboot
+	set_ip
+	set_config
+	change_log_mode
+
+=============================================================================================
+
+Version : 1.0.11
+Date : 20-Jun-23
+
+Changes
+
+- Timeout for host connectivity is enabled and the property to be used is hostTxnTimeout
+- Any online connectivity with host after this time is returned as error with no data received
+- Reversal wont be done when there is no connectivity with host and no data is sent
+
+
+=============================================================================================
+
+Version : 1.0.10
+Date : 18-Jun-23
+
+Changes
+
+- Transaction can be executed without lifting the card
+- app_config and app_data are removed from package creation
+- Memory leak fixed on timing logs
+- Simulator set time is fixed to take time from user input
+- Reversal will be running indefinite with a time out from config (reversalTimeInMinutes) default to 1 if not presented
+- When there is pending reversal, system will start and reversal will be running in background
+- Stan will be incremented only when the card is presented, to avoid unnecessary increase of count in loop requests
+- Log config size and files are increased
+- Socket id and source ip on connect data received is printed in logs
+
+In regards to 
+    - Remove SO_REUSEADDR and SO_REUSEPORT from socket
+
+These properties are specific to server socket and not client accept socket, if i remove this and when we restart the l3, socket is not getting binded.
+It has binding error and we need to wait for 1 - 2 minutes for resource to cleanup and then only we can connect.
+Removing this will have impact on auto start of the app on crash.
+This properties if used in client side can be removed.
+
+=============================================================================================
+
+Version : 1.0.9
+Date : 07-Jun-23
+
+Changes
+
+- Limits if not available in app_config.json, then default value of 20000 (purchase) and 200000 (Money add) will be used and saved back, instead of crashing
+- Pos condition code was wrongly sent to paytm, which results in mac mismatch is fixed
+- API is added to get the reversal data (command : get_reversal)
+- When a transaction is declined, error message is now added to the card processed. It will be
+    - "trxIssueDetail": "No Mutal Service Available",
+    - "trxIssueDetail": "Key not injected or its wrong",
+
+=============================================================================================
+
+Version : 1.0.8
+Date : 30-May-23
+
+Changes
+
+- Pos condition code is set to 00 for offline sale
+- Limit are now read from config (purchaseLimit, moneyAddLimit), value to be with pasie and without decimal
+    Eg for 200.00, enter as 20000
+    for 11.12 enter as 1112
+- Pan token logic is updated as per the new PayTM spec Hashing_SHA256_PAN_NCMC_Card with dynamic salt
+
+=============================================================================================
+
+Version : 1.0.7
+Date : 16-May-23
+
+Changes
+
+- Verify terminal will work with the TID / MID is empty
+- Log file download with L3 API getting 0 bytes fixed
+- TMS Server listener as optional in simulator
+- Increased the script checking for l3 app is available to 30 seconds
+- Fixed the simulator issue of download file
+
+=============================================================================================
+
+Version : 1.0.6
+Date : 15-May-23
+
+Changes
+
+- Log4crc can be changed to Debug or Error through API / Simulator
+- From simulator configuration can be set using a string json file as input
+- In fetch auth balance update is removed and only offline sale are returned
+- Set config can happen even without key injection
+- Key Present / Key Destroy are now supported
+- Service creation id can be sent as any value instead of a fixed data in Simulator
+- Log can be retrieved through L3 API also now
+
+
+Usage of commands
+
+- Log4crc API
+    {"cmd":"change_log_mode","log_mode":"Debug"}
+    log_mode can be Deubg or Error
+
+- Key Present API
+    {"cmd":"is_key_present","label":"<lable>", "isBdk": <boolean true or false>}
+
+- Key Destroy API
+    {"cmd":"destroy_key","label":"<lable>", "isBdk": <boolean true or false>}
+
+- Log through L3 API
+    {"cmd":"download_file","download_file_name":"<name of the file with full path to download>"}
+
+
+=============================================================================================
+
+Version : 1.0.5
+Date : 30-Apr-23
+
+Changes
+
+- LED lights are on and l3 not accepting after some time, due to search card been sent after the write command. Fixed by addition conditional check
+- Added Kolkata file in the package
+- In Install script added permission chmod 777 kolkata
+- In install script added cp kolkata /root/etc/localtime
+- L3 App not Responding after some time, due to write data in serial is fixed
+
+=============================================================================================
+
+Version : 1.0.4
+Date : 24-Apr-23
+
+Changes
+
+- Card masked number added in card processed Response
+- Timing logs added for Balance Update / Money Add
+- Serial Support added and simulator supports USB data communication
+- TCP IP Change command add which can be invoked by USB or Ethernet
+- Version file added to the install script
+
+To use timing logs
+    - In app_config.json set "timingEnabled" to true and set "printDetailTimingLogs" to true
+    - In log4crc set the priority to error
+    - When a transaction is done you can see the timing measurement data printed in console
+
+To use USB
+    - Connect the USB cable to the reader and the USB end to the computer
+    - Note the com port name associated to this connection from the Device Manager
+    - Start the simulator
+    - Make sure that device l3app is running before connecting
+    - From the simulator press 0 to connect
+    - It will ask connection to be with COM port or Ethernet, Enter 1 which is com port
+    - Provide the right name of the com port
+    - Now give other commands and you should get results from the reader
+
+To change IP
+    - Command to be used is change_ip
+    - Parameters to be sent are
+        - "ip_mode" : value as either "static" or "dynamic"
+        - "dns" : value of the name server if available or else this one to be ignored and should not be sent
+        - "ip_address" : to be filled only if ip_mode is "static"
+        - "gateway" : to be filled only if ip_mode is "static"
+        - "netmask" : to be filled only if ip_mode is "static"
+    - Based on these values the file /root/etc/network/interfaces is updated
+    - If dns is populated then the file /root/etc/resolv.conf is updated
+
+
+=============================================================================================
+
+Version : 1.0.3
+Date : 12-Apr-23
+
+Changes
+
+- API to check date falls after the expiry, added as a parameter checkdate in Purchase request (details in Simulator)
+- Reboot will happen if the device in ready / await
+- Transaction date / time in presented and processed events
+- MID / TID is checked for empty and error status is returned
+- Verify terminal message with PayTM implemented (details in simulator)
+- On Set Config verify TID is empty or MID is empty and set the status
+- During Money Add, if the card gets removed before second tap then Reader gets hanged and stuck at 3 lights is fixed
+- Fetch Auth only S transactions to be sent for Success and not Failed ones
+- Clear reversal method is enabled and can be cleared if there is a stuck reversal
+- PayTM Error message descriptions to be transferred back to client
+- Add pending transaction in simulator as like MMRDA is done
+
+=============================================================================================
+
+Version : 1.0.2
+Date : 20-Mar-23
+
+Changes
+
+- Performance of the offline sale is improved and now it takes 600ms to 800ms per transaction
+- OrderId is sent in the fetch auth message
+- isMac is getting removed after reader restart is fixed
+- Order id is sent in card presented
+
+=============================================================================================
+
+Version : 1.0.1
+Date : 16-Mar-23
+
+Changes
+
+- Terminal id which is hard coded in Offline sale is removed and config value is used
+- OrderId is sent in all the responses
+- isMac config is now updated from the set config, and not reset after the change
+- App crash when Fail message from PayTM is fixed and the failure message is handled
+
+
+=============================================================================================

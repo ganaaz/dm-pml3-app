@@ -1,0 +1,20 @@
+#!/bin/sh
+echo "Install app..."
+cd $(dirname "$0")/..
+tar xf update/app.tar
+chmod 700 run
+chmod 700 autorun.sh
+chmod 700 runl3.sh
+chmod 700 pml3
+chmod 666 config/app_config.json
+chmod 666 config/app_data.json
+chmod 666 config/emv_config.txt
+chmod 666 config/emv_config.json
+chmod 666 log4crc
+chmod 666 log4crc.debug
+chmod 666 log4crc.error
+chmod 666 version
+chmod 777 kolkata
+mkdir logs
+chmod 777 logs
+cp kolkata /root/etc/localtime

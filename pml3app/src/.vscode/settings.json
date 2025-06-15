@@ -1,0 +1,18 @@
+{
+    "files.associations": {
+        "cstdlib": "c",
+        "locale": "c",
+        "ostream": "c",
+        "new": "c",
+        "feclr.h": "c",
+        "tlv.h": "c",
+        "commonutil.h": "c",
+        "pkcshelper.h": "c",
+        "__bit_reference": "c",
+        "__string": "c",
+        "cstring": "c",
+        "stdlib.h": "c",
+        "rupayservice.h": "c",
+        "tlvhelper.h": "c"
+    }
+}

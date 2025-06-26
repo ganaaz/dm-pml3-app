@@ -10,8 +10,12 @@ chmod 666 config/app_config.json
 chmod 666 config/app_data.json
 chmod 666 config/emv_config.txt
 chmod 666 config/emv_config.json
+chmod 666 pml3trxdata.db
+chmod 666 abttrxdata.db
+chmod 666 l3_log_mode
 chmod 666 log4crc
 chmod 666 log4crc.debug
+chmod 666 log4crc.info
 chmod 666 log4crc.error
 chmod 666 version
 chmod 777 kolkata

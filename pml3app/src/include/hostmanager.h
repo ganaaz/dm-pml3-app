@@ -5,6 +5,11 @@
 #include "../ISO/ISO8583_interface.h"
 
 /**
+ * Initialize the static data for the host communication
+ **/
+int initializeHostStaticData();
+
+/**
  * Initiate the offline transaction from thread
  **/
 // void handleHostOfflineTransactions(size_t timer_id, void * user_data);
@@ -52,28 +57,18 @@ char *performAirtelVerifyTerminal();
  */
 char *performAirtelHealthCheck();
 
-///// old codes
-
 /**
- * Process a single host offline transaction
+ * Get the  host error as string
  **/
-// TransactionTable processHostOfflineTxn(TransactionTable trxData);
+const char *getHostErrorString(ISO8583_ERROR_CODES errorCode);
+
+///// old codes
 
 /**
  * Process the balance update response received
  **/
 // void doBalanceUpdateHostResponseInDb(BALANCE_UPDATE_RESPONSE bal_update_resp,
 //                 const char* transactionId, int hostResult);
-
-/**
- * Get the error message for the host failure
- **/
-// const char* getHostErrorString(ISO8583_ERROR_CODES errorCode);
-
-/**
- * Initialize static data for the host
- **/
-// int initializeHostStaticData();
 
 /**
  * Invoke the reversal

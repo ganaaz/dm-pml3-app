@@ -125,6 +125,12 @@ ISO8583_ERROR_CODES construct_transaction_request_object_for_offline_sale(ISO858
                         return ret;
                     break;
 
+                case DE63_RESERVED_PRIVATE_3:
+                    ret = copy_value(req_txn_obj, DE63_RESERVED_PRIVATE_3, txn_obj->DE63_NARRATION_DATA.value);
+                    if (ret != TXN_SUCCESS)
+                        return ret;
+                    break;
+
                 default:
                     logData("No Case for Field : %d", length + j);
                     break;

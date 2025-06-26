@@ -775,6 +775,13 @@ void sendTransactionProcessedMessage(struct transactionData trxData, const char 
 {
     logData("Sending transaction processed message");
 
+    char narration[63];
+    char amount[13];
+    convertAmount(trxData.amount, amount);
+
+    generateNarrationData(appConfig.stationId, trxData.acqTransactionId,
+                          trxData.acqUniqueTransactionId, amount, narration);
+
     json_object *jobj = json_object_new_object();
     // Root
     json_object *jCommand = json_object_new_string(COMMAND_STATUS);
@@ -787,6 +794,9 @@ void sendTransactionProcessedMessage(struct transactionData trxData, const char 
     json_object *jToken = json_object_new_string(trxData.token);
     json_object *jOrderId = json_object_new_string(trxData.orderId);
     json_object *jPan = json_object_new_string(trxData.maskPan);
+    json_object *jAcqTxnId = json_object_new_string(trxData.acqTransactionId);
+    json_object *jAcqUniqueTxnId = json_object_new_string(trxData.acqUniqueTransactionId);
+    json_object *jNarrationData = json_object_new_string(narration);
 
     json_object *jDataObject = json_object_new_object();
     json_object_object_add(jDataObject, "counter", jCounter);
@@ -796,6 +806,8 @@ void sendTransactionProcessedMessage(struct transactionData trxData, const char 
     json_object_object_add(jDataObject, "outcome", jOutCome);
     json_object_object_add(jDataObject, "orderId", jOrderId);
     json_object_object_add(jDataObject, "trxIssueDetail", json_object_new_string(trxData.trxIssueDetail));
+    json_object_object_add(jDataObject, "acqTransactionId", jAcqTxnId);
+    json_object_object_add(jDataObject, "acqUniqueTransactionId", jAcqUniqueTxnId);
 
     char trxDate[20];
     formatTransactionTime(trxData, trxDate);
@@ -813,6 +825,11 @@ void sendTransactionProcessedMessage(struct transactionData trxData, const char 
         {
             json_object_object_add(jDataObject, "checkDateBeforeExpiry", json_object_new_string("false"));
         }
+    }
+
+    if (trxData.isImmedOnline == false)
+    {
+        json_object_object_add(jDataObject, "narrationData", jNarrationData);
     }
 
     if (trxData.isImmedOnline == true)
@@ -844,6 +861,7 @@ void sendTransactionProcessedMessage(struct transactionData trxData, const char 
         json_object_object_add(jDataObject, "hostResultMessage", json_object_new_string(trxTable.hostResultMessage));
         json_object_object_add(jDataObject, "hostResultCode", json_object_new_string(trxTable.hostResultCode));
         json_object_object_add(jDataObject, "hostResultCodeId", json_object_new_string(trxTable.hostResultCodeId));
+        json_object_object_add(jDataObject, "hostError", json_object_new_string(trxTable.hostError));
         json_object_object_add(jDataObject, "hostResponseTimeStamp", json_object_new_string(trxTable.hostResponseTimeStamp));
     }
 
@@ -905,6 +923,8 @@ char *buildGetConfigMessage()
     json_object_object_add(jPSPObject, CONFIG_KEY_PORT, jPort);
     json_object_object_add(jPSPObject, CONFIG_KEY_IP, jIP);
     json_object_object_add(jPSPObject, CONFIG_KEY_HTTPS_HOST_NAME, jHttpsHostName);
+    json_object_object_add(jPSPObject, CONFIG_KEY_NII, json_object_new_string(appConfig.nii));
+    json_object_object_add(jPSPObject, CONFIG_KEY_TPDU, json_object_new_string(appConfig.tpdu));
     json_object_object_add(jPSPObject, CONFIG_KEY_TERMINALID, jTerminalId);
     json_object_object_add(jPSPObject, CONFIG_KEY_MERCHANT_ID, jMerchantId);
     json_object_object_add(jPSPObject, CONFIG_KEY_HOST_VERSION, jHostVersion);
@@ -937,6 +957,7 @@ char *buildGetConfigMessage()
     json_object_object_add(jGeneralObject, CONFIG_KEY_PAYTM_LOG_COUNT, json_object_new_int(appConfig.paytmLogCount));
     json_object_object_add(jGeneralObject, CONFIG_KEY_PAYTM_LOG_SIZE, json_object_new_int(appConfig.paytmMaxLogSizeKb));
     json_object_object_add(jGeneralObject, CONFIG_KEY_USE_CONFIG_JSON, json_object_new_boolean(appConfig.useConfigJson));
+    json_object_object_add(jGeneralObject, CONFIG_KEY_USE_ISO_HOST, json_object_new_boolean(appConfig.useISOHost));
 
     json_object_object_add(jGeneralObject, CONFIG_KEY_ENABLE_ABT, json_object_new_boolean(appConfig.enableAbt));
     json_object_object_add(jGeneralObject, CONFIG_KEY_TXN_TYPE_CODE, json_object_new_int(appConfig.txnTypeCode));

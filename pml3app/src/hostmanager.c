@@ -17,6 +17,9 @@
 #include "JHost/jhostutil.h"
 #include "http-parser/http_util.h"
 #include "include/responsemanager.h"
+#include "ISO/ISO8583_interface.h"
+#include "ISO/log.h"
+#include "ISO/utils.h"
 
 #define HMAC_HEX_SIZE (EVP_MAX_MD_SIZE * 2 + 1)
 
@@ -26,6 +29,30 @@ extern struct applicationData appData;
 extern int activePendingTxnCount;
 
 bool isReversalOngoing = false;
+
+/**
+ * Initialize the static data for the host communication
+ **/
+int initializeHostStaticData()
+{
+    ISO8583_STATIC_DATA sd;
+    memcpy(sd.TPDU, appConfig.tpdu, sizeof(appConfig.tpdu));
+    memcpy(sd.DE22_POS_ENTRY_MODE, "72", sizeof("72"));
+    memcpy(sd.DE24_NII, appConfig.nii, sizeof(appConfig.nii));
+    memcpy(sd.DE25_POS_CONDITION_CODE, "02", sizeof("02"));
+    memcpy(sd.DE41_TERMINAL_ID, appConfig.terminalId, sizeof(appConfig.terminalId));
+    memcpy(sd.DE42_CARD_ACCEPTOR_ID, appConfig.merchantId, sizeof(appConfig.merchantId));
+    memcpy(sd.HOST_IP_ADDRESS, appConfig.hostIP, sizeof(appConfig.hostIP));
+    sd.HOST_PORT = appConfig.hostPort;
+    sd.TRANSACTION_TIMOUT = appConfig.hostTxnTimeout;
+
+    if (initialize_static_data(&sd) != TXN_SUCCESS)
+    {
+        return TXN_FAILED;
+    }
+
+    return TXN_SUCCESS;
+}
 
 /**
  * Perform the balance update or service creation with airtel host
@@ -677,4 +704,47 @@ void performReversal(TransactionTable trxTable)
     isReversalOngoing = false;
 
     free(httpResponseData.message);
+}
+
+/**
+ * Get the  host error as string
+ **/
+const char *getHostErrorString(ISO8583_ERROR_CODES errorCode)
+{
+    switch (errorCode)
+    {
+    case TXN_HOST_CONNECTION_FAILED:
+        return "Host connection failed";
+        break;
+
+    case TXN_SEND_TO_HOST_FAILED:
+        return "Sending data to host failed";
+        break;
+
+    case TXN_RECEIVE_FROM_HOST_FAILED:
+        return "Received from host failed";
+        break;
+
+    case TXN_HOST_CONNECTION_TIMEOUT:
+        return "Host connection timeout";
+        break;
+
+    case TXN_RECEIVE_FROM_HOST_TIMEOUT:
+        return "Receive from host timeout";
+        break;
+
+    case TXN_PACK_VALIDATION_FAILED:
+    case TXN_PACK_FAILED:
+        return "Data pack validation failed";
+        break;
+
+    case TXN_PARSE_VALIDATION_FAILED:
+    case TXN_PARSE_FAILED:
+        return "Parse validation failed";
+        break;
+
+    default:
+        return "Error in processing with the host.";
+        break;
+    }
 }

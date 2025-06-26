@@ -55,9 +55,12 @@ struct applicationConfig
     char clientId[30];
     char clientName[50];
     char hostVersion[10];
+    char nii[4];
+    char tpdu[11];
     char hostIP[100];
     int hostPort;
     char httpsHostName[100];
+    bool useISOHost;
     char offlineUrl[100];
     char serviceCreationUrl[100];
     char balanceUpdateUrl[100];
@@ -193,6 +196,9 @@ struct transactionData
     bool isRupayTxn; // If true its a rupay service based or else its ABT
     bool isGateOpen;
     char gmtTime[100];
+
+    char acqTransactionId[13];
+    char acqUniqueTransactionId[21];
 };
 
 /**

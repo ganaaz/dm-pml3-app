@@ -349,6 +349,22 @@ struct transactionData updateTransactionDateTime(struct transactionData trxData)
     strcat(trxData.gmtTime, "\0");
     logData("Transaction GMT Time : %s", trxData.gmtTime);
 
+    strftime(trxData.acqTransactionId, -1, "%d%m%y%H%M%S", ptm);
+    logData("acqTransactionId : %s", trxData.acqTransactionId);
+    logData("Length : %d", strlen(trxData.acqTransactionId));
+
+    char acqUniqueTxnId[21];
+    strcpy(acqUniqueTxnId, appConfig.deviceCode); // 10 digit
+
+    char dateVal[11];
+    strftime(dateVal, -1, "%m%d%H%M%S", ptm);
+    strcat(acqUniqueTxnId, dateVal);
+
+    strcpy(trxData.acqUniqueTransactionId, acqUniqueTxnId);
+
+    logData("acqUniqueTransactionId : %s", trxData.acqUniqueTransactionId);
+    logData("Length : %d", strlen(trxData.acqUniqueTransactionId));
+
     return trxData;
 }
 
@@ -473,6 +489,35 @@ bool isMinimumFirmwareInstalled(void)
     }
 
     return true;
+}
+
+/**
+ * To generate the narration data
+ **/
+void generateNarrationData(char *stationId, char *acqTrxId,
+                           char *acqUniqueTrxId, char amount[13], char *narration)
+{
+    // char narration[63];
+    strcpy(narration, "EXT ");
+    strcat(narration, appConfig.stationId);
+    strcat(narration, " GLB DR ");
+    char onlyAmount[5];
+    memcpy(onlyAmount, &amount[8], 4);
+    onlyAmount[4] = '\0';
+    logData("Only Amount : %s", onlyAmount);
+    logData("Only amount length : %d", strlen(onlyAmount));
+    strcat(narration, onlyAmount);
+    int len = strlen(narration);
+    int max = 30 - len;
+    for (int i = 0; i < max; i++)
+    {
+        strcat(narration, " ");
+    }
+    strcat(narration, acqTrxId);
+    strcat(narration, acqUniqueTrxId);
+
+    logData("Narration data generated : %s", narration);
+    logData("Narration length : %d", strlen(narration));
 }
 
 /**
@@ -704,6 +749,8 @@ void resetTransactionData()
     currentTxnData.isRupayTxn = false;
     currentTxnData.isGateOpen = false;
     memset(currentTxnData.gmtTime, 0, sizeof(currentTxnData.gmtTime));
+    memset(currentTxnData.acqTransactionId, 0, sizeof(currentTxnData.acqTransactionId));
+    memset(currentTxnData.acqUniqueTransactionId, 0, sizeof(currentTxnData.acqUniqueTransactionId));
 
     logInfo("Transaction data reset successfully");
 }

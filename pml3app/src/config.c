@@ -86,7 +86,8 @@ int initConfig()
     initTransactionTable();
     initAbtTrxTable();
 
-    return 0;
+    int result = initializeHostStaticData();
+    return result;
 }
 
 /**
@@ -158,7 +159,7 @@ void initTransactionTable()
                                    "HostResultCode TEXT,"
                                    "HostResultCodeId TEXT,"
                                    "HostIccData TEXT,"
-                                   "HostError INT, "
+                                   "HostError TEXT, "
                                    "ReversalStatus TEXT, "
                                    "MoneyAddTrxType TEXT, "
                                    "AcquirementId TEXT, "
@@ -183,7 +184,9 @@ void initTransactionTable()
                                    "AirtelSwichMerchantId TEXT, "
                                    "AirtelAckTxnType TEXT, "
                                    "AirtelAckPaymentMode TEXT, "
-                                   "AirtelAckRefundId TEXT "
+                                   "AirtelAckRefundId TEXT, "
+                                   "AcqTransactionId TEXT, "
+                                   "AcqUniqueTransactionId TEXT "
                                    ");";
 
     char *errormsg = 0;
@@ -237,6 +240,9 @@ void printConfig()
     logData("Parsed Money Add Limit = %llu.%02llu", mAmount / 100, mAmount % 100);
     logInfo("Host Version : %s", appConfig.hostVersion);
     logInfo("Host IP : %s", appConfig.hostIP);
+    logInfo("Use ISO Host : %s", appConfig.useISOHost == true ? "true" : "false");
+    logInfo("NII : %s", appConfig.nii);
+    logInfo("TPDU : %s", appConfig.tpdu);
     logInfo("Host Port : %d", appConfig.hostPort);
     logInfo("Https Host Name : %s", appConfig.httpsHostName);
     logInfo("Offline Url : %s", appConfig.offlineUrl);
@@ -462,6 +468,8 @@ void loadAppConfig()
     strcpy(appConfig.clientId, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_CLIENT_ID)));
     strcpy(appConfig.clientName, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_CLIENT_NAME)));
     strcpy(appConfig.hostVersion, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_HOST_VERSION)));
+    strcpy(appConfig.nii, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_NII)));
+    strcpy(appConfig.tpdu, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_TPDU)));
     strcpy(appConfig.hostIP, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_HOST_IP)));
     strcpy(appConfig.httpsHostName, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_HTTPS_HOST_NAME)));
     strcpy(appConfig.offlineUrl, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_OFFLINE_URL)));
@@ -530,6 +538,17 @@ void loadAppConfig()
     else
     {
         appConfig.printProcessOutcome = false;
+    }
+
+    if (json_object_object_get(jObject, CONFIG_KEY_USE_ISO_HOST) != NULL)
+    {
+        json_bool jUseIsoHost = json_object_get_boolean(json_object_object_get(jObject, CONFIG_KEY_USE_ISO_HOST));
+        if (jUseIsoHost == TRUE)
+            appConfig.useISOHost = true;
+    }
+    else
+    {
+        appConfig.useISOHost = true;
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_ENABLE_APDU_LOG) != NULL)
@@ -1062,6 +1081,8 @@ void saveConfig()
     json_object_object_add(jobj, CONFIG_KEY_HOST_IP, jHostIP);
     json_object_object_add(jobj, CONFIG_KEY_HOST_PORT, jHostPort);
     json_object_object_add(jobj, CONFIG_KEY_HTTPS_HOST_NAME, jHttpsHostName);
+    json_object_object_add(jobj, CONFIG_KEY_NII, json_object_new_string(appConfig.nii));
+    json_object_object_add(jobj, CONFIG_KEY_TPDU, json_object_new_string(appConfig.tpdu));
     json_object_object_add(jobj, CONFIG_KEY_OFFLINE_URL, json_object_new_string(appConfig.offlineUrl));
     json_object_object_add(jobj, CONFIG_KEY_SERVRICE_CREATION_URL, json_object_new_string(appConfig.serviceCreationUrl));
     json_object_object_add(jobj, CONFIG_KEY_MONEY_LOAD_URL, json_object_new_string(appConfig.moneyLoadUrl));
@@ -1087,6 +1108,7 @@ void saveConfig()
     json_object_object_add(jobj, CONFIG_KEY_ENABLE_APDU_LOG, json_object_new_boolean(appConfig.enableApduLog));
     json_object_object_add(jobj, CONFIG_KEY_SOCKET_TIMEOUT, json_object_new_int(appConfig.socketTimeout));
     json_object_object_add(jobj, CONFIG_KEY_AUTO_READ_CARD, json_object_new_boolean(appConfig.autoReadCard));
+    json_object_object_add(jobj, CONFIG_KEY_USE_ISO_HOST, json_object_new_boolean(appConfig.useISOHost));
     json_object_object_add(jobj, CONFIG_KEY_DEVICE_CODE, json_object_new_string(appConfig.deviceCode));
     json_object_object_add(jobj, CONFIG_KEY_EQUIPMENT_TYPE, json_object_new_string(appConfig.equipmentType));
     json_object_object_add(jobj, CONFIG_KEY_EQUIPMENT_CODE, json_object_new_string(appConfig.equipmentCode));
@@ -1356,6 +1378,16 @@ int parseConfigAndUpdate(const char *data)
                 appConfig.useConfigJson = false;
         }
 
+        if (json_object_object_get(jGeneral, CONFIG_KEY_USE_ISO_HOST) != NULL)
+        {
+            json_bool useIsoHost = json_object_get_boolean(json_object_object_get(jGeneral, CONFIG_KEY_USE_ISO_HOST));
+
+            if (useIsoHost == TRUE)
+                appConfig.useISOHost = true;
+            else
+                appConfig.useISOHost = false;
+        }
+
         if (json_object_object_get(jGeneral, CONFIG_KEY_ENABLE_ABT) != NULL)
         {
             json_bool enableAbt = json_object_get_boolean(json_object_object_get(jGeneral, CONFIG_KEY_ENABLE_ABT));
@@ -1580,6 +1612,18 @@ int parseConfigAndUpdate(const char *data)
             logData("Updated Host IP : %s", appConfig.hostIP);
         }
 
+        if (json_object_object_get(jPsp, CONFIG_KEY_NII) != NULL)
+        {
+            strcpy(appConfig.nii, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_NII)));
+            logData("Updated NII : %s", appConfig.nii);
+        }
+
+        if (json_object_object_get(jPsp, CONFIG_KEY_TPDU) != NULL)
+        {
+            strcpy(appConfig.tpdu, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_TPDU)));
+            logData("Updated TPDU : %s", appConfig.tpdu);
+        }
+
         if (json_object_object_get(jPsp, CONFIG_KEY_HTTPS_HOST_NAME) != NULL)
         {
             strcpy(appConfig.httpsHostName, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_HTTPS_HOST_NAME)));
@@ -1686,6 +1730,8 @@ int parseConfigAndUpdate(const char *data)
             logData("Updated minRequiredForOnline : %d", minRequired);
             appConfig.minRequiredForOnline = minRequired;
         }
+
+        initializeHostStaticData();
     }
 
     readAndUpdateKeys(jConfig);

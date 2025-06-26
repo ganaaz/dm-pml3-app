@@ -57,7 +57,7 @@ typedef struct TransactionTableType
     char hostResultCode[3];
     char hostResultCodeId[20];
     char hostIccData[512];
-    int hostError;
+    char hostError[4096];
     char reversalStatus[50];
     char moneyAddTrxType[20];
     char acquirementId[50];
@@ -83,7 +83,8 @@ typedef struct TransactionTableType
     char airtelAckTxnType[100];
     char airtelAckPaymentMode[100];
     char airtelAckRefundId[100];
-
+    char acqTransactionId[13];
+    char acqUniqueTransactionId[21];
 } TransactionTable;
 
 typedef struct host_response
@@ -213,6 +214,11 @@ double getActivePendingHostErrorCategoryTransactionsAmount(const char *errorCate
  * Process the pending transactions with host
  **/
 void processHostPendingTransactions();
+
+/**
+ * Process the host offline transaction with host
+ **/
+TransactionTable processHostOfflineTxn(TransactionTable trxData);
 
 /**
  * Get the fetch query to retrieve the data from db
@@ -374,6 +380,11 @@ void updateAirtelHostResponseInDb(AirtelHostResponse hostResponse, char transact
  * Update reversal response back to db for Airtel
  **/
 void updateAirelReversalResponse(AirtelHostResponse airtelHostResponse, const char *transactionId);
+
+/**
+ * Update the host response received in db
+ **/
+void updateHostResponse(TransactionTable trxData);
 
 /*
  * To create test transaction data for offline

@@ -164,6 +164,12 @@ void generateOrderId();
 int deleteLogFile(struct message reqMessage);
 
 /**
+ * To generate the narration data
+ **/
+void generateNarrationData(char *stationId, char *acqTrxId,
+                           char *acqUniqueTrxId, char amount[13], char *narration);
+
+/**
  *
  **/
 void pad0MultipleOf8(const char *input, char *ouput, int *outLen);

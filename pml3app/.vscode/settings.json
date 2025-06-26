@@ -96,7 +96,8 @@
         "appcodes.h": "c",
         "abtmanager.h": "c",
         "hmac.h": "c",
-        "jairtel_host_interface.h": "c"
+        "jairtel_host_interface.h": "c",
+        "deque": "c"
     },
     "editor.tabSize": 4,
     "editor.formatOnSave": true,

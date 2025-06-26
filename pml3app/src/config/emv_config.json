@@ -1,395 +1,395 @@
 {
-	"traceEnabled": "01",
-	"encrypts": [],
-	"emv": {
-		"keys": [
-			{
-				"keyIndex": "6A",
-				"modulus": "92795EAA4FE39EB30441FE952D5423778E02F86783B89DD7C587AE80A69F4D6DC55EAFB6604040D875C72002425EE529CE4EA26FD864BAD760160C2AA0C5AF92381894A5CBBC8AB3AF2641606C379B927A397CB1E9B9EA2EF8C0A9C0DDEBB81B0F8913A118F7044156EA7D23AF626EAF30C2C9ECE8534D3563EF5FE95DE76249",
-				"aid": "A000000524",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "6B",
-				"modulus": "C9DFDB625ADA4B5E86049F85A0237627B59524F52BD499B4C5482C1EE012D61A1446E9383CC0B7EE2922D323A5ECDA12941EA8177CFA512DA6B5B7663A89B793B10D314CBB776EB96D0B1734EDE7E1591713915E9991B7B4E8A017A6901279AEBDD6136C9FE7E0C6CBF94C77FA606B629D00B1F890473905EB4DAD1AD93B29C2C1829A82F880B08986B9387611EE409D",
-				"aid": "A000000524",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "6C",
-				"modulus": "C76259FF785ABD5FF613223C01F5BDA0F36F9342CF336B66C32D4B2CD5096E094D8E04DFA11A9B2E3BC78DA63B5C10148D8ED79EBA685D5D0EFE1C58B3F929D861B40FF3AAA3B527148D0C24921EE42DA048E01E38F6A3A49DFA67DD1CD5DD2091412DD36D3269FAF7D2E0FFB1A3E028969CB6BA5A9303A6FF65540F421B069A31B553398EE525EFA5C2CE26BCB81C5345018D5E3E9B7130F72F598C0EAA4682D4DA2F2204518780A8108F82DDC9CF1F",
-				"aid": "A000000524",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "6D",
-				"modulus": "B747E8CB3615E8D26231355488F3C76C4746F7BB1C381E6C6E6ABF0A6D7CD93CFC6B2C310288CA8BE7EE1730DE621A59D1BB2D8C02C9148FA06E5D1F5E672EEFCE8AECBAD4A1C18F3175F1BEA1AEF539376592366B46A5044E32E59B3F35F50E85F843BA01851E5386B7EBE27367D3D483C5472D3020AF42116DDDA32341557EBABB043EBC6006B99A652009045BFA50C527028586E05942E1D594223B49FE8566931C31FBE8C903ABD4F283E1FAB03D758247EC4B728A85A9897601B753293263ADBD10BE988D0C52FE0091C2721DC02C5130FC7663E95739A70EE2F84DFD2E50C88A1A26587EF7CC047FCA2D03C2CF0CE4B524B4EC3F07",
-				"aid": "A000000524",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "05",
-				"modulus": "C04E80180369898AAEF6EE7741EDED25239D765301614B5B41A008CA3009358D626D828BC5F1B1E04A2DC1367101266905D262003BE747FD231C9B0011F2F2B21BA8E4C0F4CA5E93ED9DBB2E92ABC450576A4EB59AD00DCA59C8BF3230E4B19D43452871C6215D837663310DF43CAEA1B9B08C1F500AF1B550F62E18D70EEE9E9475321BCD1799AB193E0BC849DACE892A0E6A1F42FE0786DB30345AE1A0E7E4C4B71640E03BFD2832C491A7D83F3B4EF4D388CDDBB748C2FD1D9D4A9BF52FC856CBA088D4B274846002C23CDA722C5CFF3B1F8218A1843B0426474BDC92F2F5E31FBF321CC17480AD069DF55381F2E601D5CBA7B871253F",
-				"aid": "A000000524",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "03",
-				"modulus": "E703A908FFAE3730F82E550869A294C1FF1DA25F2B53D2C8BB18F770DAD505135D03D5EC8EE3926550051C3D4857F6FEDB882C2889E0B25F389F78741F2931A92D45D3A47E62810D3253653AB0AB3570C35DFD08D3167B6DB42ED28F765186F4287CDAF9D9BAD20BCE2C4ECFECDD218E50F1FCC718878882F3934A6FEB502CFCAD615A2B2E279A0868DDA9489DFA9CD9",
-				"aid": "A000000524",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "04",
-				"modulus": "AC0019624FC0A72270C6885CC0B3C9140C351FCFE6F8145881A27750393453D3265F69E7658132D8D253EDF8991E2BA32B782D39ADE1FF1FC8F211F5DF51A0007C761AD9882587BD6A36AECD3ABBF944307AC97A2D905FAB489C3E1CCD76DE9EB93ECFAB2BB84F34E770119E356DC6372D8685DA8EB92FCAC7B53C0167100E4CDFB9830D1C45E787E44C9F6A42EC131A6A4CD66BBE4F93CA91FDF157C7B22FC7221A6348F0EDA6151302A80EF77D6CA5",
-				"aid": "A000000524",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "06",
-				"modulus": "9D8A75B36BCBDF250B87615A46F6EA35DE35226EEAB7B473D7DC0A28B5DF075C83B2775F23337E6CEE36CCFE3A6568C9C822D6DE81299565A829348E03D479B631BB18A2429A8590C597F446A3CEA3BE2E822106F43DFBB981EC0F1121919CB35F85DBA3355C5E7FF35F2B221FD65EDBEA41F23A7A109FBBC4A774A756D89B593B199E1E9DA9A99217D4BF31F67CDA8C4E1B81FA2A377C83B5D1CD6AF1F1880448CFF48D3A4ADBBC7FBD730061508A6EA8FDFC5BD66A2E94E33B83F81E0E56CF1C9473E4426EE435F9E80136760D8F4AD946805B03A67C55361582F5AD8F40404392FA4CB4F5C2BAF6E26857A1D60941E3D055ACD9AC0BEF",
-				"aid": "A000000524",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "02",
-				"modulus": "B628CAB46EC37E24B0EFE78FD651BADC2545958B4D088FE8DA8CF7F04CF1916EF894386376608814C2F6F1662D964D0F7CA34C29E2FFEBF4AB4AB8E35BACCCF6D653EBB06AA1FCA3A877A6644B54894B9E1FAFBA7206F40BB4AF2EE7F9964F8259CE8A82DB00460B5820FA4CDF0D213E3710F5CA40838D57FC956B134760A0B1",
-				"aid": "A000000524",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "01",
-				"modulus": "ED2CBDC0E377CFE24640B819AAA606EF9B177F50A4C55917A53266CFB90DCA7C39D0C429207BFC29786945F912D59AA67508C62FA5B19E187D9FAEFB718084E14E7ADDBCC69211D4418CDE26FD10FCE8BFFFC46877768FED780615E74AA162EC823CF548FFEE5B263A9FE56FF42DE215A7112F9A1878DF81178AD1D69F0D47F5",
-				"aid": "A000000524",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "FE",
-				"modulus": "A653EAC1C0F786C8724F737F172997D63D1C3251C44402049B865BAE877D0F398CBFBE8A6035E24AFA086BEFDE9351E54B95708EE672F0968BCD50DCE40F783322B2ABA04EF137EF18ABF03C7DBC5813AEAEF3AA7797BA15DF7D5BA1CBAF7FD520B5A482D8D3FEE105077871113E23A49AF3926554A70FE10ED728CF793B62A1",
-				"aid": "A000000004",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "F3",
-				"modulus": "98F0C770F23864C2E766DF02D1E833DFF4FFE92D696E1642F0A88C5694C6479D16DB1537BFE29E4FDC6E6E8AFD1B0EB7EA0124723C333179BF19E93F10658B2F776E829E87DAEDA9C94A8B3382199A350C077977C97AFF08FD11310AC950A72C3CA5002EF513FCCC286E646E3C5387535D509514B3B326E1234F9CB48C36DDD44B416D23654034A66F403BA511C5EFA3",
-				"aid": "A000000004",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "FA",
-				"modulus": "A90FCD55AA2D5D9963E35ED0F440177699832F49C6BAB15CDAE5794BE93F934D4462D5D12762E48C38BA83D8445DEAA74195A301A102B2F114EADA0D180EE5E7A5C73E0C4E11F67A43DDAB5D55683B1474CC0627F44B8D3088A492FFAADAD4F42422D0E7013536C3C49AD3D0FAE96459B0F6B1B6056538A3D6D44640F94467B108867DEC40FAAECD740C00E2B7A8852D",
-				"aid": "A000000004",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "F1",
-				"modulus": "A0DCF4BDE19C3546B4B6F0414D174DDE294AABBB828C5A834D73AAE27C99B0B053A90278007239B6459FF0BBCD7B4B9C6C50AC02CE91368DA1BD21AAEADBC65347337D89B68F5C99A09D05BE02DD1F8C5BA20E2F13FB2A27C41D3F85CAD5CF6668E75851EC66EDBF98851FD4E42C44C1D59F5984703B27D5B9F21B8FA0D93279FBBF69E090642909C9EA27F898959541AA6757F5F624104F6E1D3A9532F2A6E51515AEAD1B43B3D7835088A2FAFA7BE7",
-				"aid": "A000000004",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "EF",
-				"modulus": "A191CB87473F29349B5D60A88B3EAEE0973AA6F1A082F358D849FDDFF9C091F899EDA9792CAF09EF28F5D22404B88A2293EEBBC1949C43BEA4D60CFD879A1539544E09E0F09F60F065B2BF2A13ECC705F3D468B9D33AE77AD9D3F19CA40F23DCF5EB7C04DC8F69EBA565B1EBCB4686CD274785530FF6F6E9EE43AA43FDB02CE00DAEC15C7B8FD6A9B394BABA419D3F6DC85E16569BE8E76989688EFEA2DF22FF7D35C043338DEAA982A02B866DE5328519EBBCD6F03CDD686673847F84DB651AB86C28CF1462562C577B853564A290C8556D818531268D25CC98A4CC6A0BDFFFDA2DCCA3A94C998559E307FDDF915006D9A987B07DDAEB3B",
-				"aid": "A000000004",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "AE",
-				"modulus": "E1E24F1746D0A339A8A95EC8ADBE13B3DC44924526212DDE99DB06FF57A4F795266E33BAEC2F0DF939F0695C0C8F100DAB3B4B3BB23820FC601235BC9CC266424457848678ECD516BA04A9D6070A4D12B31F59B0491656F68050B2636AF1134F3DC75F4F9424E8B0E156529468DE95BDA20B10A52854F4A6DBAE0BE95D2AEBDF5C86F2AAC2DBD349E49007C705FCEFDF184A08E72F8AA8440CA75C880080804414CEB791B4D55204638F614B994D0DAD",
-				"aid": "A000000004",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "05",
-				"modulus": "B8048ABC30C90D976336543E3FD7091C8FE4800DF820ED55E7E94813ED00555B573FECA3D84AF6131A651D66CFF4284FB13B635EDD0EE40176D8BF04B7FD1C7BACF9AC7327DFAA8AA72D10DB3B8E70B2DDD811CB4196525EA386ACC33C0D9D4575916469C4E4F53E8E1C912CC618CB22DDE7C3568E90022E6BBA770202E4522A2DD623D180E215BD1D1507FE3DC90CA310D27B3EFCCD8F83DE3052CAD1E48938C68D095AAC91B5F37E28BB49EC7ED597",
-				"aid": "A000000004",
-				"exponent": "03"
-			},
-			{
-				"keyIndex": "06",
-				"modulus": "CB26FC830B43785B2BCE37C81ED334622F9622F4C89AAE641046B2353433883F307FB7C974162DA72F7A4EC75D9D657336865B8D3023D3D645667625C9A07A6B7A137CF0C64198AE38FC238006FB2603F41F4F3BB9DA1347270F2F5D8C606E420958C5F7D50A71DE30142F70DE468889B5E3A08695B938A50FC980393A9CBCE44AD2D64F630BB33AD3F5F5FD495D31F37818C1D94071342E07F1BEC2194F6035BA5DED3936500EB82DFDA6E8AFB655B1EF3D0D7EBF86B66DD9F29F6B1D324FE8B26CE38AB2013DD13F611E7A594D675C4432350EA244CC34F3873CBA06592987A1D7E852ADC22EF5A2EE28132031E48F74037E3B34AB747F",
-				"aid": "A000000004",
-				"exponent": "03"
-			}
-		],
-		"onlineTags": {
-			"tags": "575F345F249F069F079F349F1E9F099F359F414F829F369F10959F269F279F379F029F039F1A5F2A9F219A9C9F339B8ADF15DF16",
-			"kernelId": "0D"
-		},
-		"onlineTagsMasterCard": {
-			"tags": "575F25505F345F249F069F079F349F1E9F099F359F414F829F369F10959F269F279F379F029F039F1A5F2A9F219A9C9F339B8ADF15DF16",
-			"kernelId": "02"
-		},
-		"onlineTagsVisa": {
-			"tags": "575F25505F345F249F069F079F349F1E9F099F359F414F829F369F10959F269F279F379F029F039F1A5F2A9F219A9C9F339B8ADF15DF16",
-			"kernelId": "03"
-		},
-		"combinations": [
-			{
-				"entryPoint": {
-					"cvmRequireLimit": "000000020000",
-					"clessTxnLimit": "000000020000",
-					"termFloorLimit": "000007D0"
-				},
-				"kernelConfig": {
-					"terminalType": "98",
-					"serviceQualifier": "01601691000110109100016012910001FF019100",
-					"terminalId": "3132333435363738",
-					"terminalFloorLimit": "000007D0",
-					"appVersion": "0002",
-					"tacDenial": "FCF8FCF8F0",
-					"tacOnline": "FCF8FCF8F0",
-					"tacDefault": "FCF8FCF8F0",
-					"countryCode": "0356",
-					"termCap": "000808",
-					"addTermCap": "6040000001",
-					"mcc": "4131",
-					"serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
-					"addTermCapExt": "0040000000",
-					"appUnblockSupport": "00",
-					"tdol": "9F0802"
-				},
-				"aid": "A0000005241010",
-				"partial": "00",
-				"kernel": "0D",
-				"txnType": "31"
-			},
+    "traceEnabled": "01",
+    "encrypts": [],
+    "emv": {
+        "keys": [
             {
-				"entryPoint": {
-					"cvmRequireLimit": "000000020000",
-					"clessTxnLimit": "000000020000",
-					"termFloorLimit": "000007D0"
-				},
-				"kernelConfig": {
-					"terminalType": "98",
-					"serviceQualifier": "01601691000110109100016012910001FF019100",
-					"terminalId": "3132333435363738",
-					"terminalFloorLimit": "000007D0",
-					"appVersion": "0002",
-					"tacDenial": "FCF8FCF8F0",
-					"tacOnline": "FCF8FCF8F0",
-					"tacDefault": "FCF8FCF8F0",
-					"countryCode": "0356",
-					"termCap": "000808",
-					"addTermCap": "6040000001",
-					"mcc": "4131",
-					"serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
-					"addTermCapExt": "0040000000",
-					"appUnblockSupport": "00",
-					"tdol": "9F0802"
-				},
-				"aid": "A0000005241010",
-				"partial": "00",
-				"kernel": "0D",
-				"txnType": "00"
-			},
+                "keyIndex": "6A",
+                "modulus": "92795EAA4FE39EB30441FE952D5423778E02F86783B89DD7C587AE80A69F4D6DC55EAFB6604040D875C72002425EE529CE4EA26FD864BAD760160C2AA0C5AF92381894A5CBBC8AB3AF2641606C379B927A397CB1E9B9EA2EF8C0A9C0DDEBB81B0F8913A118F7044156EA7D23AF626EAF30C2C9ECE8534D3563EF5FE95DE76249",
+                "aid": "A000000524",
+                "exponent": "03"
+            },
             {
-				"entryPoint": {
-					"cvmRequireLimit": "000000020000",
-					"clessTxnLimit": "000000020000",
-					"termFloorLimit": "000007D0"
-				},
-				"kernelConfig": {
-					"terminalType": "98",
-					"serviceQualifier": "01601691000110109100016012910001FF019100",
-					"terminalId": "3132333435363738",
-					"terminalFloorLimit": "000007D0",
-					"appVersion": "0002",
-					"tacDenial": "FCF8FCF8F0",
-					"tacOnline": "FCF8FCF8F0",
-					"tacDefault": "FCF8FCF8F0",
-					"countryCode": "0356",
-					"termCap": "000808",
-					"addTermCap": "6040000001",
-					"mcc": "4131",
-					"serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
-					"addTermCapExt": "0040000000",
-					"appUnblockSupport": "00",
-					"tdol": "9F0802"
-				},
-				"aid": "A0000005",
-				"partial": "01",
-				"kernel": "0D",
-				"txnType": "31"
-			},
+                "keyIndex": "6B",
+                "modulus": "C9DFDB625ADA4B5E86049F85A0237627B59524F52BD499B4C5482C1EE012D61A1446E9383CC0B7EE2922D323A5ECDA12941EA8177CFA512DA6B5B7663A89B793B10D314CBB776EB96D0B1734EDE7E1591713915E9991B7B4E8A017A6901279AEBDD6136C9FE7E0C6CBF94C77FA606B629D00B1F890473905EB4DAD1AD93B29C2C1829A82F880B08986B9387611EE409D",
+                "aid": "A000000524",
+                "exponent": "03"
+            },
             {
-				"entryPoint": {
-					"cvmRequireLimit": "000000020000",
-					"clessTxnLimit": "000000020000",
-					"termFloorLimit": "000007D0"
-				},
-				"kernelConfig": {
-					"terminalType": "98",
-					"serviceQualifier": "01601691000110109100016012910001FF019100",
-					"terminalId": "3132333435363738",
-					"terminalFloorLimit": "000007D0",
-					"appVersion": "0002",
-					"tacDenial": "FCF8FCF8F0",
-					"tacOnline": "FCF8FCF8F0",
-					"tacDefault": "FCF8FCF8F0",
-					"countryCode": "0356",
-					"termCap": "000808",
-					"addTermCap": "6040000001",
-					"mcc": "4131",
-					"serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
-					"addTermCapExt": "0040000000",
-					"appUnblockSupport": "00",
-					"tdol": "9F0802"
-				},
-				"aid": "A0000005",
-				"partial": "01",
-				"kernel": "0D",
-				"txnType": "00"
-			},
+                "keyIndex": "6C",
+                "modulus": "C76259FF785ABD5FF613223C01F5BDA0F36F9342CF336B66C32D4B2CD5096E094D8E04DFA11A9B2E3BC78DA63B5C10148D8ED79EBA685D5D0EFE1C58B3F929D861B40FF3AAA3B527148D0C24921EE42DA048E01E38F6A3A49DFA67DD1CD5DD2091412DD36D3269FAF7D2E0FFB1A3E028969CB6BA5A9303A6FF65540F421B069A31B553398EE525EFA5C2CE26BCB81C5345018D5E3E9B7130F72F598C0EAA4682D4DA2F2204518780A8108F82DDC9CF1F",
+                "aid": "A000000524",
+                "exponent": "03"
+            },
             {
-				"entryPoint": {
-					"cvmRequireLimit": "000000020000",
-					"clessTxnLimit": "000000020000",
-					"termFloorLimit": "000007D0"
-				},
-				"kernelConfig": {
-					"terminalType": "91",
-					"serviceQualifier": "01601691000110109100016012910001FF019100",
-					"terminalId": "3132333435363738",
-					"terminalFloorLimit": "000007D0",
-					"appVersion": "0002",
-					"tacDenial": "FCF8FCF8F0",
-					"tacOnline": "FCF8FCF8F0",
-					"tacDefault": "FCF8FCF8F0",
-					"countryCode": "0356",
-					"termCap": "000808",
-					"addTermCap": "6040000001",
-					"mcc": "4131",
-					"serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
-					"addTermCapExt": "0040000000",
-					"appUnblockSupport": "00",
-					"tdol": "9F0802"
-				},
-				"aid": "A0000005241010",
-				"partial": "00",
-				"kernel": "0D",
-				"txnType": "29"
-			},
+                "keyIndex": "6D",
+                "modulus": "B747E8CB3615E8D26231355488F3C76C4746F7BB1C381E6C6E6ABF0A6D7CD93CFC6B2C310288CA8BE7EE1730DE621A59D1BB2D8C02C9148FA06E5D1F5E672EEFCE8AECBAD4A1C18F3175F1BEA1AEF539376592366B46A5044E32E59B3F35F50E85F843BA01851E5386B7EBE27367D3D483C5472D3020AF42116DDDA32341557EBABB043EBC6006B99A652009045BFA50C527028586E05942E1D594223B49FE8566931C31FBE8C903ABD4F283E1FAB03D758247EC4B728A85A9897601B753293263ADBD10BE988D0C52FE0091C2721DC02C5130FC7663E95739A70EE2F84DFD2E50C88A1A26587EF7CC047FCA2D03C2CF0CE4B524B4EC3F07",
+                "aid": "A000000524",
+                "exponent": "03"
+            },
             {
-				"entryPoint": {
-					"cvmRequireLimit": "000000020000",
-					"clessTxnLimit": "000000020000",
-					"termFloorLimit": "000007D0"
-				},
-				"kernelConfig": {
-					"terminalType": "91",
-					"serviceQualifier": "01601691000110109100016012910001FF019100",
-					"terminalId": "3132333435363738",
-					"terminalFloorLimit": "000007D0",
-					"appVersion": "0002",
-					"tacDenial": "FCF8FCF8F0",
-					"tacOnline": "FCF8FCF8F0",
-					"tacDefault": "FCF8FCF8F0",
-					"countryCode": "0356",
-					"termCap": "000808",
-					"addTermCap": "6040000001",
-					"mcc": "4131",
-					"serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
-					"addTermCapExt": "0040000000",
-					"appUnblockSupport": "00",
-					"tdol": "9F0802"
-				},
-				"aid": "A0000005",
-				"partial": "01",
-				"kernel": "0D",
-				"txnType": "29"
-			},
+                "keyIndex": "05",
+                "modulus": "C04E80180369898AAEF6EE7741EDED25239D765301614B5B41A008CA3009358D626D828BC5F1B1E04A2DC1367101266905D262003BE747FD231C9B0011F2F2B21BA8E4C0F4CA5E93ED9DBB2E92ABC450576A4EB59AD00DCA59C8BF3230E4B19D43452871C6215D837663310DF43CAEA1B9B08C1F500AF1B550F62E18D70EEE9E9475321BCD1799AB193E0BC849DACE892A0E6A1F42FE0786DB30345AE1A0E7E4C4B71640E03BFD2832C491A7D83F3B4EF4D388CDDBB748C2FD1D9D4A9BF52FC856CBA088D4B274846002C23CDA722C5CFF3B1F8218A1843B0426474BDC92F2F5E31FBF321CC17480AD069DF55381F2E601D5CBA7B871253F",
+                "aid": "A000000524",
+                "exponent": "03"
+            },
             {
-				"entryPoint": {
-					"cvmRequireLimit": "000000020000",
-					"clessTxnLimit": "000000020000",
-					"termFloorLimit": "000007D0"
-				},
-				"kernelConfig": {
-					"terminalType": "91",
-					"serviceQualifier": "01601691000110109100016012910001FF019100",
-					"terminalId": "3132333435363738",
-					"terminalFloorLimit": "000007D0",
-					"appVersion": "0002",
-					"tacDenial": "FCF8FCF8F0",
-					"tacOnline": "FCF8FCF8F0",
-					"tacDefault": "FCF8FCF8F0",
-					"countryCode": "0356",
-					"termCap": "000808",
-					"addTermCap": "6040000001",
-					"mcc": "4131",
-					"serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
-					"addTermCapExt": "0040000000",
-					"appUnblockSupport": "00",
-					"tdol": "9F0802"
-				},
-				"aid": "A0000005241010",
-				"partial": "00",
-				"kernel": "0D",
-				"txnType": "83"
-			},
+                "keyIndex": "03",
+                "modulus": "E703A908FFAE3730F82E550869A294C1FF1DA25F2B53D2C8BB18F770DAD505135D03D5EC8EE3926550051C3D4857F6FEDB882C2889E0B25F389F78741F2931A92D45D3A47E62810D3253653AB0AB3570C35DFD08D3167B6DB42ED28F765186F4287CDAF9D9BAD20BCE2C4ECFECDD218E50F1FCC718878882F3934A6FEB502CFCAD615A2B2E279A0868DDA9489DFA9CD9",
+                "aid": "A000000524",
+                "exponent": "03"
+            },
             {
-				"entryPoint": {
-					"cvmRequireLimit": "000000020000",
-					"clessTxnLimit": "000000020000",
-					"termFloorLimit": "000007D0"
-				},
-				"kernelConfig": {
-					"terminalType": "91",
-					"serviceQualifier": "01601691000110109100016012910001FF019100",
-					"terminalId": "3132333435363738",
-					"terminalFloorLimit": "000007D0",
-					"appVersion": "0002",
-					"tacDenial": "FCF8FCF8F0",
-					"tacOnline": "FCF8FCF8F0",
-					"tacDefault": "FCF8FCF8F0",
-					"countryCode": "0356",
-					"termCap": "000808",
-					"addTermCap": "6040000001",
-					"mcc": "4131",
-					"serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
-					"addTermCapExt": "0040000000",
-					"appUnblockSupport": "00",
-					"tdol": "9F0802"
-				},
-				"aid": "A0000005241010",
-				"partial": "00",
-				"kernel": "0D",
-				"txnType": "28"
-			},
+                "keyIndex": "04",
+                "modulus": "AC0019624FC0A72270C6885CC0B3C9140C351FCFE6F8145881A27750393453D3265F69E7658132D8D253EDF8991E2BA32B782D39ADE1FF1FC8F211F5DF51A0007C761AD9882587BD6A36AECD3ABBF944307AC97A2D905FAB489C3E1CCD76DE9EB93ECFAB2BB84F34E770119E356DC6372D8685DA8EB92FCAC7B53C0167100E4CDFB9830D1C45E787E44C9F6A42EC131A6A4CD66BBE4F93CA91FDF157C7B22FC7221A6348F0EDA6151302A80EF77D6CA5",
+                "aid": "A000000524",
+                "exponent": "03"
+            },
             {
-				"entryPoint": {
-					"cvmRequireLimit": "000000020000",
-					"clessTxnLimit": "000000020000",
-					"termFloorLimit": "000007D0",
+                "keyIndex": "06",
+                "modulus": "9D8A75B36BCBDF250B87615A46F6EA35DE35226EEAB7B473D7DC0A28B5DF075C83B2775F23337E6CEE36CCFE3A6568C9C822D6DE81299565A829348E03D479B631BB18A2429A8590C597F446A3CEA3BE2E822106F43DFBB981EC0F1121919CB35F85DBA3355C5E7FF35F2B221FD65EDBEA41F23A7A109FBBC4A774A756D89B593B199E1E9DA9A99217D4BF31F67CDA8C4E1B81FA2A377C83B5D1CD6AF1F1880448CFF48D3A4ADBBC7FBD730061508A6EA8FDFC5BD66A2E94E33B83F81E0E56CF1C9473E4426EE435F9E80136760D8F4AD946805B03A67C55361582F5AD8F40404392FA4CB4F5C2BAF6E26857A1D60941E3D055ACD9AC0BEF",
+                "aid": "A000000524",
+                "exponent": "03"
+            },
+            {
+                "keyIndex": "02",
+                "modulus": "B628CAB46EC37E24B0EFE78FD651BADC2545958B4D088FE8DA8CF7F04CF1916EF894386376608814C2F6F1662D964D0F7CA34C29E2FFEBF4AB4AB8E35BACCCF6D653EBB06AA1FCA3A877A6644B54894B9E1FAFBA7206F40BB4AF2EE7F9964F8259CE8A82DB00460B5820FA4CDF0D213E3710F5CA40838D57FC956B134760A0B1",
+                "aid": "A000000524",
+                "exponent": "03"
+            },
+            {
+                "keyIndex": "01",
+                "modulus": "ED2CBDC0E377CFE24640B819AAA606EF9B177F50A4C55917A53266CFB90DCA7C39D0C429207BFC29786945F912D59AA67508C62FA5B19E187D9FAEFB718084E14E7ADDBCC69211D4418CDE26FD10FCE8BFFFC46877768FED780615E74AA162EC823CF548FFEE5B263A9FE56FF42DE215A7112F9A1878DF81178AD1D69F0D47F5",
+                "aid": "A000000524",
+                "exponent": "03"
+            },
+            {
+                "keyIndex": "FE",
+                "modulus": "A653EAC1C0F786C8724F737F172997D63D1C3251C44402049B865BAE877D0F398CBFBE8A6035E24AFA086BEFDE9351E54B95708EE672F0968BCD50DCE40F783322B2ABA04EF137EF18ABF03C7DBC5813AEAEF3AA7797BA15DF7D5BA1CBAF7FD520B5A482D8D3FEE105077871113E23A49AF3926554A70FE10ED728CF793B62A1",
+                "aid": "A000000004",
+                "exponent": "03"
+            },
+            {
+                "keyIndex": "F3",
+                "modulus": "98F0C770F23864C2E766DF02D1E833DFF4FFE92D696E1642F0A88C5694C6479D16DB1537BFE29E4FDC6E6E8AFD1B0EB7EA0124723C333179BF19E93F10658B2F776E829E87DAEDA9C94A8B3382199A350C077977C97AFF08FD11310AC950A72C3CA5002EF513FCCC286E646E3C5387535D509514B3B326E1234F9CB48C36DDD44B416D23654034A66F403BA511C5EFA3",
+                "aid": "A000000004",
+                "exponent": "03"
+            },
+            {
+                "keyIndex": "FA",
+                "modulus": "A90FCD55AA2D5D9963E35ED0F440177699832F49C6BAB15CDAE5794BE93F934D4462D5D12762E48C38BA83D8445DEAA74195A301A102B2F114EADA0D180EE5E7A5C73E0C4E11F67A43DDAB5D55683B1474CC0627F44B8D3088A492FFAADAD4F42422D0E7013536C3C49AD3D0FAE96459B0F6B1B6056538A3D6D44640F94467B108867DEC40FAAECD740C00E2B7A8852D",
+                "aid": "A000000004",
+                "exponent": "03"
+            },
+            {
+                "keyIndex": "F1",
+                "modulus": "A0DCF4BDE19C3546B4B6F0414D174DDE294AABBB828C5A834D73AAE27C99B0B053A90278007239B6459FF0BBCD7B4B9C6C50AC02CE91368DA1BD21AAEADBC65347337D89B68F5C99A09D05BE02DD1F8C5BA20E2F13FB2A27C41D3F85CAD5CF6668E75851EC66EDBF98851FD4E42C44C1D59F5984703B27D5B9F21B8FA0D93279FBBF69E090642909C9EA27F898959541AA6757F5F624104F6E1D3A9532F2A6E51515AEAD1B43B3D7835088A2FAFA7BE7",
+                "aid": "A000000004",
+                "exponent": "03"
+            },
+            {
+                "keyIndex": "EF",
+                "modulus": "A191CB87473F29349B5D60A88B3EAEE0973AA6F1A082F358D849FDDFF9C091F899EDA9792CAF09EF28F5D22404B88A2293EEBBC1949C43BEA4D60CFD879A1539544E09E0F09F60F065B2BF2A13ECC705F3D468B9D33AE77AD9D3F19CA40F23DCF5EB7C04DC8F69EBA565B1EBCB4686CD274785530FF6F6E9EE43AA43FDB02CE00DAEC15C7B8FD6A9B394BABA419D3F6DC85E16569BE8E76989688EFEA2DF22FF7D35C043338DEAA982A02B866DE5328519EBBCD6F03CDD686673847F84DB651AB86C28CF1462562C577B853564A290C8556D818531268D25CC98A4CC6A0BDFFFDA2DCCA3A94C998559E307FDDF915006D9A987B07DDAEB3B",
+                "aid": "A000000004",
+                "exponent": "03"
+            },
+            {
+                "keyIndex": "AE",
+                "modulus": "E1E24F1746D0A339A8A95EC8ADBE13B3DC44924526212DDE99DB06FF57A4F795266E33BAEC2F0DF939F0695C0C8F100DAB3B4B3BB23820FC601235BC9CC266424457848678ECD516BA04A9D6070A4D12B31F59B0491656F68050B2636AF1134F3DC75F4F9424E8B0E156529468DE95BDA20B10A52854F4A6DBAE0BE95D2AEBDF5C86F2AAC2DBD349E49007C705FCEFDF184A08E72F8AA8440CA75C880080804414CEB791B4D55204638F614B994D0DAD",
+                "aid": "A000000004",
+                "exponent": "03"
+            },
+            {
+                "keyIndex": "05",
+                "modulus": "B8048ABC30C90D976336543E3FD7091C8FE4800DF820ED55E7E94813ED00555B573FECA3D84AF6131A651D66CFF4284FB13B635EDD0EE40176D8BF04B7FD1C7BACF9AC7327DFAA8AA72D10DB3B8E70B2DDD811CB4196525EA386ACC33C0D9D4575916469C4E4F53E8E1C912CC618CB22DDE7C3568E90022E6BBA770202E4522A2DD623D180E215BD1D1507FE3DC90CA310D27B3EFCCD8F83DE3052CAD1E48938C68D095AAC91B5F37E28BB49EC7ED597",
+                "aid": "A000000004",
+                "exponent": "03"
+            },
+            {
+                "keyIndex": "06",
+                "modulus": "CB26FC830B43785B2BCE37C81ED334622F9622F4C89AAE641046B2353433883F307FB7C974162DA72F7A4EC75D9D657336865B8D3023D3D645667625C9A07A6B7A137CF0C64198AE38FC238006FB2603F41F4F3BB9DA1347270F2F5D8C606E420958C5F7D50A71DE30142F70DE468889B5E3A08695B938A50FC980393A9CBCE44AD2D64F630BB33AD3F5F5FD495D31F37818C1D94071342E07F1BEC2194F6035BA5DED3936500EB82DFDA6E8AFB655B1EF3D0D7EBF86B66DD9F29F6B1D324FE8B26CE38AB2013DD13F611E7A594D675C4432350EA244CC34F3873CBA06592987A1D7E852ADC22EF5A2EE28132031E48F74037E3B34AB747F",
+                "aid": "A000000004",
+                "exponent": "03"
+            }
+        ],
+        "onlineTags": {
+            "tags": "575F345F249F069F079F349F1E9F099F359F414F829F369F10959F269F279F379F029F039F1A5F2A9F219A9C9F339B8ADF15DF16",
+            "kernelId": "0D"
+        },
+        "onlineTagsMasterCard": {
+            "tags": "575F25505F345F249F069F079F349F1E9F099F359F414F829F369F10959F269F279F379F029F039F1A5F2A9F219A9C9F339B8ADF15DF16",
+            "kernelId": "02"
+        },
+        "onlineTagsVisa": {
+            "tags": "575F25505F345F249F069F079F349F1E9F099F359F414F829F369F10959F269F279F379F029F039F1A5F2A9F219A9C9F339B8ADF15DF16",
+            "kernelId": "03"
+        },
+        "combinations": [
+            {
+                "entryPoint": {
+                    "cvmRequireLimit": "000000020000",
+                    "clessTxnLimit": "000000020000",
+                    "termFloorLimit": "000007D0"
+                },
+                "kernelConfig": {
+                    "terminalType": "96",
+                    "serviceQualifier": "01601691000110109100016012910001FF019100",
+                    "terminalId": "3132333435363738",
+                    "terminalFloorLimit": "000007D0",
+                    "appVersion": "0002",
+                    "tacDenial": "FCF8FCF8F0",
+                    "tacOnline": "FCF8FCF8F0",
+                    "tacDefault": "FCF8FCF8F0",
+                    "countryCode": "0356",
+                    "termCap": "000808",
+                    "addTermCap": "6040000001",
+                    "mcc": "4131",
+                    "serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
+                    "addTermCapExt": "0040000000",
+                    "appUnblockSupport": "00",
+                    "tdol": "9F0802"
+                },
+                "aid": "A0000005241010",
+                "partial": "00",
+                "kernel": "0D",
+                "txnType": "31"
+            },
+            {
+                "entryPoint": {
+                    "cvmRequireLimit": "000000020000",
+                    "clessTxnLimit": "000000020000",
+                    "termFloorLimit": "000007D0"
+                },
+                "kernelConfig": {
+                    "terminalType": "96",
+                    "serviceQualifier": "01601691000110109100016012910001FF019100",
+                    "terminalId": "3132333435363738",
+                    "terminalFloorLimit": "000007D0",
+                    "appVersion": "0002",
+                    "tacDenial": "FCF8FCF8F0",
+                    "tacOnline": "FCF8FCF8F0",
+                    "tacDefault": "FCF8FCF8F0",
+                    "countryCode": "0356",
+                    "termCap": "000808",
+                    "addTermCap": "6040000001",
+                    "mcc": "4131",
+                    "serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
+                    "addTermCapExt": "0040000000",
+                    "appUnblockSupport": "00",
+                    "tdol": "9F0802"
+                },
+                "aid": "A0000005241010",
+                "partial": "00",
+                "kernel": "0D",
+                "txnType": "00"
+            },
+            {
+                "entryPoint": {
+                    "cvmRequireLimit": "000000020000",
+                    "clessTxnLimit": "000000020000",
+                    "termFloorLimit": "000007D0"
+                },
+                "kernelConfig": {
+                    "terminalType": "96",
+                    "serviceQualifier": "01601691000110109100016012910001FF019100",
+                    "terminalId": "3132333435363738",
+                    "terminalFloorLimit": "000007D0",
+                    "appVersion": "0002",
+                    "tacDenial": "FCF8FCF8F0",
+                    "tacOnline": "FCF8FCF8F0",
+                    "tacDefault": "FCF8FCF8F0",
+                    "countryCode": "0356",
+                    "termCap": "000808",
+                    "addTermCap": "6040000001",
+                    "mcc": "4131",
+                    "serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
+                    "addTermCapExt": "0040000000",
+                    "appUnblockSupport": "00",
+                    "tdol": "9F0802"
+                },
+                "aid": "A0000005",
+                "partial": "01",
+                "kernel": "0D",
+                "txnType": "31"
+            },
+            {
+                "entryPoint": {
+                    "cvmRequireLimit": "000000020000",
+                    "clessTxnLimit": "000000020000",
+                    "termFloorLimit": "000007D0"
+                },
+                "kernelConfig": {
+                    "terminalType": "96",
+                    "serviceQualifier": "01601691000110109100016012910001FF019100",
+                    "terminalId": "3132333435363738",
+                    "terminalFloorLimit": "000007D0",
+                    "appVersion": "0002",
+                    "tacDenial": "FCF8FCF8F0",
+                    "tacOnline": "FCF8FCF8F0",
+                    "tacDefault": "FCF8FCF8F0",
+                    "countryCode": "0356",
+                    "termCap": "000808",
+                    "addTermCap": "6040000001",
+                    "mcc": "4131",
+                    "serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
+                    "addTermCapExt": "0040000000",
+                    "appUnblockSupport": "00",
+                    "tdol": "9F0802"
+                },
+                "aid": "A0000005",
+                "partial": "01",
+                "kernel": "0D",
+                "txnType": "00"
+            },
+            {
+                "entryPoint": {
+                    "cvmRequireLimit": "000000020000",
+                    "clessTxnLimit": "000000020000",
+                    "termFloorLimit": "000007D0"
+                },
+                "kernelConfig": {
+                    "terminalType": "96",
+                    "serviceQualifier": "01601691000110109100016012910001FF019100",
+                    "terminalId": "3132333435363738",
+                    "terminalFloorLimit": "000007D0",
+                    "appVersion": "0002",
+                    "tacDenial": "FCF8FCF8F0",
+                    "tacOnline": "FCF8FCF8F0",
+                    "tacDefault": "FCF8FCF8F0",
+                    "countryCode": "0356",
+                    "termCap": "000808",
+                    "addTermCap": "6040000001",
+                    "mcc": "4131",
+                    "serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
+                    "addTermCapExt": "0040000000",
+                    "appUnblockSupport": "00",
+                    "tdol": "9F0802"
+                },
+                "aid": "A0000005241010",
+                "partial": "00",
+                "kernel": "0D",
+                "txnType": "29"
+            },
+            {
+                "entryPoint": {
+                    "cvmRequireLimit": "000000020000",
+                    "clessTxnLimit": "000000020000",
+                    "termFloorLimit": "000007D0"
+                },
+                "kernelConfig": {
+                    "terminalType": "96",
+                    "serviceQualifier": "01601691000110109100016012910001FF019100",
+                    "terminalId": "3132333435363738",
+                    "terminalFloorLimit": "000007D0",
+                    "appVersion": "0002",
+                    "tacDenial": "FCF8FCF8F0",
+                    "tacOnline": "FCF8FCF8F0",
+                    "tacDefault": "FCF8FCF8F0",
+                    "countryCode": "0356",
+                    "termCap": "000808",
+                    "addTermCap": "6040000001",
+                    "mcc": "4131",
+                    "serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
+                    "addTermCapExt": "0040000000",
+                    "appUnblockSupport": "00",
+                    "tdol": "9F0802"
+                },
+                "aid": "A0000005",
+                "partial": "01",
+                "kernel": "0D",
+                "txnType": "29"
+            },
+            {
+                "entryPoint": {
+                    "cvmRequireLimit": "000000020000",
+                    "clessTxnLimit": "000000020000",
+                    "termFloorLimit": "000007D0"
+                },
+                "kernelConfig": {
+                    "terminalType": "96",
+                    "serviceQualifier": "01601691000110109100016012910001FF019100",
+                    "terminalId": "3132333435363738",
+                    "terminalFloorLimit": "000007D0",
+                    "appVersion": "0002",
+                    "tacDenial": "FCF8FCF8F0",
+                    "tacOnline": "FCF8FCF8F0",
+                    "tacDefault": "FCF8FCF8F0",
+                    "countryCode": "0356",
+                    "termCap": "000808",
+                    "addTermCap": "6040000001",
+                    "mcc": "4131",
+                    "serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
+                    "addTermCapExt": "0040000000",
+                    "appUnblockSupport": "00",
+                    "tdol": "9F0802"
+                },
+                "aid": "A0000005241010",
+                "partial": "00",
+                "kernel": "0D",
+                "txnType": "83"
+            },
+            {
+                "entryPoint": {
+                    "cvmRequireLimit": "000000020000",
+                    "clessTxnLimit": "000000020000",
+                    "termFloorLimit": "000007D0"
+                },
+                "kernelConfig": {
+                    "terminalType": "96",
+                    "serviceQualifier": "01601691000110109100016012910001FF019100",
+                    "terminalId": "3132333435363738",
+                    "terminalFloorLimit": "000007D0",
+                    "appVersion": "0002",
+                    "tacDenial": "FCF8FCF8F0",
+                    "tacOnline": "FCF8FCF8F0",
+                    "tacDefault": "FCF8FCF8F0",
+                    "countryCode": "0356",
+                    "termCap": "000808",
+                    "addTermCap": "6040000001",
+                    "mcc": "4131",
+                    "serviceDataFormat": "C401C501C602C702C804C935CA15CB15CC08CD08CE01",
+                    "addTermCapExt": "0040000000",
+                    "appUnblockSupport": "00",
+                    "tdol": "9F0802"
+                },
+                "aid": "A0000005241010",
+                "partial": "00",
+                "kernel": "0D",
+                "txnType": "28"
+            },
+            {
+                "entryPoint": {
+                    "cvmRequireLimit": "000000020000",
+                    "clessTxnLimit": "000000020000",
+                    "termFloorLimit": "000007D0",
                     "zeroAmountAllowed": "01",
                     "zeroAmountOfflineAllowed": "01"
-				},
-				"kernelConfig": {
-					"appVersion": "0002",
-					"mcc": "4111",
-					"countryCode": "0356",
+                },
+                "kernelConfig": {
+                    "appVersion": "0002",
+                    "mcc": "4111",
+                    "countryCode": "0356",
                     "trmData": "0800808000000000",
                     "terminalType": "25",
-					"addTermCap": "6000101001",
+                    "addTermCap": "6000101001",
                     "tcCategoryCode": "52",
                     "cvmCapCVM": "F8",
                     "cvmCapNoCVM": "88",
                     "secCap": "08",
                     "kernelConfiguration": "A0",
-					"tacDefault": "FC50808000",
-					"tacDenial": "8440000000",
-					"tacOnline": "FC50808800",
-					"terminalFloorLimit": "000007D0",
-					"terminalId": "3132333435363738",
-					"appUnblockSupport": "00",
-					"tdol": "9F0802"
-				},
-				"aid": "A0000000041010",
-				"partial": "00",
-				"kernel": "02",
-				"txnType": "00"
-			}
+                    "tacDefault": "FC50808000",
+                    "tacDenial": "8440000000",
+                    "tacOnline": "FC50808800",
+                    "terminalFloorLimit": "000007D0",
+                    "terminalId": "3132333435363738",
+                    "appUnblockSupport": "00",
+                    "tdol": "9F0802"
+                },
+                "aid": "A0000000041010",
+                "partial": "00",
+                "kernel": "02",
+                "txnType": "00"
+            }
         ]
-	}
+    }
 }

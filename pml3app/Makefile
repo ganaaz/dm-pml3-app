@@ -65,9 +65,10 @@ signapp:
 copyToTerminal:
 	sshpass -p '$(SLOTAPP)' scp ./$(APPNAME) $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)
 	sshpass -p '$(SLOTAPP)' scp ./src/config/app_config.json $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
-	sshpass -p '$(SLOTAPP)' scp ./src/config/emv_config.txt $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
+# 	sshpass -p '$(SLOTAPP)' scp ./src/config/emv_config.txt $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
 	sshpass -p '$(SLOTAPP)' scp ./src/config/emv_config.json $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
 	sshpass -p '$(SLOTAPP)' scp ./src/log4crc $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
+	sshpass -p '$(SLOTAPP)' scp ./src/log4crc.info $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
 	sshpass -p '$(SLOTAPP)' scp ./src/log4crc.debug $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
 	sshpass -p '$(SLOTAPP)' scp ./src/log4crc.error $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
 	sshpass -p '$(SLOTAPP)' scp ./l3start.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
@@ -91,6 +92,8 @@ update_helper:
 	cp ./src/log4crc update/app/log4crc
 	cp ./src/log4crc.debug update/app/log4crc.debug
 	cp ./src/log4crc.error update/app/log4crc.error
+	cp ./src/log4crc.info update/app/log4crc.info
+	cp ./src/l3_log_mode update/app/l3_log_mode
 	mkdir -p update/app/config/
 	cp ./src/config/emv_config.txt update/app/config/emv_config.txt
 	cp ./src/config/emv_config.json update/app/config/emv_config.json

@@ -34,11 +34,11 @@ void initAbtTrxTable()
     int rc = sqlite3_exec(sqlite3AbtDb, "VACUUM;", 0, 0, 0);
     if (rc != SQLITE_OK)
     {
-        printf("Error in VACUUM for abt db: %s\n", sqlite3_errmsg(sqlite3AbtDb));
+        logError("Error in VACUUM for abt db: %s\n", sqlite3_errmsg(sqlite3AbtDb));
     }
     else
     {
-        printf("VACUUM operation successful for ABT DB.\n");
+        logInfo("VACUUM operation successful for ABT DB.\n");
     }
 
     const char *createTableQuery = "CREATE TABLE IF NOT EXISTS AbtTransactions("

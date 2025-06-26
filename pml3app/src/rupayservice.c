@@ -228,6 +228,12 @@ int c13_service_signal_req_pre_gpo_handling(struct tlv *tlv_req, struct tlv **tl
     if (appConfig.isTimingEnabled)
         logTimeWarnData("DE, GPO Handling");
 
+    if (currentTxnData.cardPresentedSent)
+    {
+        logError("ALREADY CARD PRESENTED, DECLINING IT");
+        return EMVCO_RC_FAIL;
+    }
+
     if (strcmp(currentTxnData.trxType, TRXTYPE_SERVICE_CREATE) == 0)
     {
         logData("Service creation requested with the service id : %s", appData.createServiceId);
@@ -728,6 +734,12 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
     logData("%s:%s()[%d]\n", __FILE__, __func__, __LINE__);
     if (appConfig.isTimingEnabled)
         logTimeWarnData("DE, GAC Handling");
+
+    if (currentTxnData.cardPresentedSent)
+    {
+        logError("ALREADY CARD PRESENTED, DECLINING IT");
+        return EMVCO_RC_FAIL;
+    }
 
     int rc = EMVCO_RC_OK;
     int tlv_rc = TLV_RC_OK;

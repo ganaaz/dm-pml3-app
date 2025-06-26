@@ -161,8 +161,8 @@ void createTransactionData(struct transactionData *trxData)
             sqlite3_bind_text(statement, 30, STATUS_NA, -1, SQLITE_STATIC);
         sqlite3_bind_text(statement, 31, appConfig.terminalId, -1, SQLITE_STATIC);
         sqlite3_bind_text(statement, 32, appConfig.merchantId, -1, SQLITE_STATIC);
-        sqlite3_bind_int(statement, 33, 0); // Host Retry
-        sqlite3_bind_int(statement, 34, 0); // Host Error
+        sqlite3_bind_int(statement, 33, 0);                      // Host Retry
+        sqlite3_bind_text(statement, 34, "", -1, SQLITE_STATIC); // Host Error
 
         logData("Going to perform the insert of offline transaction date");
         int result = sqlite3_step(statement);
@@ -281,7 +281,7 @@ void createTxnDataForOnline(struct transactionData trxData)
         sqlite3_bind_int(statement, 34, 0); // Host Retry
         // sqlite3_bind_text(statement, 35, STATUS_PENDING, -1, SQLITE_STATIC); // Reversal Status
         sqlite3_bind_text(statement, 35, "", -1, SQLITE_STATIC); // Reversal Status should be empty by default
-        sqlite3_bind_int(statement, 36, 0);                      // Host Error
+        sqlite3_bind_text(statement, 36, "", -1, SQLITE_STATIC); // Host Error
         sqlite3_bind_text(statement, 37, trxData.moneyAddTrxType, -1, SQLITE_STATIC);
 
         logData("Going to perform insert of transaction for online");
@@ -508,25 +508,39 @@ void processHostPendingTransactions()
     }
     else
     {
-        int maxBatchSize = 5;
-        logData("Total records to be sent : %d", trxDataCount);
-        for (int index = 0; index < trxDataCount; index += maxBatchSize)
+        if (appConfig.useISOHost)
         {
-            int max = maxBatchSize;
-            int pending = (trxDataCount - index);
-            if (pending < max)
-                max = pending;
-            if (appConfig.useAirtelHost)
+            logData("Using ISO Host for sending offline transactions");
+            for (int index = 0; index < trxDataCount; index++)
             {
-                logData("Processing Airtel from record %d with the count of %d", index, max);
-                processAirtelHost(index, max, trxDataList);
-                logData("Airtel Processing completed");
+                TransactionTable trxData = trxDataList[index];
+                trxData = processHostOfflineTxn(trxData);
+                updateHostResponse(trxData);
             }
-            else
+        }
+        else
+        {
+
+            int maxBatchSize = 5;
+            logData("Total records to be sent : %d", trxDataCount);
+            for (int index = 0; index < trxDataCount; index += maxBatchSize)
             {
-                logData("Processing PayTM from record %d with the count of %d", index, max);
-                processPayTmHost(index, max, trxDataList);
-                logData("PayTM Processing completed");
+                int max = maxBatchSize;
+                int pending = (trxDataCount - index);
+                if (pending < max)
+                    max = pending;
+                if (appConfig.useAirtelHost)
+                {
+                    logData("Processing Airtel from record %d with the count of %d", index, max);
+                    processAirtelHost(index, max, trxDataList);
+                    logData("Airtel Processing completed");
+                }
+                else
+                {
+                    logData("Processing PayTM from record %d with the count of %d", index, max);
+                    processPayTmHost(index, max, trxDataList);
+                    logData("PayTM Processing completed");
+                }
             }
         }
     }
@@ -1489,52 +1503,52 @@ void updateHostResponseInDb(HostResponse hostResponse, char transactionId[40])
 /**
  * Update the host response received in db
  **/
-// void updateHostResponse(TransactionTable trxData)
-//{
-/*
-logData("Going to update the transaction : %s", trxData.transactionId);
-logData("Host Status : %s", trxData.hostStatus);
-logData("Transaction Id : %s", trxData.transactionId);
-
-const char *query = "UPDATE Transactions " \
-    "SET RRN = ?, " \
-    "AuthCode = ?, " \
-    "ResponseCode = ?, " \
-    "HostStatus = ?, " \
-    "HostError = ?, " \
-    "HostRetry = ?, " \
-    "UpdateAmount = ?, "  \
-    "ReversalStatus = ? "  \
-    "WHERE TransactionId = ?";
-
-sqlite3_stmt* statement;
-
-if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
+void updateHostResponse(TransactionTable trxData)
 {
-    logWarn("Failed to prepare update query !!!");
-    return;
-}
+    logData("Going to update the transaction : %s", trxData.transactionId);
+    logData("Host Status : %s", trxData.hostStatus);
+    logData("Transaction Id : %s", trxData.transactionId);
 
-sqlite3_bind_text(statement, 1, trxData.rrn, -1, SQLITE_STATIC);
-sqlite3_bind_text(statement, 2, trxData.authCode, -1, SQLITE_STATIC);
-sqlite3_bind_text(statement, 3, trxData.responseCode, -1, SQLITE_STATIC);
-sqlite3_bind_text(statement, 4, trxData.hostStatus, -1, SQLITE_STATIC);
-sqlite3_bind_text(statement, 5, trxData.hostError, -1, SQLITE_STATIC);
-sqlite3_bind_int(statement, 6, trxData.hostRetry);
-sqlite3_bind_text(statement, 7, trxData.updateAmount, -1, SQLITE_STATIC);
-sqlite3_bind_text(statement, 8, trxData.reversalStatus, -1, SQLITE_STATIC);
-sqlite3_bind_text(statement, 9, trxData.transactionId, -1, SQLITE_STATIC);
+    const char *query = "UPDATE Transactions "
+                        "SET RRN = ?, "
+                        "AuthCode = ?, "
+                        "HostResultCode = ?, "
+                        "HostStatus = ?, "
+                        "HostError = ?, "
+                        "HostRetry = ?, "
+                        "UpdateAmount = ?, "
+                        "ReversalStatus = ?, "
+                        "HostErrorCategory = ? "
+                        "WHERE TransactionId = ?";
 
-int result = sqlite3_step(statement);
-if (result != SQLITE_DONE)
-{
-    logWarn("Failed to update record : %d", result);
-    return;
+    sqlite3_stmt *statement;
+
+    if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
+    {
+        logWarn("Failed to prepare update query !!!");
+        return;
+    }
+
+    sqlite3_bind_text(statement, 1, trxData.rrn, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 2, trxData.authCode, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 3, trxData.hostResultCode, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 4, trxData.hostStatus, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 5, trxData.hostError, -1, SQLITE_STATIC);
+    sqlite3_bind_int(statement, 6, trxData.hostRetry);
+    sqlite3_bind_text(statement, 7, trxData.updateAmount, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 8, trxData.reversalStatus, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 9, trxData.hostErrorCategory, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 10, trxData.transactionId, -1, SQLITE_STATIC);
+
+    int result = sqlite3_step(statement);
+    if (result != SQLITE_DONE)
+    {
+        logWarn("Failed to update record : %d", result);
+        return;
+    }
+    logData("Update success");
+    sqlite3_finalize(statement);
 }
-logData("Update success");
-sqlite3_finalize(statement);
-*/
-//}
 
 /**
  * Clear the approved fetched data by the client
@@ -2036,7 +2050,10 @@ TransactionTable populateTableData(sqlite3_stmt *statement)
     else
         memset(trxData.hostIccData, 0, sizeof(trxData.hostIccData));
 
-    trxData.hostError = sqlite3_column_int(statement, 45);
+    if (sqlite3_column_text(statement, 45) != NULL)
+        sprintf(trxData.hostError, "%s", sqlite3_column_text(statement, 45));
+    else
+        memset(trxData.hostError, 0, sizeof(trxData.hostError));
 
     if (sqlite3_column_text(statement, 46) != NULL)
         sprintf(trxData.reversalStatus, "%s", sqlite3_column_text(statement, 46));
@@ -2157,6 +2174,16 @@ TransactionTable populateTableData(sqlite3_stmt *statement)
     else
         memset(trxData.airtelAckRefundId, 0, sizeof(trxData.airtelAckRefundId));
 
+    if (sqlite3_column_text(statement, 71) != NULL)
+        sprintf(trxData.acqTransactionId, "%s", sqlite3_column_text(statement, 71));
+    else
+        memset(trxData.acqTransactionId, 0, sizeof(trxData.acqTransactionId));
+
+    if (sqlite3_column_text(statement, 72) != NULL)
+        sprintf(trxData.acqUniqueTransactionId, "%s", sqlite3_column_text(statement, 72));
+    else
+        memset(trxData.acqUniqueTransactionId, 0, sizeof(trxData.acqUniqueTransactionId));
+
     return trxData;
 }
 
@@ -2220,7 +2247,7 @@ json_object *getJsonTxnData(TransactionTable trxData)
     json_object_object_add(jDataObject, "reversalRRN", json_object_new_string(trxData.reversalRRN));
     json_object_object_add(jDataObject, "reversalResponsecode", json_object_new_string(trxData.reversalResponsecode));
     json_object_object_add(jDataObject, "acquirementId", json_object_new_string(trxData.acquirementId));
-    json_object_object_add(jDataObject, "hostError", json_object_new_int(trxData.hostError));
+    json_object_object_add(jDataObject, "hostError", json_object_new_string(trxData.hostError));
     json_object_object_add(jDataObject, "hostResultCodeId", json_object_new_string(trxData.hostResultCodeId));
     json_object_object_add(jDataObject, "hostResultCode", json_object_new_string(trxData.hostResultCode));
     json_object_object_add(jDataObject, "hostResultMessage", json_object_new_string(trxData.hostResultMessage));
@@ -2248,6 +2275,8 @@ json_object *getJsonTxnData(TransactionTable trxData)
     json_object_object_add(jDataObject, "airtelAckTxnType", json_object_new_string(trxData.airtelAckTxnType));
     json_object_object_add(jDataObject, "airtelAckPaymentMode", json_object_new_string(trxData.airtelAckPaymentMode));
     json_object_object_add(jDataObject, "airtelAckRefundId", json_object_new_string(trxData.airtelAckRefundId));
+    json_object_object_add(jDataObject, "acqTransactionId", json_object_new_string(trxData.acqTransactionId));
+    json_object_object_add(jDataObject, "acqUniqueTransactionId", json_object_new_string(trxData.acqUniqueTransactionId));
 
     return jDataObject;
 }
@@ -2304,7 +2333,7 @@ void printTransactionRow(TransactionTable trxTable)
     logData("Host Result Code : %s", trxTable.hostResultCode);
     logData("Host Result Code Id : %s", trxTable.hostResultCodeId);
     logData("Host ICCData : %s", trxTable.hostIccData);
-    logData("Host Error : %d", trxTable.hostError);
+    logData("Host Error : %s", trxTable.hostError);
     logData("Reversal Status : %s", trxTable.reversalStatus);
     logData("Money Add Trx Type : %s", trxTable.moneyAddTrxType);
     logData("Acquirement Id : %s", trxTable.acquirementId);
@@ -2327,8 +2356,178 @@ void printTransactionRow(TransactionTable trxTable)
     logData("Host Airtel Response Switch Code : %s", trxTable.airtelSwitchResponseCode);
     logData("Host Airtel Response Switch Terminal Id : %s", trxTable.airtelSwitchTerminalId);
     logData("Host Airtel Response Switch Merchant Id : %s", trxTable.airtelSwichMerchantId);
+    logData("Acquirer Transaction Id : %s", trxTable.acqTransactionId);
+    logData("Acquirer Unique Transaction Id : %s", trxTable.acqUniqueTransactionId);
 
     logData("===========================================");
+}
+
+/**
+ * Process the host offline transaction with host
+ **/
+TransactionTable processHostOfflineTxn(TransactionTable trxData)
+{
+    logInfo("Processing transaction : %s", trxData.transactionId);
+
+    char batch[7];
+    sprintf(batch, "%06d", trxData.batch);
+
+    OFFLINE_SALE_REQUEST offline_sale_req;
+    // memcpy(offline_sale_req.DE02_PAN_NUMBER, trxData.PAN, sizeof(trxData.PAN));
+    memcpy(offline_sale_req.DE04_TXN_AMOUNT, trxData.amount, sizeof(trxData.amount));
+    memcpy(offline_sale_req.DE11_STAN, trxData.stan, sizeof(trxData.stan));
+    memcpy(offline_sale_req.DE12_TXN_TIME, trxData.time, sizeof(trxData.time));
+    memcpy(offline_sale_req.DE13_TXN_DATE, trxData.date, sizeof(trxData.date));
+
+    memcpy(offline_sale_req.DE02_PAN_NUMBER, trxData.panEncrypted, sizeof(trxData.panEncrypted));
+    // memcpy(offline_sale_req.DE35_TRACK_2_DATA, trxData.track2Enc, sizeof(trxData.track2Enc));
+
+    char ksn[45];
+    strcpy(ksn, "0020");
+    strcat(ksn, trxData.ksn);
+    memcpy(offline_sale_req.DE53_SECURITY_DATA, ksn, sizeof(ksn));
+
+    memcpy(offline_sale_req.DE56_BATCH_NUMBER, batch, sizeof(batch));
+
+    offline_sale_req.DE55_ICC_DATA.value = (char *)malloc(trxData.iccDataLen + 1);
+    memcpy(offline_sale_req.DE55_ICC_DATA.value, trxData.iccData, trxData.iccDataLen);
+    offline_sale_req.DE55_ICC_DATA.value[trxData.iccDataLen] = '\0';
+    offline_sale_req.DE55_ICC_DATA.len = trxData.iccDataLen;
+
+    memcpy(offline_sale_req.DE62_INVOICE_NUMBER, trxData.stan, sizeof(trxData.stan));
+    memset(offline_sale_req.DE37_RRN, 0x00, sizeof(offline_sale_req.DE37_RRN));
+
+    // Generate narration data for Field 63
+    // EXT 120 GLB DR 2700           22122317000012345678902312000001
+    // char narrData[] = "EXT 120 GLB DR 2700           22122317000012345678902312000001";
+    char narration[63];
+    generateNarrationData(appConfig.stationId, trxData.acqTransactionId, trxData.acqUniqueTransactionId,
+                          trxData.amount, narration);
+    /*
+    strcpy(narration, "EXT ");
+    strcat(narration, appConfig.stationId);
+    strcat(narration, " GLB DR ");
+    char onlyAmount[5];
+    memcpy(onlyAmount, &trxData.amount[8], 4);
+    strcat(narration, onlyAmount);
+    int len = strlen(narration);
+    int max = 30 - len;
+    for (int i = 0; i < max; i++)
+    {
+        strcat(narration, " ");
+    }
+    strcat(narration, trxData.acqTransactionId);
+    strcat(narration, trxData.acqUniqueTransactionId);
+
+    logData("Narration data generated : %s", narration);
+    logData("Narration length : %d", strlen(narration));
+    */
+
+    char narrationHex[125];
+    string2hexString(narration, narrationHex);
+    logData("Narration in hex : %s", narrationHex);
+
+    offline_sale_req.DE63_NARRATION_DATA.len = 124;
+    offline_sale_req.DE63_NARRATION_DATA.value = (char *)malloc(124 + 1);
+    memcpy(offline_sale_req.DE63_NARRATION_DATA.value, narrationHex, 124);
+    offline_sale_req.DE63_NARRATION_DATA.value[124] = '\0';
+
+    OFFLINE_SALE_RESPONSE offline_sale_resp;
+    ISO8583_ERROR_CODES ret = TXN_FAILED;
+    ret = process_offline_sale_transaction(&offline_sale_req, &offline_sale_resp);
+
+    free(offline_sale_req.DE55_ICC_DATA.value);
+    free(offline_sale_req.DE63_NARRATION_DATA.value);
+
+    if (ret == TXN_SUCCESS)
+    {
+        sprintf(trxData.hostErrorCategory, "%s", "");
+        logData("Amount Received : %s", offline_sale_resp.DE04_TXN_AMOUNT);
+        logData("Stan Received: %s", offline_sale_resp.DE11_STAN);
+        logData("Txn Time Received : %s", offline_sale_resp.DE12_TXN_TIME);
+        logData("Txn Date Received : %s", offline_sale_resp.DE13_TXN_DATE);
+
+        if (offline_sale_resp.DE37_RRN != NULL)
+        {
+            logInfo("RRN Received : %s", offline_sale_resp.DE37_RRN);
+            sprintf(trxData.rrn, "%s", offline_sale_resp.DE37_RRN);
+        }
+        else
+        {
+            logWarn("RRN Not Received");
+        }
+
+        if (offline_sale_resp.DE38_AUTH_CODE != NULL)
+        {
+            logInfo("Authcode Received : %s", offline_sale_resp.DE38_AUTH_CODE);
+            sprintf(trxData.authCode, "%s", offline_sale_resp.DE38_AUTH_CODE);
+        }
+        else
+        {
+            logWarn("Authcode Not Received %s.", "");
+        }
+
+        if (offline_sale_resp.DE39_RESPONSE_CODE != NULL)
+        {
+            logInfo("Response Code Received : %s", offline_sale_resp.DE39_RESPONSE_CODE);
+            sprintf(trxData.hostResultCode, "%s", offline_sale_resp.DE39_RESPONSE_CODE);
+        }
+        else
+        {
+            strcpy(trxData.hostResultCode, "");
+            logWarn("Response Code Not Received %s.", "");
+        }
+
+        if (strcmp(trxData.hostResultCode, "00") == 0)
+        {
+            sprintf(trxData.hostStatus, "%s", STATUS_SUCCESS);
+            sprintf(trxData.hostError, "%s", "");
+
+            doLock();
+            activePendingTxnCount--;
+            logData("Offline trxn result is success");
+            logData("Active pending transaction count decreased and now is : %d", activePendingTxnCount);
+            if (activePendingTxnCount < appConfig.minRequiredForOnline)
+            {
+                logWarn("Now the transaction is below minRequiredForOnline, making the device online");
+                DEVICE_STATUS = STATUS_ONLINE;
+            }
+            printDeviceStatus();
+            doUnLock();
+        }
+        else
+        {
+            logWarn("Response code received : %s", trxData.hostResultCode);
+            logWarn("Response code received is not approved, so left it as in pending");
+        }
+    }
+    else
+    {
+        sprintf(trxData.hostError, "%s", getHostErrorString(ret));
+        logWarn("Host error : %s", getHostErrorString(ret));
+        logWarn("Max Retry for failure : %d", appConfig.hostMaxRetry);
+
+        if (ret == TXN_HOST_CONNECTION_TIMEOUT || ret == TXN_RECEIVE_FROM_HOST_TIMEOUT)
+        {
+            sprintf(trxData.hostErrorCategory, "%s", HOST_ERROR_CATEGORY_TIMEOUT);
+        }
+
+        /*
+        // No check for retry as discussed
+        if (trxData.hostRetry == appConfig.hostMaxRetry)
+        {
+            sprintf(trxData.hostErrorCategory, "%s", HOST_ERROR_CATEGORY_FAILED);
+            sprintf(trxData.hostStatus, "%s", STATUS_FAILURE);
+            logError("Host Failed");
+        }
+        else
+        {
+            trxData.hostRetry++;
+        }*/
+        trxData.hostRetry++;
+    }
+
+    return trxData;
 }
 
 // /**

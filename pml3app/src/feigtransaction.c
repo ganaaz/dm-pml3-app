@@ -538,6 +538,12 @@ int callBackDataExchange(struct fetpf *client,
     // Rupay kernel
     if (kid[0] == 0x0D)
     {
+        if (currentTxnData.cardPresentedSent)
+        {
+            logError("ALREADY CARD PRESENTED, DECLINING IT");
+            return EMVCO_RC_FAIL;
+        }
+
         currentTxnData.isRupayTxn = true;
         logData("Rupay card detected");
         currentTxnData = updateTransactionDateTime(currentTxnData);

@@ -1,20 +1,19 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!DOCTYPE log4c SYSTEM "">
 <log4c>
-        <!-- root category ========================================= -->
-        <category name="root" priority="debug"/>
+    <!-- root category ========================================= -->
+    <category name="root" priority="debug"/>
 
-        <!-- <category name="l3.app.file" priority="debug" appender="stdout"/> -->
-        <category name="l3.app.file" priority="debug" appender="myrollingfileappender"/>
+    <!-- <category name="l3.app.file" priority="debug" appender="stdout"/> -->
+    <category name="l3.app.file" priority="debug" appender="myrollingfileappender"/>
 
-        <!-- default appenders ===================================== -->
-        <rollingpolicy name="myrollingpolicy" type="sizewin" maxsize="5MB" maxnum="10" />
-	    <appender name="myrollingfileappender" type="rollingfile" logdir="." 
-            prefix="l3app.log" layout="dated" rollingpolicy="myrollingpolicy" />
-	
-        <appender name="stdout" type="stream" layout="dated"/>
+    <!-- default appenders ===================================== -->
+    <rollingpolicy name="myrollingpolicy" type="sizewin" maxsize="5MB" maxnum="10" />
+    <appender name="myrollingfileappender" type="rollingfile" logdir="." prefix="l3app.log" layout="dated" rollingpolicy="myrollingpolicy" />
 
-        <!-- default layouts ======================================= -->
-        <layout name="basic" type="basic"/>
-        <layout name="dated" type="dated"/>
+    <appender name="stdout" type="stream" layout="dated"/>
+
+    <!-- default layouts ======================================= -->
+    <layout name="basic" type="basic"/>
+    <layout name="dated" type="dated"/>
 </log4c>

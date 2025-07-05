@@ -51,6 +51,7 @@ extern struct fetpf *fetpf;
 extern pthread_attr_t threadAttr;
 extern enum device_status DEVICE_STATUS;
 extern pthread_mutex_t lockFeigTrx;
+extern bool isSecondTap;
 
 struct transactionData currentTxnData;
 bool canRunTransaction = false;
@@ -333,13 +334,13 @@ void populateTrxDetails(uint64_t amount_authorized_bin)
 
     if (currentTxnData.trxTypeBin == 0x00)
         strcpy(currentTxnData.processingCode, "000000");
-    if (currentTxnData.trxTypeBin == 0x83)
+    if (currentTxnData.trxTypeBin == 0x83) // Service Create
         strcpy(currentTxnData.processingCode, "830000");
-    if (currentTxnData.trxTypeBin == 0x31)
+    if (currentTxnData.trxTypeBin == 0x31) // Balance Inquiry
         strcpy(currentTxnData.processingCode, "");
-    if (currentTxnData.trxTypeBin == 0x29)
+    if (currentTxnData.trxTypeBin == 0x29) // Balance Update
         strcpy(currentTxnData.processingCode, "840000");
-    if (currentTxnData.trxTypeBin == 0x28)
+    if (currentTxnData.trxTypeBin == 0x28) // Money Add
         strcpy(currentTxnData.processingCode, "820000");
 
     currentTxnData.txnCounter = appData.transactionCounter;
@@ -538,7 +539,7 @@ int callBackDataExchange(struct fetpf *client,
     // Rupay kernel
     if (kid[0] == 0x0D)
     {
-        if (currentTxnData.cardPresentedSent)
+        if (currentTxnData.cardPresentedSent && isSecondTap == false)
         {
             logError("ALREADY CARD PRESENTED, DECLINING IT");
             return EMVCO_RC_FAIL;

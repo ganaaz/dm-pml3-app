@@ -228,7 +228,7 @@ int c13_service_signal_req_pre_gpo_handling(struct tlv *tlv_req, struct tlv **tl
     if (appConfig.isTimingEnabled)
         logTimeWarnData("DE, GPO Handling");
 
-    if (currentTxnData.cardPresentedSent)
+    if (currentTxnData.cardPresentedSent && isSecondTap == false)
     {
         logError("ALREADY CARD PRESENTED, DECLINING IT");
         return EMVCO_RC_FAIL;
@@ -735,7 +735,7 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
     if (appConfig.isTimingEnabled)
         logTimeWarnData("DE, GAC Handling");
 
-    if (currentTxnData.cardPresentedSent)
+    if (currentTxnData.cardPresentedSent && isSecondTap == false)
     {
         logError("ALREADY CARD PRESENTED, DECLINING IT");
         return EMVCO_RC_FAIL;

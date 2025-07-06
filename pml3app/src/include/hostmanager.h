@@ -62,6 +62,11 @@ char *performAirtelHealthCheck();
  **/
 const char *getHostErrorString(ISO8583_ERROR_CODES errorCode);
 
+/**
+ * Process the host offline transaction with host
+ **/
+TransactionTable processHostOfflineTxn(TransactionTable trxData);
+
 ///// old codes
 
 /**

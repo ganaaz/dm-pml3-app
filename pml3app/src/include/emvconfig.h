@@ -5,9 +5,7 @@
 
 typedef struct ENCRYPT_STRUCT
 {
-    char type[10];
-    char key[10];
-    char name[255];
+    char keyLabel[255];
     char tags[50];
 
 } ENCRYPT;
@@ -133,5 +131,9 @@ struct tlv *generateAllCombination(EMV emv);
 struct tlv *generateOnlineTags(ONLINE_TAGS onlineTags);
 
 struct tlv *generatePaymentConfig(EMV_CONFIG emvConfig);
+
+struct tlv *generateEncryptData(EMV_CONFIG emvConfig);
+
+struct tlv *generateEncryptTlv(ENCRYPT *encrypt);
 
 #endif

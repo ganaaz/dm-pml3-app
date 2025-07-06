@@ -51,13 +51,13 @@ struct applicationConfig
     char emvConfigFile[50];
     char PRMAcqKeyIndex[2];
     char terminalId[9];
-    char merchantId[25];
+    char merchantId[16];
     char clientId[30];
     char clientName[50];
     char hostVersion[10];
     char nii[4];
     char tpdu[11];
-    char hostIP[100];
+    char hostIP[16];
     int hostPort;
     char httpsHostName[100];
     bool useISOHost;
@@ -171,7 +171,7 @@ struct transactionData
     char serviceBalance[13];
     char iccData[1024 * 4];
     int iccDataLen;
-    char ksn[21];
+    char ksn[41];
     char track2Enc[97];
     char panEncrypted[49];
     char expDateEnc[17];
@@ -199,6 +199,7 @@ struct transactionData
 
     char acqTransactionId[13];
     char acqUniqueTransactionId[21];
+    char plainPanWithTag[25];
 };
 
 /**

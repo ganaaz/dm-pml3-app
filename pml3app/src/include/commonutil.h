@@ -215,4 +215,9 @@ void removeSpaces(char *message);
  */
 void trimAmount(char amount[13], char trimmedAmount[13]);
 
+/**
+ * String to byte array
+ */
+uint8_t *stringToBytes(const char *input);
+
 #endif

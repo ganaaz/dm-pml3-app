@@ -145,11 +145,13 @@ int main(int argc, char **argv)
 
     loadPayTmIndex();
     int result = initConfig();
+    logData("Result :: %d", result);
     if (result != 0)
     {
         logError("Initialization failed.");
         return EXIT_FAILURE;
     }
+    logData("init config done");
 
     initTimeLogData();
     printConfig();

@@ -13,139 +13,133 @@ const int LENGTH_OF_MSG_LEN = 4;
 char RESPONSE_CODE_SUCCESS[5] = "3030";
 ISO8583_STATIC_DATA static_data;
 // Value indicator signifies, that the length of a field is the value of some other field.
-#define VALUE_INDICATOR 10000 
+#define VALUE_INDICATOR 10000
 // Make Sure this is always alligned with ISO8583_SUB_FIELD. This ISO8583_SUB_FIELD enum becomes the index of this sub_field_def array.
 ISO8583_SUB_COMPONENT_DEF sub_component_def[] = {
-    {DE48_PIN_KEY_LENGTH,           NUMBER,                 FIXED,  2,                                      PAD_LEFT, 0x00, PAD_FIXED_LENGTH},
-    {DE48_TABLE_ID,                 ALPHA_NUMERIC_SYMBOL,   FIXED,  2,                                      PAD_LEFT, 0x30, PAD_FIXED_LENGTH},
-    {DE48_PIN_KEY,                  HEX,                    FIXED,  VALUE_INDICATOR + DE48_PIN_KEY_LENGTH,  PAD_NONE, 0x00, PAD_NO_METHOD},      //DE48_PIN_KEY : Indicates the length of this field is the value of DE48_PIN_KEY_LENGTH field.
-    {DE60_BATCH_NUMBER,             ALPHA_NUMERIC_SYMBOL,   FIXED,  6,                                      PAD_LEFT, 0x30, PAD_FIXED_LENGTH},
-    {DE60_ORIGINAL_AMOUNT,          ALPHA_NUMERIC,          FIXED,  12,                                     PAD_LEFT, 0x30, PAD_FIXED_LENGTH},
-    {DE62_INVOICE_NUMBER,           ALPHA_NUMERIC,          FIXED,  6,                                      PAD_LEFT, 0x30, PAD_FIXED_LENGTH},
-    {DE63_FUND_SOURCE_TYPE,         ALPHA_NUMERIC,          FIXED,  2,                                      PAD_LEFT, 0x30, PAD_FIXED_LENGTH},
-    {DE63_UNIQUE_TRANSACTION_ID,    NUMBER,                 FIXED,  10,                                     PAD_LEFT, 0x00, PAD_FIXED_LENGTH},
-    {DE63_SOURCE_ID,                NUMBER,                 FIXED,  10,                                     PAD_NONE, 0x00, PAD_NO_METHOD},      //DE63_SOURCE_ID : SOURCE ID in the document is ALPHA_NUMERIC, But the length Suggests its NUMBER
-    {DE63_PC_POS_TID,               ALPHA_NUMERIC,          FIXED,  8,                                      PAD_NONE, 0x00, PAD_NO_METHOD},
-    {DE63_RRN,                      NUMBER,                 FIXED,  6,                                      PAD_NONE, 0x00, PAD_NO_METHOD},
-    {DE63_SERIAL_NUMBER,            ALPHA_NUMERIC,          FIXED,  12,                                     PAD_NONE, 0x00, PAD_NO_METHOD},
-    {DE63_NARRATION_DATA,           ALPHA_NUMERIC,          FIXED,  30,                                     PAD_NONE, 0x00, PAD_NO_METHOD},
-    {DE63_TRANSACTION_ID,           ALPHA_NUMERIC,          FIXED,  12,                                     PAD_NONE, 0x00, PAD_NO_METHOD},
-    {DE63_BLACK_LIST_ID,            BLACK_LIST_RECORD,      LLLVAR, 12,                                     PAD_NONE, 0x00, PAD_NO_METHOD},
-    {DE63_BLACK_LIST_CARD_RECORDS,  BLACK_LIST_RECORD,      LLLVAR, 0,                                      PAD_NONE, 0x00, PAD_NO_METHOD}
-};
-
+    {DE48_PIN_KEY_LENGTH, NUMBER, FIXED, 2, PAD_LEFT, 0x00, PAD_FIXED_LENGTH},
+    {DE48_TABLE_ID, ALPHA_NUMERIC_SYMBOL, FIXED, 2, PAD_LEFT, 0x30, PAD_FIXED_LENGTH},
+    {DE48_PIN_KEY, HEX, FIXED, VALUE_INDICATOR + DE48_PIN_KEY_LENGTH, PAD_NONE, 0x00, PAD_NO_METHOD}, // DE48_PIN_KEY : Indicates the length of this field is the value of DE48_PIN_KEY_LENGTH field.
+    {DE60_BATCH_NUMBER, ALPHA_NUMERIC_SYMBOL, FIXED, 6, PAD_LEFT, 0x30, PAD_FIXED_LENGTH},
+    {DE60_ORIGINAL_AMOUNT, ALPHA_NUMERIC, FIXED, 12, PAD_LEFT, 0x30, PAD_FIXED_LENGTH},
+    {DE62_INVOICE_NUMBER, ALPHA_NUMERIC, FIXED, 6, PAD_LEFT, 0x30, PAD_FIXED_LENGTH},
+    {DE63_FUND_SOURCE_TYPE, ALPHA_NUMERIC, FIXED, 2, PAD_LEFT, 0x30, PAD_FIXED_LENGTH},
+    {DE63_UNIQUE_TRANSACTION_ID, NUMBER, FIXED, 10, PAD_LEFT, 0x00, PAD_FIXED_LENGTH},
+    {DE63_SOURCE_ID, NUMBER, FIXED, 10, PAD_NONE, 0x00, PAD_NO_METHOD}, // DE63_SOURCE_ID : SOURCE ID in the document is ALPHA_NUMERIC, But the length Suggests its NUMBER
+    {DE63_PC_POS_TID, ALPHA_NUMERIC, FIXED, 8, PAD_NONE, 0x00, PAD_NO_METHOD},
+    {DE63_RRN, NUMBER, FIXED, 6, PAD_NONE, 0x00, PAD_NO_METHOD},
+    {DE63_SERIAL_NUMBER, ALPHA_NUMERIC, FIXED, 12, PAD_NONE, 0x00, PAD_NO_METHOD},
+    {DE63_NARRATION_DATA, ALPHA_NUMERIC, FIXED, 30, PAD_NONE, 0x00, PAD_NO_METHOD},
+    {DE63_TRANSACTION_ID, ALPHA_NUMERIC, FIXED, 12, PAD_NONE, 0x00, PAD_NO_METHOD},
+    {DE63_BLACK_LIST_ID, BLACK_LIST_RECORD, LLLVAR, 12, PAD_NONE, 0x00, PAD_NO_METHOD},
+    {DE63_BLACK_LIST_CARD_RECORDS, BLACK_LIST_RECORD, LLLVAR, 0, PAD_NONE, 0x00, PAD_NO_METHOD}};
 
 ISO8583_SUB_FIELD_DEF sub_field_def[] = {
-    {DE48_SF_PIN_ENCRYPTION_KEY,    LLLVAR, 60, {DE48_PIN_KEY_LENGTH, DE48_TABLE_ID, DE48_PIN_KEY, NO_SUB_COMPONENT}},
-    {DE60_SF_BATCH_NUMBER,          LLLVAR, 16, {DE60_BATCH_NUMBER, NO_SUB_COMPONENT}},
-    {DE60_SF_ORIGINAL_AMOUNT,       LLLVAR, 28, {DE60_ORIGINAL_AMOUNT, NO_SUB_COMPONENT}},
-    {DE62_SF_INVOICE_NUMBER,        LLLVAR, 16, {DE62_INVOICE_NUMBER, NO_SUB_COMPONENT}},
-    {DE63_SF_MONEY_RELOAD_TYPE,     LLLVAR, 76, {DE63_FUND_SOURCE_TYPE, DE63_UNIQUE_TRANSACTION_ID, DE63_SOURCE_ID, DE63_PC_POS_TID, DE63_RRN, NO_SUB_COMPONENT}},
-    {DE63_SF_KEY_MAPPING,           LLLVAR, 28, {DE63_SERIAL_NUMBER, NO_SUB_COMPONENT}},
-    {DE63_SF_NARRATION_OF_JOURNEY,  LLLVAR, 108,{DE63_NARRATION_DATA, DE63_TRANSACTION_ID, DE63_UNIQUE_TRANSACTION_ID, NO_SUB_COMPONENT}},
-    {DE63_SF_BLACK_LIST_REQUEST,    LLLVAR, 28, {DE63_BLACK_LIST_ID, NO_SUB_COMPONENT}},
-    {DE63_SF_BLACK_LIST_RESPONSE,   LLLVAR, 4,  {DE63_BLACK_LIST_CARD_RECORDS, NO_SUB_COMPONENT}},
+    {DE48_SF_PIN_ENCRYPTION_KEY, LLLVAR, 60, {DE48_PIN_KEY_LENGTH, DE48_TABLE_ID, DE48_PIN_KEY, NO_SUB_COMPONENT}},
+    {DE60_SF_BATCH_NUMBER, LLLVAR, 16, {DE60_BATCH_NUMBER, NO_SUB_COMPONENT}},
+    {DE60_SF_ORIGINAL_AMOUNT, LLLVAR, 28, {DE60_ORIGINAL_AMOUNT, NO_SUB_COMPONENT}},
+    {DE62_SF_INVOICE_NUMBER, LLLVAR, 16, {DE62_INVOICE_NUMBER, NO_SUB_COMPONENT}},
+    {DE63_SF_MONEY_RELOAD_TYPE, LLLVAR, 76, {DE63_FUND_SOURCE_TYPE, DE63_UNIQUE_TRANSACTION_ID, DE63_SOURCE_ID, DE63_PC_POS_TID, DE63_RRN, NO_SUB_COMPONENT}},
+    {DE63_SF_KEY_MAPPING, LLLVAR, 28, {DE63_SERIAL_NUMBER, NO_SUB_COMPONENT}},
+    {DE63_SF_NARRATION_OF_JOURNEY, LLLVAR, 108, {DE63_NARRATION_DATA, DE63_TRANSACTION_ID, DE63_UNIQUE_TRANSACTION_ID, NO_SUB_COMPONENT}},
+    {DE63_SF_BLACK_LIST_REQUEST, LLLVAR, 28, {DE63_BLACK_LIST_ID, NO_SUB_COMPONENT}},
+    {DE63_SF_BLACK_LIST_RESPONSE, LLLVAR, 4, {DE63_BLACK_LIST_CARD_RECORDS, NO_SUB_COMPONENT}},
 };
 
 ISO8583_FIELD_DEF field_def[] = {
-    {DE00_MTI,                                          SIMPLE, 	FIXED,      NUMBER, 				4,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE01_BITMAP,                                       SIMPLE, 	BITMAP,     HEX, 				    16, 	PAD_NONE,   '0',   PAD_NO_METHOD,       {NO_SUB_FIELD}},
-    {DE02_PAN,                                          SIMPLE, 	LLVARENC,   NUMBER, 				32, 	PAD_RIGHT,  'F',   PAD_NIBBLE,          {NO_SUB_FIELD}},
-    {DE03_PROCESSING_CODE,                              SIMPLE, 	FIXED,      NUMBER,  				6,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE04_AMOUNT_TRANSACTION,                           SIMPLE, 	FIXED,      NUMBER, 				12, 	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE05_AMOUNT_SETTLEMET,                             SIMPLE, 	FIXED,      NUMBER, 				12, 	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE06_AMOUNT_CARD_HOLDER_BILLING,                   SIMPLE, 	FIXED,      NUMBER, 				12, 	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE07_TRANSACTION_DATE_TIME,                        SIMPLE, 	FIXED,      NUMBER, 				10, 	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE08_AMOUNT_CARD_HOLDER_BILLING_FEE,               SIMPLE, 	FIXED,      NUMBER, 				8, 		PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE09_CONVERSION_RATE_SETTLEMENT,                   SIMPLE, 	FIXED,      NUMBER, 				8, 		PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE10_CONVERSION_RATE_CARD_HOLDER_BILLING,          SIMPLE, 	FIXED,      NUMBER, 				8, 		PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE11_STAN,                                         SIMPLE, 	FIXED,      NUMBER, 				6,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE12_TRANSACTION_TIME_LOCAL,                       SIMPLE, 	FIXED,      NUMBER, 				6,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH, 	{NO_SUB_FIELD}},
-    {DE13_TRANSACTION_DATE_LOCAL,                       SIMPLE, 	FIXED,      NUMBER, 				4,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,  	{NO_SUB_FIELD}},
-    {DE14_EXPIRATION_DATE,                              SIMPLE, 	FIXED,      NUMBER, 				4,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,  	{NO_SUB_FIELD}},
-    {DE15_SETTLEMENT_DATE,                              SIMPLE, 	FIXED,      NUMBER, 				4,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,  	{NO_SUB_FIELD}},
-    {DE16_CONVERSION_DATE,                              SIMPLE, 	FIXED,      NUMBER, 				4,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,  	{NO_SUB_FIELD}},
-    {DE17_CAPTURE_DATE,                                 SIMPLE, 	FIXED,      NUMBER, 				4,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,  	{NO_SUB_FIELD}},
-    {DE18_MERCHANT_TYPE,                                SIMPLE, 	FIXED,      NUMBER, 				4,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,  	{NO_SUB_FIELD}},
-    {DE19_ACQUIRING_INSTITUTION_COUNTRY_CODE,           SIMPLE, 	FIXED,      NUMBER,                 4,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,  	{NO_SUB_FIELD}},
-    {DE20_PAN_EXTENDED_COUNTRY_CODE,                    SIMPLE, 	FIXED,      NUMBER,                 4,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,  	{NO_SUB_FIELD}},
-    {DE21_FORWARDING_INSTITUTION_COUNTRY_CODE,          SIMPLE, 	FIXED,      NUMBER,                 4,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,  	{NO_SUB_FIELD}},
-    {DE22_POS_ENTRY_MODE,                               SIMPLE, 	FIXED,      NUMBER,                 4,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE23_APPLICATION_PAN_NUMBER,                       SIMPLE, 	FIXED,      NUMBER,                 4,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE24_NII,                                          SIMPLE, 	FIXED,      NUMBER,                 4,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE25_POS_CONDITION_CODE,                           SIMPLE, 	FIXED,      NUMBER,                 2,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE26_POS_CAPTURE_CODE,                             SIMPLE, 	FIXED,      NUMBER,                 2,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE27_AUTHORIZING_IDENTIFICATION_RESPONSE_LENGTH,   SIMPLE, 	FIXED,      NUMBER,                 2,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE28_AMOUNT_TRANSACTION_FEE,                       SIMPLE, 	FIXED,      X_NUMERIC,              8, 		PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE29_AMOUNT_SETTLEMENT_FEE,                        SIMPLE, 	FIXED,      X_NUMERIC,              8, 		PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE30_AMOUNT_TRANSACTION_PROCESSING_FEE,            SIMPLE, 	FIXED,      X_NUMERIC,              8, 		PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE31_AMOUNT_SETTLEMENT_PROCESSING_FEE,             SIMPLE, 	FIXED,      X_NUMERIC,              8, 		PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE32_ACQUIRING_INSTITUTION_IDENTIFICATION_CODE,    SIMPLE, 	LLVAR,      NUMBER,                 12, 	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE33_FORWARDING_INSTITUTION_IDENTIFICATION_CODE,   SIMPLE, 	LLVAR,      NUMBER,                 12, 	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE34_PAN_EXTENDED,                                 SIMPLE, 	LLVAR,      NUMBER_SYMBOL,          28, 	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE35_TRACK_2_DATA,                                 SIMPLE, 	TRACK_LEN,  TRACK,                  48,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE36_TRACK_3_DATA,                                 SIMPLE, 	LLLVAR,     NUMBER,                 104, 	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE37_RRN,                                          SIMPLE, 	FIXED,      ALPHA_NUMERIC,          12,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE38_AUTHORIZATION_IDENTIFICATION_RESPONSE,        SIMPLE, 	FIXED,      ALPHA_NUMERIC,          6,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE39_RESPONSE_CODE,                                SIMPLE, 	FIXED,      ALPHA_NUMERIC,          2,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE40_SERVICE_RESTRICTION_CODE,                     SIMPLE, 	FIXED,      ALPHA_NUMERIC,          4,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE41_CARD_ACCEPTOR_TERMINAL_ID,                    SIMPLE, 	FIXED,      ALPHA_NUMERIC_SYMBOL,   8,  	PAD_RIGHT,  0x20,  PAD_FIXED_LENGTH,  	{NO_SUB_FIELD}},
-    {DE42_CARD_ACCEPTOR_IDENTIFICATION_CODE,            SIMPLE, 	FIXED,      ALPHA_NUMERIC_SYMBOL,   15,  	PAD_RIGHT,  0x20,  PAD_FIXED_LENGTH,  	{NO_SUB_FIELD}},
-    {DE43_CARD_ACCEPTOR_ADDRESS,                        SIMPLE, 	FIXED,      ALPHA_NUMERIC_SYMBOL,   40,  	PAD_RIGHT,  0x20,  PAD_FIXED_LENGTH,  	{NO_SUB_FIELD}},
-    {DE44_ADDITIONAL_RESPONSE_DATA,                     SIMPLE, 	LLVAR,      ALPHA_NUMERIC,          25,  	PAD_NONE,   '0',   PAD_NO_METHOD,  	    {NO_SUB_FIELD}},
-    {DE45_TRACK_1_DATA,                                 SIMPLE, 	LLVAR,      ALPHA_NUMERIC,          76,  	PAD_NONE,   '0',   PAD_NO_METHOD,  	    {NO_SUB_FIELD}},
-    {DE46_ADDITIONAL_ISO_DATA,                          SIMPLE, 	LLLVAR,     ALPHA_NUMERIC,          999,  	PAD_NONE,   '0',   PAD_NO_METHOD,  	    {NO_SUB_FIELD}},
-    {DE47_ADDITIONAL_NATIONAL_DATA,                     SIMPLE, 	LLLVAR,     ALPHA_NUMERIC,          999,  	PAD_NONE,   '0',   PAD_NO_METHOD,  	    {NO_SUB_FIELD}},
-    {DE48_ADDITIONAL_PRIVATE_DATA,                      COMPLEX, 	LLLVAR,     ALPHA_NUMERIC,          999,  	PAD_NONE,   '0',   PAD_NO_METHOD,  	    {DE48_SF_PIN_ENCRYPTION_KEY, NO_SUB_FIELD}},
-    {DE49_CURRENCY_CODE_TRANSACTION,                    SIMPLE, 	FIXED,      ALPHA_OR_NUMERIC,       3,    	MIXED_PAD,  0x20,  PAD_FIXED_LENGTH, 	{NO_SUB_FIELD}},
-    {DE50_CURRENCY_CODE_SETTLEMENT,                     SIMPLE, 	FIXED,      ALPHA_OR_NUMERIC,       3,    	MIXED_PAD,  0x20,  PAD_FIXED_LENGTH, 	{NO_SUB_FIELD}},
-    {DE51_CURRENCY_CODE_CARDHOLDER_BILLING,             SIMPLE, 	FIXED,      ALPHA_OR_NUMERIC,       3,    	MIXED_PAD,  0x20,  PAD_FIXED_LENGTH, 	{NO_SUB_FIELD}},
-    {DE52_PIN_DATA,                                     SIMPLE, 	FIXED,      HEX,                    16,  	PAD_NONE,   '0',   PAD_NO_METHOD,  	    {NO_SUB_FIELD}},
-    {DE53_SECURITY_RELATED_CONTROL_INFO,                SIMPLE, 	FIXED,      NUMBER,                 44,  	PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE54_AMOUNT_ADDITIONAL,                            SIMPLE, 	LLLVAR,     ALPHA_NUMERIC,          120,  	PAD_NONE,   '0',   PAD_NO_METHOD,       {NO_SUB_FIELD}},
-    {DE55_RESERVED_ISO_1,                               SIMPLE, 	LLLVAR,     HEX,                    512,    PAD_NONE,   '0',   PAD_NO_METHOD,     	{NO_SUB_FIELD}},
-    {DE56_RESERVED_ISO_2,                               SIMPLE, 	FIXED,      ALPHA_NUMERIC_SYMBOL,   6,      PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE57_RESERVED_NATIONAL_1,                          SIMPLE, 	LLLVAR,     ALPHA_NUMERIC_SYMBOL,   999,    PAD_NONE,   '0',   PAD_NO_METHOD,     	{NO_SUB_FIELD}},
-    {DE58_RESERVED_NATIONAL_2,                          SIMPLE, 	LLLVAR,     ALPHA_NUMERIC_SYMBOL,   999,    PAD_NONE,   '0',   PAD_NO_METHOD,     	{NO_SUB_FIELD}},
-    {DE59_RESERVED_NATIONAL_3,                          SIMPLE, 	LLLVAR,     ALPHA_NUMERIC_SYMBOL,   999,    PAD_NONE,   '0',   PAD_NO_METHOD,     	{NO_SUB_FIELD}},
-    {DE60_RESERVED_PRIVATE_ADVICE_REASON_CODE,          SIMPLE, 	LLLVAR,     ALPHA_NUMERIC_SYMBOL,   6,      PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {DE60_SF_BATCH_NUMBER, DE60_SF_ORIGINAL_AMOUNT, NO_SUB_FIELD}},
-    {DE61_RESERVED_PRIVATE_1,                           SIMPLE, 	LLLVAR,     ALPHA_NUMERIC_SYMBOL,   12,     PAD_LEFT,   '0',   PAD_FIXED_LENGTH,     {NO_SUB_FIELD}},
-    {DE62_RESERVED_PRIVATE_2,                           SIMPLE, 	LLLVAR,     ALPHA_NUMERIC_SYMBOL,   6,      PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {NO_SUB_FIELD}},
-    {DE63_RESERVED_PRIVATE_3,                           SIMPLE, 	LLLVAR,     ALPHA_NUMERIC_SYMBOL,   2,      PAD_LEFT,   '0',   PAD_FIXED_LENGTH,    {DE63_SF_MONEY_RELOAD_TYPE, DE63_SF_KEY_MAPPING, DE63_SF_NARRATION_OF_JOURNEY, DE63_SF_BLACK_LIST_REQUEST, DE63_SF_BLACK_LIST_RESPONSE, NO_SUB_FIELD}},
-    {DE64_MAC,                                          SIMPLE, 	FIXED,      HEX,                    16,     PAD_NONE,   '0',   PAD_NO_METHOD,     	{NO_SUB_FIELD}}
-};
+    {DE00_MTI, SIMPLE, FIXED, NUMBER, 4, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE01_BITMAP, SIMPLE, BITMAP, HEX, 16, PAD_NONE, '0', PAD_NO_METHOD, {NO_SUB_FIELD}},
+    {DE02_PAN, SIMPLE, LLVARENC, NUMBER, 32, PAD_RIGHT, 'F', PAD_NIBBLE, {NO_SUB_FIELD}},
+    {DE03_PROCESSING_CODE, SIMPLE, FIXED, NUMBER, 6, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE04_AMOUNT_TRANSACTION, SIMPLE, FIXED, NUMBER, 12, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE05_AMOUNT_SETTLEMET, SIMPLE, FIXED, NUMBER, 12, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE06_AMOUNT_CARD_HOLDER_BILLING, SIMPLE, FIXED, NUMBER, 12, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE07_TRANSACTION_DATE_TIME, SIMPLE, FIXED, NUMBER, 10, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE08_AMOUNT_CARD_HOLDER_BILLING_FEE, SIMPLE, FIXED, NUMBER, 8, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE09_CONVERSION_RATE_SETTLEMENT, SIMPLE, FIXED, NUMBER, 8, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE10_CONVERSION_RATE_CARD_HOLDER_BILLING, SIMPLE, FIXED, NUMBER, 8, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE11_STAN, SIMPLE, FIXED, NUMBER, 6, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE12_TRANSACTION_TIME_LOCAL, SIMPLE, FIXED, NUMBER, 6, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE13_TRANSACTION_DATE_LOCAL, SIMPLE, FIXED, NUMBER, 4, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE14_EXPIRATION_DATE, SIMPLE, FIXED, NUMBER, 4, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE15_SETTLEMENT_DATE, SIMPLE, FIXED, NUMBER, 4, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE16_CONVERSION_DATE, SIMPLE, FIXED, NUMBER, 4, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE17_CAPTURE_DATE, SIMPLE, FIXED, NUMBER, 4, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE18_MERCHANT_TYPE, SIMPLE, FIXED, NUMBER, 4, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE19_ACQUIRING_INSTITUTION_COUNTRY_CODE, SIMPLE, FIXED, NUMBER, 4, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE20_PAN_EXTENDED_COUNTRY_CODE, SIMPLE, FIXED, NUMBER, 4, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE21_FORWARDING_INSTITUTION_COUNTRY_CODE, SIMPLE, FIXED, NUMBER, 4, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE22_POS_ENTRY_MODE, SIMPLE, FIXED, NUMBER, 4, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE23_APPLICATION_PAN_NUMBER, SIMPLE, FIXED, NUMBER, 4, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE24_NII, SIMPLE, FIXED, NUMBER, 4, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE25_POS_CONDITION_CODE, SIMPLE, FIXED, NUMBER, 2, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE26_POS_CAPTURE_CODE, SIMPLE, FIXED, NUMBER, 2, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE27_AUTHORIZING_IDENTIFICATION_RESPONSE_LENGTH, SIMPLE, FIXED, NUMBER, 2, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE28_AMOUNT_TRANSACTION_FEE, SIMPLE, FIXED, X_NUMERIC, 8, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE29_AMOUNT_SETTLEMENT_FEE, SIMPLE, FIXED, X_NUMERIC, 8, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE30_AMOUNT_TRANSACTION_PROCESSING_FEE, SIMPLE, FIXED, X_NUMERIC, 8, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE31_AMOUNT_SETTLEMENT_PROCESSING_FEE, SIMPLE, FIXED, X_NUMERIC, 8, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE32_ACQUIRING_INSTITUTION_IDENTIFICATION_CODE, SIMPLE, LLVAR, NUMBER, 12, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE33_FORWARDING_INSTITUTION_IDENTIFICATION_CODE, SIMPLE, LLVAR, NUMBER, 12, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE34_PAN_EXTENDED, SIMPLE, LLVAR, NUMBER_SYMBOL, 28, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE35_TRACK_2_DATA, SIMPLE, TRACK_LEN, TRACK, 48, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE36_TRACK_3_DATA, SIMPLE, LLLVAR, NUMBER, 104, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE37_RRN, SIMPLE, FIXED, ALPHA_NUMERIC, 12, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE38_AUTHORIZATION_IDENTIFICATION_RESPONSE, SIMPLE, FIXED, ALPHA_NUMERIC, 6, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE39_RESPONSE_CODE, SIMPLE, FIXED, ALPHA_NUMERIC, 2, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE40_SERVICE_RESTRICTION_CODE, SIMPLE, FIXED, ALPHA_NUMERIC, 4, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE41_CARD_ACCEPTOR_TERMINAL_ID, SIMPLE, FIXED, ALPHA_NUMERIC_SYMBOL, 8, PAD_RIGHT, 0x20, PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE42_CARD_ACCEPTOR_IDENTIFICATION_CODE, SIMPLE, FIXED, ALPHA_NUMERIC_SYMBOL, 15, PAD_RIGHT, 0x20, PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE43_CARD_ACCEPTOR_ADDRESS, SIMPLE, FIXED, ALPHA_NUMERIC_SYMBOL, 40, PAD_RIGHT, 0x20, PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE44_ADDITIONAL_RESPONSE_DATA, SIMPLE, LLVAR, ALPHA_NUMERIC, 25, PAD_NONE, '0', PAD_NO_METHOD, {NO_SUB_FIELD}},
+    {DE45_TRACK_1_DATA, SIMPLE, LLVAR, ALPHA_NUMERIC, 76, PAD_NONE, '0', PAD_NO_METHOD, {NO_SUB_FIELD}},
+    {DE46_ADDITIONAL_ISO_DATA, SIMPLE, LLLVAR, ALPHA_NUMERIC, 999, PAD_NONE, '0', PAD_NO_METHOD, {NO_SUB_FIELD}},
+    {DE47_ADDITIONAL_NATIONAL_DATA, SIMPLE, LLLVAR, ALPHA_NUMERIC, 999, PAD_NONE, '0', PAD_NO_METHOD, {NO_SUB_FIELD}},
+    {DE48_ADDITIONAL_PRIVATE_DATA, COMPLEX, LLLVAR, ALPHA_NUMERIC, 999, PAD_NONE, '0', PAD_NO_METHOD, {DE48_SF_PIN_ENCRYPTION_KEY, NO_SUB_FIELD}},
+    {DE49_CURRENCY_CODE_TRANSACTION, SIMPLE, FIXED, ALPHA_OR_NUMERIC, 3, MIXED_PAD, 0x20, PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE50_CURRENCY_CODE_SETTLEMENT, SIMPLE, FIXED, ALPHA_OR_NUMERIC, 3, MIXED_PAD, 0x20, PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE51_CURRENCY_CODE_CARDHOLDER_BILLING, SIMPLE, FIXED, ALPHA_OR_NUMERIC, 3, MIXED_PAD, 0x20, PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE52_PIN_DATA, SIMPLE, FIXED, HEX, 16, PAD_NONE, '0', PAD_NO_METHOD, {NO_SUB_FIELD}},
+    {DE53_SECURITY_RELATED_CONTROL_INFO, SIMPLE, FIXED, NUMBER, 44, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE54_AMOUNT_ADDITIONAL, SIMPLE, LLLVAR, ALPHA_NUMERIC, 120, PAD_NONE, '0', PAD_NO_METHOD, {NO_SUB_FIELD}},
+    {DE55_RESERVED_ISO_1, SIMPLE, LLLVAR, HEX, 512, PAD_NONE, '0', PAD_NO_METHOD, {NO_SUB_FIELD}},
+    {DE56_RESERVED_ISO_2, SIMPLE, FIXED, ALPHA_NUMERIC_SYMBOL, 6, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE57_RESERVED_NATIONAL_1, SIMPLE, LLLVAR, ALPHA_NUMERIC_SYMBOL, 999, PAD_NONE, '0', PAD_NO_METHOD, {NO_SUB_FIELD}},
+    {DE58_RESERVED_NATIONAL_2, SIMPLE, LLLVAR, ALPHA_NUMERIC_SYMBOL, 999, PAD_NONE, '0', PAD_NO_METHOD, {NO_SUB_FIELD}},
+    {DE59_RESERVED_NATIONAL_3, SIMPLE, LLLVAR, ALPHA_NUMERIC_SYMBOL, 999, PAD_NONE, '0', PAD_NO_METHOD, {NO_SUB_FIELD}},
+    {DE60_RESERVED_PRIVATE_ADVICE_REASON_CODE, SIMPLE, LLLVAR, ALPHA_NUMERIC_SYMBOL, 6, PAD_LEFT, '0', PAD_FIXED_LENGTH, {DE60_SF_BATCH_NUMBER, DE60_SF_ORIGINAL_AMOUNT, NO_SUB_FIELD}},
+    {DE61_RESERVED_PRIVATE_1, SIMPLE, LLLVAR, ALPHA_NUMERIC_SYMBOL, 12, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE62_RESERVED_PRIVATE_2, SIMPLE, LLLVAR, ALPHA_NUMERIC_SYMBOL, 6, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE63_RESERVED_PRIVATE_3, SIMPLE, LLLVAR, ALPHA_NUMERIC_SYMBOL, 2, PAD_LEFT, '0', PAD_FIXED_LENGTH, {DE63_SF_MONEY_RELOAD_TYPE, DE63_SF_KEY_MAPPING, DE63_SF_NARRATION_OF_JOURNEY, DE63_SF_BLACK_LIST_REQUEST, DE63_SF_BLACK_LIST_RESPONSE, NO_SUB_FIELD}},
+    {DE64_MAC, SIMPLE, FIXED, HEX, 16, PAD_NONE, '0', PAD_NO_METHOD, {NO_SUB_FIELD}}};
 
 ISO8583_MTI mti_def[] = {
-    { MONEY_LOAD_BALANCE_UPDATE,    "0200", "0210"},
-    { SALE_OFFLINE,                 "0220", "0230"},
-    { BALANCE_ENQUIRY,              "0220", "0230"},
-    { SETTLEMENT,                   "0500", "0510"},
-    { REVERSAL,                     "0400", "0410"},
-    { REVERSAL_TIMEOUT,              "0400", "0410"}
-};
+    {MONEY_LOAD_BALANCE_UPDATE, "0200", "0210"},
+    {SALE_OFFLINE, "0220", "0230"},
+    {BALANCE_ENQUIRY, "0220", "0230"},
+    {SETTLEMENT, "0500", "0510"},
+    {REVERSAL, "0400", "0410"},
+    {REVERSAL_TIMEOUT, "0400", "0410"}};
 
 ISO8583_PROCESSING_CODES pro_codes_def[] = {
-    { MONEY_LOAD_BALANCE_UPDATE,    "840000", "840000"},
-    { SALE_OFFLINE,                 "000000", "000000"},
-    { BALANCE_ENQUIRY,              "000000", "000000"},
-    { SETTLEMENT,                   "920000", "920000"},
-    { REVERSAL,                     "000000", "840000"},
-    { REVERSAL_TIMEOUT,              "000000", "840000"}
-};
+    {MONEY_LOAD_BALANCE_UPDATE, "840000", "840000"},
+    {SALE_OFFLINE, "000000", "000000"},
+    {BALANCE_ENQUIRY, "000000", "000000"},
+    {SETTLEMENT, "920000", "920000"},
+    {REVERSAL, "000000", "840000"},
+    {REVERSAL_TIMEOUT, "000000", "840000"}};
 
 ISO8583_BITMAP_MAPPING bitmap_def[] = {
     //{ MONEY_LOAD_BALANCE_UPDATE,    0x30200580, 0x20c00306, 0x30380000, 0x0e800202},
     // { MONEY_LOAD_BALANCE_UPDATE,    0x30200580, 0x20C00B06, 0x30380000, 0x0e800202}, // With security
-    { MONEY_LOAD_BALANCE_UPDATE,    0x30200580, 0x20C00B06, 0x30380000, 0x0e800e02}, // With security and for paycraft
+    {MONEY_LOAD_BALANCE_UPDATE, 0x30200580, 0x20C00B06, 0x30380000, 0x0e800e02}, // With security and for paycraft
     //{ SALE_OFFLINE,                 0x70380480, 0x08C00204, 0x30380000, 0x0e800000}, // Plain
     // { SALE_OFFLINE,                 0x30380580, 0x28C00B04, 0x30380000, 0x0e800000}, // With Security Track 2
-    { SALE_OFFLINE,                 0x70380580, 0x08C00B04, 0x70380480, 0x0e800000}, // With Security Pan
-    { BALANCE_ENQUIRY,              0x00000000, 0x00000000, 0x00000000, 0x00000000},
-    { SETTLEMENT,                   0x20200000, 0x00C00012, 0x20380000, 0x02800018},
+    {SALE_OFFLINE, 0x70380580, 0x08C00B04, 0x70380480, 0x0e800000}, // With Security Pan
+    {BALANCE_ENQUIRY, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
+    {SETTLEMENT, 0x20200000, 0x00C00012, 0x20380000, 0x02800018},
     //{ REVERSAL,                     0x703C0480, 0x00C00206, 0x70380000, 0x0EC00006}
-    { REVERSAL,                     0x30380480, 0x2EC00206, 0x30380000, 0x0E800002},
-    { REVERSAL_TIMEOUT,             0x30380480, 0x22C00206, 0x30380000, 0x0E800002}
-};
+    {REVERSAL, 0x30380480, 0x2EC00206, 0x30380000, 0x0E800002},
+    {REVERSAL_TIMEOUT, 0x30380480, 0x22C00206, 0x30380000, 0x0E800002}};
 
 /********************************************************************** END DEFENISIONS **********************************************************************/
 
@@ -211,7 +205,7 @@ void clear_transaction_object(ISO8583_TXN_REQ_OBJECT *txn_obj)
                             int comp_count = (txn_obj->data[i].field_value.complex_field.value + i)->count;
                             for (int j = 0; j < comp_count; j++)
                             {
-                                if(((txn_obj->data[i].field_value.complex_field.value + i)->value + j)->value)
+                                if (((txn_obj->data[i].field_value.complex_field.value + i)->value + j)->value)
                                 {
                                     free(((txn_obj->data[i].field_value.complex_field.value + i)->value + j)->value);
                                     ((txn_obj->data[i].field_value.complex_field.value + i)->value + j)->len = 0;
@@ -224,9 +218,7 @@ void clear_transaction_object(ISO8583_TXN_REQ_OBJECT *txn_obj)
                             if ((txn_obj->data[i].field_value.complex_field.value + i)->sf_value)
                                 free((txn_obj->data[i].field_value.complex_field.value + i)->sf_value);
                             (txn_obj->data[i].field_value.complex_field.value + i)->sf_len = 0;
-
                         }
-
                     }
                     free(txn_obj->data[i].field_value.complex_field.value);
                     txn_obj->data[i].field_value.complex_field.count = 0;
@@ -383,7 +375,7 @@ ISO8583_ERROR_CODES pad_field_data(ISO8583_PAD_TYPE pad_type, ISO8583_FIELD_SYNT
         else
         {
             len = strlen(field_data_hex_str) + NULL_BYTE_LEN;
-            *outstr = (char*)malloc(len);
+            *outstr = (char *)malloc(len);
             memcpy(*outstr, field_data_hex_str, len);
             return TXN_SUCCESS;
         }
@@ -569,7 +561,7 @@ ISO8583_ERROR_CODES pack_simple_field(ISO8583_TXN_REQ_OBJECT *txn_obj, ISO8583_F
     char *padded_len = NULL;
     ISO8583_FIELD_DEF f_def = field_def[field];
 
-    ret = pad_field_data(f_def.pad_type, f_def.syntax, f_def.pad_method, f_def.pad_char, f_def.max_length, (char*)txn_obj->data[field].field_value.simple_field.value, &padded_value);
+    ret = pad_field_data(f_def.pad_type, f_def.syntax, f_def.pad_method, f_def.pad_char, f_def.max_length, (char *)txn_obj->data[field].field_value.simple_field.value, &padded_value);
     if (ret == TXN_SUCCESS && padded_value != NULL)
     {
         ret = get_field_length(f_def.length_type, padded_value, &padded_len);
@@ -577,13 +569,13 @@ ISO8583_ERROR_CODES pack_simple_field(ISO8583_TXN_REQ_OBJECT *txn_obj, ISO8583_F
         {
             if (padded_len != NULL)
             {
-                txn_obj->len += sprintf((char*)txn_obj->message + txn_obj->len, "%s%s", padded_len, padded_value);
+                txn_obj->len += sprintf((char *)txn_obj->message + txn_obj->len, "%s%s", padded_len, padded_value);
             }
             else
             {
-                txn_obj->len += sprintf((char*)txn_obj->message + txn_obj->len, "%s", padded_value);
+                txn_obj->len += sprintf((char *)txn_obj->message + txn_obj->len, "%s", padded_value);
             }
-            txn_obj->data[field].field_value.simple_field.len = sprintf((char*)txn_obj->data[field].field_value.simple_field.value, "%s", padded_value);
+            txn_obj->data[field].field_value.simple_field.len = sprintf((char *)txn_obj->data[field].field_value.simple_field.value, "%s", padded_value);
         }
         else
         {
@@ -629,9 +621,9 @@ ISO8583_ERROR_CODES pack_complex_field(ISO8583_TXN_REQ_OBJECT *txn_obj, ISO8583_
     char *padded_len = NULL;
     char *sc_value = NULL;
     ISO8583_FIELD_DEF f_def = field_def[field];
-    
-    txn_obj->data[field].field_value.complex_field.complex_value = (unsigned char *)malloc(get_hex_string_len(f_def.syntax,f_def.max_length) + NULL_BYTE_LEN);
-    for (int i = 0; i < 10; i++) //Iterate Through Sub Fields
+
+    txn_obj->data[field].field_value.complex_field.complex_value = (unsigned char *)malloc(get_hex_string_len(f_def.syntax, f_def.max_length) + NULL_BYTE_LEN);
+    for (int i = 0; i < 10; i++) // Iterate Through Sub Fields
     {
         ISO8583_SUB_FIELD sub_field = f_def.sub_field[i];
         if (sub_field == NO_SUB_FIELD)
@@ -644,7 +636,7 @@ ISO8583_ERROR_CODES pack_complex_field(ISO8583_TXN_REQ_OBJECT *txn_obj, ISO8583_
             continue;
         ISO8583_SUB_FIELD_DEF sub_f_def = sub_field_def[sub_field];
         current_sub_field_value->sf_value = (unsigned char *)malloc(sub_f_def.max_length + NULL_BYTE_LEN);
-        for (int j = 0; j < 10; j++) //Iterate Through Sub Components
+        for (int j = 0; j < 10; j++) // Iterate Through Sub Components
         {
             ISO8583_SUB_COMPONENT sub_comp = sub_f_def.sub_components[j];
             if (sub_comp == NO_SUB_COMPONENT)
@@ -656,19 +648,19 @@ ISO8583_ERROR_CODES pack_complex_field(ISO8583_TXN_REQ_OBJECT *txn_obj, ISO8583_
             ISO8583_SUB_COMPONENT_VALUE *current_sub_comp_value = get_sub_component_value(current_sub_field_value, sub_comp);
             if (current_sub_field_value == NULL)
                 continue;
-            ret = pad_field_data(sub_c_def.pad_type, sub_c_def.syntax, sub_c_def.pad_method, sub_c_def.pad_char, sub_c_def.max_length, (char*)current_sub_comp_value->value, &sc_value);
+            ret = pad_field_data(sub_c_def.pad_type, sub_c_def.syntax, sub_c_def.pad_method, sub_c_def.pad_char, sub_c_def.max_length, (char *)current_sub_comp_value->value, &sc_value);
             if (ret == TXN_SUCCESS && sc_value != NULL)
             {
-                current_sub_field_value->sf_len += sprintf((char*)current_sub_field_value->sf_value + current_sub_field_value->sf_len, "%s", sc_value);
+                current_sub_field_value->sf_len += sprintf((char *)current_sub_field_value->sf_value + current_sub_field_value->sf_len, "%s", sc_value);
                 free(sc_value);
                 sc_value = NULL;
             }
         }
         current_sub_field_value->sf_value[current_sub_field_value->sf_len] = '\0';
-        ret = get_field_length(sub_f_def.length_type, (char*)current_sub_field_value->sf_value, &padded_len);
+        ret = get_field_length(sub_f_def.length_type, (char *)current_sub_field_value->sf_value, &padded_len);
         if (ret == TXN_SUCCESS && padded_len != NULL)
         {
-            txn_obj->data[field].field_value.complex_field.comp_len += sprintf((char*)txn_obj->data[field].field_value.complex_field.complex_value + txn_obj->data[field].field_value.complex_field.comp_len, "%s%s", padded_len, current_sub_field_value->sf_value);
+            txn_obj->data[field].field_value.complex_field.comp_len += sprintf((char *)txn_obj->data[field].field_value.complex_field.complex_value + txn_obj->data[field].field_value.complex_field.comp_len, "%s%s", padded_len, current_sub_field_value->sf_value);
             if (padded_len)
             {
                 free(padded_len);
@@ -682,7 +674,7 @@ ISO8583_ERROR_CODES pack_complex_field(ISO8583_TXN_REQ_OBJECT *txn_obj, ISO8583_
             break;
         }
     }
-    txn_obj->len += sprintf((char*)txn_obj->message + txn_obj->len, "%s", txn_obj->data[field].field_value.complex_field.complex_value);
+    txn_obj->len += sprintf((char *)txn_obj->message + txn_obj->len, "%s", txn_obj->data[field].field_value.complex_field.complex_value);
     ret = TXN_SUCCESS;
 
     if (padded_len)
@@ -740,13 +732,13 @@ ISO8583_ERROR_CODES pack(ISO8583_TXN_REQ_OBJECT *txn_obj, TRANSACTION txn, unsig
         }
 
         char *total_msg_length = NULL;
-        ret = get_total_msg_length((char*)txn_obj->message, &total_msg_length);
+        ret = get_total_msg_length((char *)txn_obj->message, &total_msg_length);
         if (ret != TXN_SUCCESS)
         {
             logData("Calculating Total Message length failed");
             ret = TXN_PACK_FAILED;
         }
-        char *msg = (char *)malloc(txn_obj->len + LENGTH_OF_MSG_LEN + 1); // TODO Check 
+        char *msg = (char *)malloc(txn_obj->len + LENGTH_OF_MSG_LEN + 1); // TODO Check
         sprintf(msg, "%s%s", total_msg_length, txn_obj->message);
         logData("Total message : %s", msg);
 
@@ -848,19 +840,19 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
         break;
     }
 
-    //Validate Field:
+    // Validate Field:
     switch (field)
     {
 
     case DE03_PROCESSING_CODE:
-        if (strncmp(pro_codes_def[txn].resp_proc_code, (const char*)resp_txn_obj->data[field].field_value.simple_field.value, strlen((const char*)resp_txn_obj->data[field].field_value.simple_field.value)))
+        if (strncmp(pro_codes_def[txn].resp_proc_code, (const char *)resp_txn_obj->data[field].field_value.simple_field.value, strlen((const char *)resp_txn_obj->data[field].field_value.simple_field.value)))
         {
             logData("Processing Code Validation Failed");
             return TXN_PACK_VALIDATION_FAILED;
         }
         break;
     case DE11_STAN:
-        if (strncmp((const char*)txn_obj->data[field].field_value.simple_field.value, (const char*)resp_txn_obj->data[field].field_value.simple_field.value, strlen((const char*)resp_txn_obj->data[field].field_value.simple_field.value)))
+        if (strncmp((const char *)txn_obj->data[field].field_value.simple_field.value, (const char *)resp_txn_obj->data[field].field_value.simple_field.value, strlen((const char *)resp_txn_obj->data[field].field_value.simple_field.value)))
         {
             logData("STAN Validation Failed");
             return TXN_PACK_VALIDATION_FAILED;
@@ -868,7 +860,7 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
         break;
 
     case DE39_RESPONSE_CODE:
-        if (strncmp((const char*)resp_txn_obj->data[field].field_value.simple_field.value, RESPONSE_CODE_SUCCESS, strlen(RESPONSE_CODE_SUCCESS)))
+        if (strncmp((const char *)resp_txn_obj->data[field].field_value.simple_field.value, RESPONSE_CODE_SUCCESS, strlen(RESPONSE_CODE_SUCCESS)))
         {
             logData("RESPONSE_CODE Validation Failed");
             // return TXN_PACK_VALIDATION_FAILED;
@@ -876,7 +868,7 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
         break;
 
     case DE41_CARD_ACCEPTOR_TERMINAL_ID:
-        if (strncmp((const char*)txn_obj->data[field].field_value.simple_field.value, (const char*)resp_txn_obj->data[field].field_value.simple_field.value, resp_txn_obj->data[field].field_value.simple_field.len))
+        if (strncmp((const char *)txn_obj->data[field].field_value.simple_field.value, (const char *)resp_txn_obj->data[field].field_value.simple_field.value, resp_txn_obj->data[field].field_value.simple_field.len))
         {
             logData("TERMINAL_ID Validation Failed");
             return TXN_PACK_VALIDATION_FAILED;
@@ -1091,7 +1083,7 @@ ISO8583_ERROR_CODES parse(unsigned char *response, int response_len, ISO8583_TXN
         return ret;
     }
 
-    char* hex_response = NULL;
+    char *hex_response = NULL;
     int hex_response_len = 2 * response_len;
     bytearray_to_hexstr(response, response_len, &hex_response);
 
@@ -1122,20 +1114,20 @@ ISO8583_ERROR_CODES parse(unsigned char *response, int response_len, ISO8583_TXN
     }
 
     ISO8583_TXN_RESP_OBJECT *resp_obj = (ISO8583_TXN_RESP_OBJECT *)get_transaction_object();
-    //Copy MTI:
+    // Copy MTI:
     resp_obj->data[DE00_MTI].field_value.simple_field.value = (unsigned char *)malloc(len + NULL_BYTE_LEN);
     resp_obj->data[DE00_MTI].field_value.simple_field.len = len;
     memcpy(resp_obj->data[DE00_MTI].field_value.simple_field.value, hex_response + 14, len);
     resp_obj->data[DE00_MTI].field_value.simple_field.value[len] = '\0';
 
-    //Copy BITMAP:
+    // Copy BITMAP:
     len = get_hex_string_len(field_def[DE01_BITMAP].syntax, field_def[DE01_BITMAP].max_length);
     resp_obj->data[DE01_BITMAP].field_value.simple_field.value = (unsigned char *)malloc(len + NULL_BYTE_LEN);
     resp_obj->data[DE01_BITMAP].field_value.simple_field.len = len;
     memcpy(resp_obj->data[DE01_BITMAP].field_value.simple_field.value, hex_response + 18, len);
     resp_obj->data[DE01_BITMAP].field_value.simple_field.value[len] = '\0';
-    
-    char *resp_bm = (char*)resp_obj->data[DE01_BITMAP].field_value.simple_field.value;
+
+    char *resp_bm = (char *)resp_obj->data[DE01_BITMAP].field_value.simple_field.value;
 
     char *temp_response = hex_response + 34;
     int temp_response_len = hex_response_len - 34;
@@ -1143,7 +1135,7 @@ ISO8583_ERROR_CODES parse(unsigned char *response, int response_len, ISO8583_TXN
     for (int i = 0; i < 2; i++)
     {
         long bitmap = (i == 0) ? bitmap_def[txn].res_field_1_32 : bitmap_def[txn].res_field_33_64;
-        long resp_bitmap = (i == 0) ?  hexstr_to_long(resp_bm, 8): hexstr_to_long(resp_bm + 8, 8);
+        long resp_bitmap = (i == 0) ? hexstr_to_long(resp_bm, 8) : hexstr_to_long(resp_bm + 8, 8);
         int length = (i == 0) ? 1 : 33;
         for (int j = 0; j < 32; j++)
         {
@@ -1201,9 +1193,10 @@ ISO8583_ERROR_CODES parse(unsigned char *response, int response_len, ISO8583_TXN
     return TXN_SUCCESS;
 }
 
-ISO8583_ERROR_CODES process_transaction(ISO8583_TXN_REQ_OBJECT *txn_obj, TRANSACTION txn, ISO8583_TXN_RESP_OBJECT** resp)
+ISO8583_ERROR_CODES process_transaction(ISO8583_TXN_REQ_OBJECT *txn_obj, TRANSACTION txn, ISO8583_TXN_RESP_OBJECT **resp)
 {
-    if (txn >= END_TRANSACTION){
+    if (txn >= END_TRANSACTION)
+    {
         logData("Invalid Transaction Type: %d", txn);
         return TXN_FAILED;
     }

@@ -271,11 +271,11 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
             printDeviceStatus();
             doUnLock();
 
-            encryptPanExpDate();
-            if (!appConfig.useAirtelHost)
-            {
-                generateMacOfflineSale(currentTxnData);
-            }
+            // encryptPanExpDate();
+            //  if (!appConfig.useAirtelHost)
+            //  {
+            //      generateMacOfflineSale(currentTxnData);
+            //  }
             createTransactionData(&currentTxnData);
         }
     }

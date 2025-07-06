@@ -80,6 +80,11 @@ struct tlv *generatePaymentConfig(EMV_CONFIG emvConfig)
     size_t dataECLen = 0;
     serializeTlv(tlv_emvcoConfig, &dataEC, &dataECLen);
 
+    struct tlv *tlv_encryptData = generateEncryptData(emvConfig);
+    void *dataEncrypt = NULL;
+    size_t dataEncrypteLen = 0;
+    serializeTlv(tlv_encryptData, &dataEncrypt, &dataEncrypteLen);
+
     struct tlv *tlv;
     struct tlv *tlvConfig = NULL;
     struct tlv *tlv_tail;
@@ -91,6 +96,9 @@ struct tlv *generatePaymentConfig(EMV_CONFIG emvConfig)
     tlv = tlv_new(FEIG_ID_TRACE_CONFIGURATION, dataTDLen, dataTD);
     tlv_tail = tlv_insert_after(tlv_tail, tlv);
 
+    tlv = tlv_new(FEIG_ID_E2EE, dataEncrypteLen, dataEncrypt);
+    tlv_tail = tlv_insert_after(tlv_tail, tlv);
+
     void *data = NULL;
     size_t dataLen = 0;
     serializeTlv(tlvConfig, &data, &dataLen);
@@ -98,6 +106,58 @@ struct tlv *generatePaymentConfig(EMV_CONFIG emvConfig)
     tlv_paymentConfig = tlv_new(FEIG_ID_PAYMENT_SYSTEM_CONFIGURATION, dataLen, data);
 
     return tlv_paymentConfig;
+}
+
+struct tlv *generateEncryptData(EMV_CONFIG emvConfig)
+{
+    struct tlv *tlv;
+    struct tlv *tlv_tail = NULL;
+    struct tlv *tlv_encryptData = NULL;
+
+    for (int i = 0; i < emvConfig.encryptLen; i++)
+    {
+        struct tlv *tlv_encrypt = generateEncryptTlv(emvConfig.encryptList[i]);
+        void *data = NULL;
+        size_t dataLen = 0;
+        serializeTlv(tlv_encrypt, &data, &dataLen);
+
+        tlv = tlv_new(FEIG_ID_CREDITCALL_E2EE, dataLen, data);
+
+        if (i == 0)
+        {
+            tlv_encryptData = tlv;
+            tlv_tail = tlv;
+        }
+        else
+        {
+            tlv_tail = tlv_insert_after(tlv_tail, tlv);
+        }
+    }
+
+    return tlv_encryptData;
+}
+
+struct tlv *generateEncryptTlv(ENCRYPT *encrypt)
+{
+    struct tlv *tlv;
+    struct tlv *tlv_tail;
+    struct tlv *tlv_key = NULL;
+
+    int keyLabelLen = strlen(encrypt->keyLabel);
+    uint8_t *keyLabel = stringToBytes(encrypt->keyLabel);
+
+    tlv = tlv_new(FEIG_ID_E2EE_CKA_LABEL, keyLabelLen, keyLabel);
+    tlv_key = tlv;
+    tlv_tail = tlv;
+
+    int tagLen = strlen(encrypt->tags) / 2;
+    uint8_t tagData[tagLen];
+    hexToByte(encrypt->tags, tagData);
+
+    tlv = tlv_new(FEIG_ID_E2EE_TAG_LIST, tagLen, tagData);
+    tlv_tail = tlv_insert_after(tlv_tail, tlv);
+
+    return tlv_key;
 }
 
 struct tlv *generateEmvCoConfig(EMV_CONFIG emvConfig)
@@ -709,9 +769,7 @@ EMV_CONFIG loadEncrypts(json_object *jObject, EMV_CONFIG emvConfig)
     {
         encyObject = json_object_array_get_idx(encrypts, i);
         emvConfig.encryptList[i] = malloc(sizeof(ENCRYPT));
-        strcpy(emvConfig.encryptList[i]->name, getString(encyObject, "name"));
-        strcpy(emvConfig.encryptList[i]->key, getString(encyObject, "key"));
-        strcpy(emvConfig.encryptList[i]->type, getString(encyObject, "type"));
+        strcpy(emvConfig.encryptList[i]->keyLabel, getString(encyObject, "keyLabel"));
         strcpy(emvConfig.encryptList[i]->tags, getString(encyObject, "tags"));
     }
 
@@ -728,9 +786,7 @@ void printEmvConfig(EMV_CONFIG emvConfig)
     {
         logData("");
         logData("Item : %d", (i + 1));
-        logData("\tName \t: %s", emvConfig.encryptList[i]->name);
-        logData("\tKey \t: %s", emvConfig.encryptList[i]->key);
-        logData("\tType \t: %s", emvConfig.encryptList[i]->type);
+        logData("\tKey Label \t: %s", emvConfig.encryptList[i]->keyLabel);
         logData("\tTags \t: %s", emvConfig.encryptList[i]->tags);
     }
 

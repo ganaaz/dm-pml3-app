@@ -75,6 +75,29 @@ static CK_OBJECT_HANDLE get_dukpt_ikey(CK_SESSION_HANDLE hSession, char *label)
     return hKey;
 }
 
+static char *bin2hex(char *out, const void *in, size_t len)
+{
+    const char *p = (const char *)in;
+    size_t i;
+
+    for (i = 0; i < len; i++)
+    {
+        char digit;
+
+        digit = p[i] >> 4;
+        digit = digit < 0xA ? digit + '0' : digit - 10 + 'A';
+        out[2 * i] = digit;
+
+        digit = p[i] & 0xF;
+        digit = digit < 0xA ? digit + '0' : digit - 10 + 'A';
+        out[2 * i + 1] = digit;
+    }
+
+    out[2 * len] = '\0';
+
+    return out;
+}
+
 static unsigned char *get_key_serial_number(CK_SESSION_HANDLE hSession,
                                             CK_OBJECT_HANDLE hIKey, unsigned char ksn[10])
 {
@@ -183,6 +206,35 @@ void dukpt_mac(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hIKey,
     *out_len = (size_t)ulOutLen;
 
     C_DestroyObject(hSession, hMacKey);
+    C_DestroyObject(hSession, hTxnKey);
+}
+
+void dukpt_encrypt_plain(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hIKey,
+                         void *in, size_t in_len, void *out, size_t *out_len)
+{
+    CK_OBJECT_HANDLE hTxnKey = get_transaction_key(hSession, hIKey);
+    CK_OBJECT_HANDLE hDataKey = get_data_key(hSession, hTxnKey);
+    CK_BYTE iv[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    CK_MECHANISM mech_des3_cbc = {CKM_DES3_CBC, &iv, sizeof(iv)};
+    CK_ULONG ulOutLen = (CK_ULONG)(*out_len);
+    CK_RV rv = CKR_OK;
+    size_t padded_len = (in_len + 7) & ~0x7u;
+    unsigned char padded_in[padded_len];
+
+    assert(*out_len >= padded_len);
+
+    memset(padded_in, 0, sizeof(padded_in));
+    memcpy(padded_in, in, in_len);
+
+    rv = C_EncryptInit(hSession, &mech_des3_cbc, hDataKey);
+    assert(rv == CKR_OK);
+
+    rv = C_Encrypt(hSession, padded_in, padded_len, out, &ulOutLen);
+    assert(rv == CKR_OK);
+
+    *out_len = (size_t)ulOutLen;
+
+    C_DestroyObject(hSession, hDataKey);
     C_DestroyObject(hSession, hTxnKey);
 }
 
@@ -312,6 +364,47 @@ void generateMacReversalEcho(const char *macInput, char ksnData[21], char macDat
 }
 
 /**
+ * to encrypt the PAN used for Hitachi / MMRDA / SBI
+ */
+void encryptPan(const char *pan, unsigned char ksn[10], char hex[256])
+{
+    CK_SESSION_HANDLE hSession = CK_INVALID_HANDLE;
+    CK_OBJECT_HANDLE hIKey = CK_INVALID_HANDLE;
+    unsigned char kcv[3];
+    // uint8_t slot = 0;
+    // slot = FEPKCS11_APP3_TOKEN_SLOT_ID;
+
+    unsigned char buffer[128];
+    size_t len = sizeof(buffer);
+
+    KEYDATA *dukptKey = getDukptKey();
+
+    hSession = crypto->hSession;
+
+    logData("Going to retrieve key from device for label : %s", dukptKey->label);
+    hIKey = get_dukpt_ikey(hSession, dukptKey->label);
+    if (hIKey == CK_INVALID_HANDLE)
+    {
+        logData("No DUKPT Initial Key found (label '%s', id %02hX).\n", dukptKey->label, 0);
+        return;
+    }
+
+    // logData("Encrypt input PAN : %s, Len : %d", pan, strlen(pan));
+    logData("KSN : %s\n", bin2hex(hex, get_key_serial_number(hSession, hIKey, ksn), 10));
+    logData("KCV(IKEY) : %s\n", bin2hex(hex, get_key_check_value(hSession, hIKey, kcv), sizeof(kcv)));
+    // logData("Plaintext : %s\n", bin2hex(hex, pan, strlen(pan)));
+
+    unsigned char panHex[strlen(pan) / 2];
+    hexToByte(pan, panHex);
+
+    len = sizeof(buffer);
+    dukpt_encrypt_plain(hSession, hIKey, panHex, strlen(pan) / 2, buffer, &len);
+    bin2hex(hex, buffer, len);
+    // const char* result = bin2hex(hex, buffer, len);
+    // logData("CipherText: %s\n",result);
+}
+
+/**
  * To encrypt the pan and exp date available in current txn data and pouplate the ksn
  * in the same current txn data object, used for offline sale
  */
@@ -353,14 +446,14 @@ void encryptPanExpDate()
     pad0MultipleOf8(currentTxnData.plainPan, paddedPan, &paddedPanLen);
 
     // Airtel doc ask to make it as 24 so add 0
-    if (paddedPanLen == 16)
-    {
-        char tempPaddedPan[96];
-        strcpy(tempPaddedPan, "00000000");
-        strcat(tempPaddedPan, paddedPan);
-        strcpy(paddedPan, tempPaddedPan);
-        paddedPanLen += 8;
-    }
+    // if (paddedPanLen == 16)
+    // {
+    //     char tempPaddedPan[96];
+    //     strcpy(tempPaddedPan, "00000000");
+    //     strcat(tempPaddedPan, paddedPan);
+    //     strcpy(paddedPan, tempPaddedPan);
+    //     paddedPanLen += 8;
+    // }
 
     // logData("Padded pan data : %s", paddedPan); // TODO : Remove
     // logData("Padded pan length : %d", paddedPanLen);

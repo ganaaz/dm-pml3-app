@@ -576,6 +576,7 @@ char *buildAirtelHealthCheckResponseMessage(AirtelHealthCheckResponse response, 
  **/
 void sendBalanceMessage(struct transactionData trxData)
 {
+    logData("Sending balance message");
     json_object *jobj = json_object_new_object();
     // Root
     json_object *jCommand = json_object_new_string(COMMAND_STATUS);

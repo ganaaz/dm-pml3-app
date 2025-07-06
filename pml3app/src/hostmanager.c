@@ -27,6 +27,7 @@ extern struct applicationConfig appConfig;
 extern struct transactionData currentTxnData;
 extern struct applicationData appData;
 extern int activePendingTxnCount;
+extern enum device_status DEVICE_STATUS;
 
 bool isReversalOngoing = false;
 
@@ -50,8 +51,176 @@ int initializeHostStaticData()
     {
         return TXN_FAILED;
     }
-
     return TXN_SUCCESS;
+}
+
+/**
+ * Process the host offline transaction with host
+ **/
+TransactionTable processHostOfflineTxn(TransactionTable trxData)
+{
+    logInfo("Processing transaction : %s", trxData.transactionId);
+
+    char batch[7];
+    sprintf(batch, "%06d", trxData.batch);
+
+    OFFLINE_SALE_REQUEST offline_sale_req;
+    // memcpy(offline_sale_req.DE02_PAN_NUMBER, trxData.PAN, sizeof(trxData.PAN));
+    memcpy(offline_sale_req.DE04_TXN_AMOUNT, trxData.amount, sizeof(trxData.amount));
+    memcpy(offline_sale_req.DE11_STAN, trxData.stan, sizeof(trxData.stan));
+    memcpy(offline_sale_req.DE12_TXN_TIME, trxData.time, sizeof(trxData.time));
+    memcpy(offline_sale_req.DE13_TXN_DATE, trxData.date, sizeof(trxData.date));
+
+    memcpy(offline_sale_req.DE02_PAN_NUMBER, trxData.panEncrypted, sizeof(offline_sale_req.DE02_PAN_NUMBER));
+    // memcpy(offline_sale_req.DE35_TRACK_2_DATA, trxData.track2Enc, sizeof(trxData.track2Enc));
+
+    char ksn[45];
+    strcpy(ksn, "0020");
+    strcat(ksn, trxData.ksn);
+    memcpy(offline_sale_req.DE53_SECURITY_DATA, ksn, sizeof(ksn));
+
+    memcpy(offline_sale_req.DE56_BATCH_NUMBER, batch, sizeof(batch));
+
+    offline_sale_req.DE55_ICC_DATA.value = (char *)malloc(trxData.iccDataLen + 1);
+    memcpy(offline_sale_req.DE55_ICC_DATA.value, trxData.iccData, trxData.iccDataLen);
+    offline_sale_req.DE55_ICC_DATA.value[trxData.iccDataLen] = '\0';
+    offline_sale_req.DE55_ICC_DATA.len = trxData.iccDataLen;
+
+    memcpy(offline_sale_req.DE62_INVOICE_NUMBER, trxData.stan, sizeof(trxData.stan));
+    memset(offline_sale_req.DE37_RRN, 0x00, sizeof(offline_sale_req.DE37_RRN));
+
+    // Generate narration data for Field 63
+    // EXT 120 GLB DR 2700           22122317000012345678902312000001
+    // char narrData[] = "EXT 120 GLB DR 2700           22122317000012345678902312000001";
+    char narration[63];
+    generateNarrationData(appConfig.stationId, trxData.acqTransactionId, trxData.acqUniqueTransactionId,
+                          trxData.amount, narration);
+    /*
+    strcpy(narration, "EXT ");
+    strcat(narration, appConfig.stationId);
+    strcat(narration, " GLB DR ");
+    char onlyAmount[5];
+    memcpy(onlyAmount, &trxData.amount[8], 4);
+    strcat(narration, onlyAmount);
+    int len = strlen(narration);
+    int max = 30 - len;
+    for (int i = 0; i < max; i++)
+    {
+        strcat(narration, " ");
+    }
+    strcat(narration, trxData.acqTransactionId);
+    strcat(narration, trxData.acqUniqueTransactionId);
+
+    logData("Narration data generated : %s", narration);
+    logData("Narration length : %d", strlen(narration));
+    */
+
+    char narrationHex[125];
+    string2hexString(narration, narrationHex);
+    logData("Narration in hex : %s", narrationHex);
+
+    offline_sale_req.DE63_NARRATION_DATA.len = 124;
+    offline_sale_req.DE63_NARRATION_DATA.value = (char *)malloc(124 + 1);
+    memcpy(offline_sale_req.DE63_NARRATION_DATA.value, narrationHex, 124);
+    offline_sale_req.DE63_NARRATION_DATA.value[124] = '\0';
+
+    OFFLINE_SALE_RESPONSE offline_sale_resp;
+    ISO8583_ERROR_CODES ret = TXN_FAILED;
+
+    ret = process_offline_sale_transaction(&offline_sale_req, &offline_sale_resp);
+
+    free(offline_sale_req.DE55_ICC_DATA.value);
+    free(offline_sale_req.DE63_NARRATION_DATA.value);
+
+    if (ret == TXN_SUCCESS)
+    {
+        sprintf(trxData.hostErrorCategory, "%s", "");
+        logData("Amount Received : %s", offline_sale_resp.DE04_TXN_AMOUNT);
+        logData("Stan Received: %s", offline_sale_resp.DE11_STAN);
+        logData("Txn Time Received : %s", offline_sale_resp.DE12_TXN_TIME);
+        logData("Txn Date Received : %s", offline_sale_resp.DE13_TXN_DATE);
+
+        if (offline_sale_resp.DE37_RRN != NULL)
+        {
+            logInfo("RRN Received : %s", offline_sale_resp.DE37_RRN);
+            sprintf(trxData.rrn, "%s", offline_sale_resp.DE37_RRN);
+        }
+        else
+        {
+            logWarn("RRN Not Received");
+        }
+
+        if (offline_sale_resp.DE38_AUTH_CODE != NULL)
+        {
+            logInfo("Authcode Received : %s", offline_sale_resp.DE38_AUTH_CODE);
+            sprintf(trxData.authCode, "%s", offline_sale_resp.DE38_AUTH_CODE);
+        }
+        else
+        {
+            logWarn("Authcode Not Received %s.", "");
+        }
+
+        if (offline_sale_resp.DE39_RESPONSE_CODE != NULL)
+        {
+            logInfo("Response Code Received : %s", offline_sale_resp.DE39_RESPONSE_CODE);
+            sprintf(trxData.hostResultCode, "%s", offline_sale_resp.DE39_RESPONSE_CODE);
+        }
+        else
+        {
+            strcpy(trxData.hostResultCode, "");
+            logWarn("Response Code Not Received %s.", "");
+        }
+
+        if (strcmp(trxData.hostResultCode, "00") == 0)
+        {
+            sprintf(trxData.hostStatus, "%s", STATUS_SUCCESS);
+            sprintf(trxData.hostError, "%s", "");
+
+            doLock();
+            activePendingTxnCount--;
+            logData("Offline trxn result is success");
+            logData("Active pending transaction count decreased and now is : %d", activePendingTxnCount);
+            if (activePendingTxnCount < appConfig.minRequiredForOnline)
+            {
+                logWarn("Now the transaction is below minRequiredForOnline, making the device online");
+                DEVICE_STATUS = STATUS_ONLINE;
+            }
+            printDeviceStatus();
+            doUnLock();
+        }
+        else
+        {
+            logWarn("Response code received : %s", trxData.hostResultCode);
+            logWarn("Response code received is not approved, so left it as in pending");
+        }
+    }
+    else
+    {
+        sprintf(trxData.hostError, "%s", getHostErrorString(ret));
+        logWarn("Host error : %s", getHostErrorString(ret));
+        logWarn("Max Retry for failure : %d", appConfig.hostMaxRetry);
+
+        if (ret == TXN_HOST_CONNECTION_TIMEOUT || ret == TXN_RECEIVE_FROM_HOST_TIMEOUT)
+        {
+            sprintf(trxData.hostErrorCategory, "%s", HOST_ERROR_CATEGORY_TIMEOUT);
+        }
+
+        /*
+        // No check for retry as discussed
+        if (trxData.hostRetry == appConfig.hostMaxRetry)
+        {
+            sprintf(trxData.hostErrorCategory, "%s", HOST_ERROR_CATEGORY_FAILED);
+            sprintf(trxData.hostStatus, "%s", STATUS_FAILURE);
+            logError("Host Failed");
+        }
+        else
+        {
+            trxData.hostRetry++;
+        }*/
+        trxData.hostRetry++;
+    }
+
+    return trxData;
 }
 
 /**

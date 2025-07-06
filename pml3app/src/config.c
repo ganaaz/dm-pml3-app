@@ -95,7 +95,7 @@ int initConfig()
  **/
 void initTransactionTable()
 {
-    if (sqlite3_open("pml3trxdata.db", &sqlite3Db) != SQLITE_OK)
+    if (sqlite3_open("trxdata-pml3.db", &sqlite3Db) != SQLITE_OK)
     {
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(sqlite3Db));
         exit(-1);

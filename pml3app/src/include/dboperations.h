@@ -35,7 +35,7 @@ typedef struct TransactionTableType
     char serviceBalance[13];
     char iccData[4096];
     int iccDataLen;
-    char ksn[21];
+    char ksn[41];
     char panEncrypted[50];
     char track2Enc[100];
     char expDateEnc[17];
@@ -214,11 +214,6 @@ double getActivePendingHostErrorCategoryTransactionsAmount(const char *errorCate
  * Process the pending transactions with host
  **/
 void processHostPendingTransactions();
-
-/**
- * Process the host offline transaction with host
- **/
-TransactionTable processHostOfflineTxn(TransactionTable trxData);
 
 /**
  * Get the fetch query to retrieve the data from db

@@ -751,6 +751,7 @@ void resetTransactionData()
     memset(currentTxnData.gmtTime, 0, sizeof(currentTxnData.gmtTime));
     memset(currentTxnData.acqTransactionId, 0, sizeof(currentTxnData.acqTransactionId));
     memset(currentTxnData.acqUniqueTransactionId, 0, sizeof(currentTxnData.acqUniqueTransactionId));
+    memset(currentTxnData.plainPanWithTag, 0, sizeof(currentTxnData.plainPanWithTag));
 
     logInfo("Transaction data reset successfully");
 }
@@ -1074,4 +1075,24 @@ void trimAmount(char amount[13], char trimmedAmount[13])
 {
     long value = strtol(amount, NULL, 10);
     sprintf(trimmedAmount, "%ld", value);
+}
+
+/**
+ * String to byte array
+ */
+uint8_t *stringToBytes(const char *input)
+{
+    if (!input)
+        return NULL;
+
+    size_t len = strlen(input);
+    uint8_t *bytes = (uint8_t *)malloc(len);
+    if (!bytes)
+        return NULL;
+
+    for (size_t i = 0; i < len; ++i)
+    {
+        bytes[i] = (uint8_t)input[i];
+    }
+    return bytes;
 }

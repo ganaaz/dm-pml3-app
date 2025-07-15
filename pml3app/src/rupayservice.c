@@ -804,45 +804,6 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
                 logData("SHA Generated for Pan : %s\n", sha);
                 strcpy(currentTxnData.plainPan, pan);
                 strcpy(currentTxnData.token, sha);
-
-                if (strcmp(currentTxnData.trxType, TRXTYPE_PURCHASE) == 0)
-                {
-                    logData("Performing pan encryption for purchase transaction");
-                    unsigned char ksn[10];
-                    char hex[256], hex2[100];
-                    char panWithTag[25];
-                    strcpy(panWithTag, "5A");
-
-                    logData("Mod val : %d", strlen(pan) % 2);
-                    if (strlen(pan) % 2 != 0)
-                        strcat(pan, "F");
-
-                    char panHexLen[12];
-                    sprintf(panHexLen, "%02X", strlen(pan) / 2);
-                    logData("Hex length of Pan : %s", panHexLen);
-                    strcat(panWithTag, panHexLen);
-                    strcat(panWithTag, pan);
-                    strcpy(currentTxnData.plainPanWithTag, panWithTag);
-                    logData("Pan with tag used for encryption : %s", currentTxnData.plainPanWithTag);
-
-                    encryptPan(panWithTag, ksn, hex);
-                    logData("Encrypt Result : %s", hex);
-                    byteToHex(ksn, 10, hex2);
-                    logData("KSN Received : %s", hex2);
-                    logData("KSN Len : %d", strlen(hex2));
-                    strcpy(currentTxnData.ksn, "00000000000000000000");
-                    strcat(currentTxnData.ksn, hex2);
-                    logData("TXN Data KSN Value : %s", currentTxnData.ksn);
-                    logData("TXN Data KSN Len : %d", strlen(currentTxnData.ksn));
-
-                    strcpy(currentTxnData.panEncrypted, hex);
-                    logData("TXN Pan Encrypted Value : %s", currentTxnData.panEncrypted);
-                    logData("TXN Pan Encrypted Len : %d", strlen(currentTxnData.panEncrypted));
-                }
-                else
-                {
-                    logData("Transaction is not purchase so no pan encryption required");
-                }
             }
 
             if (tag[0] == 0x5F && tag[1] == 0x25)

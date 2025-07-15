@@ -20,7 +20,7 @@ namespace Simulator
 {
     class Program
     {
-        private static DateTime releaseDate = new DateTime(2025, 6, 15);
+        private static DateTime releaseDate = new DateTime(2025, 7, 8);
         private static bool requestUser = false;
         public static string LocalIPForAirtel = "10.0.0.20";
         //public static string LocalIPForPayTM = "192.168.29.248";
@@ -55,7 +55,7 @@ namespace Simulator
         {
             Console.WriteLine("-------------------------------------------");
             Console.WriteLine("Datamatics Transit Gate Application for PML3");
-            Console.WriteLine("Version : 1.0.0");
+            Console.WriteLine("Version : 0.0.1");
             Console.WriteLine($"Release Date : {releaseDate.ToLongDateString()}");
             Console.WriteLine("-------------------------------------------");
 
@@ -82,6 +82,14 @@ namespace Simulator
                 tmsThread.Start();
                 Thread mqttThread = new(new ThreadStart(MqttReceive));
                 mqttThread.Start();
+            }
+
+            Console.WriteLine("Do you need to start the Hitachi Server Forwarder (Y or N), default N : ");
+            var hitachiOpt = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(hitachiOpt) && hitachiOpt.Equals("Y", StringComparison.OrdinalIgnoreCase))
+            {
+                var proxy = new TcpProxy(IPAddress.Parse(LocalIPForAirtel), 5804, "172.18.24.251", 5804);
+                Task.Run(proxy.Start);
             }
 
             while (true)
@@ -645,7 +653,7 @@ namespace Simulator
 
                 await mqttClient.SubscribeAsync(mqttSubscribeOptions, CancellationToken.None);
 
-                while(true)
+                while (true)
                 {
 
                 }
@@ -1313,7 +1321,7 @@ namespace Simulator
             }
 
             fileLocalLocation = fileSave;
-            
+
             var command = new Command
             {
                 Cmd = "download_file",
@@ -1513,9 +1521,9 @@ namespace Simulator
                             app_exiting = new System.Collections.Generic.List<string> { "N", "N", "N", "N", "R" }
                         },
                     }
-                }                
+                }
             };
-            
+
             var strData = JsonConvert.SerializeObject(command);
             Console.WriteLine("Data to send : " + strData);
             SendMessage(strData);
@@ -1687,7 +1695,7 @@ namespace Simulator
             {
                 Console.WriteLine("Service id can only be hexa decimal");
                 return;
-            }    
+            }
 
             var command = new Command
             {
@@ -2074,7 +2082,7 @@ namespace Simulator
 
                     if (result.Contains("Ready") && autoLoopSingleInReady)
                     {
-                        
+
                         Purchase("single");
                     }
 
@@ -2295,7 +2303,7 @@ namespace Simulator
         private static string GenerateServiceData()
         {
             var data = dataFirstByte;
-            for(var i = 0; i < 95; i++)
+            for (var i = 0; i < 95; i++)
             {
                 data += "00";
             }

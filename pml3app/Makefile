@@ -17,7 +17,7 @@ KEYID = 00A3
 #SLOTAPP = app0
 #KEYID = 00A0
 PIN = 648219
-VERSION = "1.0.23"
+VERSION = "0.0.1"
 APPDESC = "Datamatic L3 App - PML3"
 
 # Makefile settings - Can be customized.
@@ -95,7 +95,7 @@ update_helper:
 	cp ./src/log4crc.info update/app/log4crc.info
 	cp ./src/l3_log_mode update/app/l3_log_mode
 	mkdir -p update/app/config/
-	cp ./src/config/emv_config.txt update/app/config/emv_config.txt
+#	cp ./src/config/emv_config.txt update/app/config/emv_config.txt
 	cp ./src/config/emv_config.json update/app/config/emv_config.json
 #	cp ./src/config/app_data.json update/app/config/app_data.json
 #	cp ./src/config/app_config.json update/app/config/app_config.json

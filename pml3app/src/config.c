@@ -20,8 +20,8 @@
 #include "ISO/utils.h"
 #include "include/abtinittable.h"
 
-#define VERSION "1.0.0"
-#define RELEASE_DATE "16-Jun-2025"
+#define VERSION "0.0.1"
+#define RELEASE_DATE "08-Jul-2025"
 
 struct applicationConfig appConfig;
 struct applicationData appData;

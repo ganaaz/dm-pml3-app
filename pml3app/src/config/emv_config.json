@@ -129,17 +129,17 @@
                 "entryPoint": {
                     "cvmRequireLimit": "000000020000",
                     "clessTxnLimit": "000000020000",
-                    "termFloorLimit": "000007D0"
+                    "termFloorLimit": "00000000"
                 },
                 "kernelConfig": {
                     "terminalType": "96",
                     "serviceQualifier": "01601691000110109100016012910001FF019100",
                     "terminalId": "3132333435363738",
-                    "terminalFloorLimit": "000007D0",
+                    "terminalFloorLimit": "00000000",
                     "appVersion": "0002",
-                    "tacDenial": "FCF8FCF8F0",
-                    "tacOnline": "FCF8FCF8F0",
-                    "tacDefault": "FCF8FCF8F0",
+                    "tacDenial": "0010000000",
+                    "tacOnline": "FFFFFFFFFF",
+                    "tacDefault": "FFFFFFFFFF",
                     "countryCode": "0356",
                     "termCap": "000808",
                     "addTermCap": "6040000001",
@@ -187,17 +187,17 @@
                 "entryPoint": {
                     "cvmRequireLimit": "000000020000",
                     "clessTxnLimit": "000000020000",
-                    "termFloorLimit": "000007D0"
+                    "termFloorLimit": "00000000"
                 },
                 "kernelConfig": {
                     "terminalType": "96",
                     "serviceQualifier": "01601691000110109100016012910001FF019100",
                     "terminalId": "3132333435363738",
-                    "terminalFloorLimit": "000007D0",
+                    "terminalFloorLimit": "00000000",
                     "appVersion": "0002",
-                    "tacDenial": "FCF8FCF8F0",
-                    "tacOnline": "FCF8FCF8F0",
-                    "tacDefault": "FCF8FCF8F0",
+                    "tacDenial": "0010000000",
+                    "tacOnline": "FFFFFFFFFF",
+                    "tacDefault": "FFFFFFFFFF",
                     "countryCode": "0356",
                     "termCap": "000808",
                     "addTermCap": "6040000001",
@@ -245,17 +245,17 @@
                 "entryPoint": {
                     "cvmRequireLimit": "000000020000",
                     "clessTxnLimit": "000000020000",
-                    "termFloorLimit": "000007D0"
+                    "termFloorLimit": "00000000"
                 },
                 "kernelConfig": {
                     "terminalType": "96",
                     "serviceQualifier": "01601691000110109100016012910001FF019100",
                     "terminalId": "3132333435363738",
-                    "terminalFloorLimit": "000007D0",
+                    "terminalFloorLimit": "00000000",
                     "appVersion": "0002",
-                    "tacDenial": "FCF8FCF8F0",
-                    "tacOnline": "FCF8FCF8F0",
-                    "tacDefault": "FCF8FCF8F0",
+                    "tacDenial": "0010000000",
+                    "tacOnline": "FFFFFFFFFF",
+                    "tacDefault": "FFFFFFFFFF",
                     "countryCode": "0356",
                     "termCap": "000808",
                     "addTermCap": "6040000001",
@@ -274,17 +274,17 @@
                 "entryPoint": {
                     "cvmRequireLimit": "000000020000",
                     "clessTxnLimit": "000000020000",
-                    "termFloorLimit": "000007D0"
+                    "termFloorLimit": "00000000"
                 },
                 "kernelConfig": {
                     "terminalType": "96",
                     "serviceQualifier": "01601691000110109100016012910001FF019100",
                     "terminalId": "3132333435363738",
-                    "terminalFloorLimit": "000007D0",
+                    "terminalFloorLimit": "00000000",
                     "appVersion": "0002",
-                    "tacDenial": "FCF8FCF8F0",
-                    "tacOnline": "FCF8FCF8F0",
-                    "tacDefault": "FCF8FCF8F0",
+                    "tacDenial": "0010000000",
+                    "tacOnline": "FFFFFFFFFF",
+                    "tacDefault": "FFFFFFFFFF",
                     "countryCode": "0356",
                     "termCap": "000808",
                     "addTermCap": "6040000001",
@@ -309,11 +309,11 @@
                     "terminalType": "96",
                     "serviceQualifier": "01601691000110109100016012910001FF019100",
                     "terminalId": "3132333435363738",
-                    "terminalFloorLimit": "000007D0",
+                    "terminalFloorLimit": "00000000",
                     "appVersion": "0002",
-                    "tacDenial": "FCF8FCF8F0",
-                    "tacOnline": "FCF8FCF8F0",
-                    "tacDefault": "FCF8FCF8F0",
+                    "tacDenial": "0010000000",
+                    "tacOnline": "FFFFFFFFFF",
+                    "tacDefault": "FFFFFFFFFF",
                     "countryCode": "0356",
                     "termCap": "000808",
                     "addTermCap": "6040000001",
@@ -332,17 +332,17 @@
                 "entryPoint": {
                     "cvmRequireLimit": "000000020000",
                     "clessTxnLimit": "000000020000",
-                    "termFloorLimit": "000007D0"
+                    "termFloorLimit": "00000000"
                 },
                 "kernelConfig": {
                     "terminalType": "96",
                     "serviceQualifier": "01601691000110109100016012910001FF019100",
                     "terminalId": "3132333435363738",
-                    "terminalFloorLimit": "000007D0",
+                    "terminalFloorLimit": "00000000",
                     "appVersion": "0002",
-                    "tacDenial": "FCF8FCF8F0",
-                    "tacOnline": "FCF8FCF8F0",
-                    "tacDefault": "FCF8FCF8F0",
+                    "tacDenial": "0010000000",
+                    "tacOnline": "FFFFFFFFFF",
+                    "tacDefault": "FFFFFFFFFF",
                     "countryCode": "0356",
                     "termCap": "000808",
                     "addTermCap": "6040000001",

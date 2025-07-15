@@ -26,4 +26,9 @@ void populateCardExpiry(uint8_t *buffer, size_t buffer_len);
  */
 void performCheckDate();
 
+/**
+ * To perform the pan encryption for offline sale in Hitachi / SBI
+ */
+void doPanEncryption();
+
 #endif

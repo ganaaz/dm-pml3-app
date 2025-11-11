@@ -637,7 +637,7 @@ void printCurrentTxnData(struct transactionData trxData)
     logData("Host Response : %s", trxData.hostResponseCode);
     logData("Money Add Trx Type : %s", trxData.moneyAddTrxType);
     logData("Check Date : %s", trxData.checkDate);
-    logData("Check Date Result : %s", trxData.checkDateResult);
+    logData("Check Date Result : %d", trxData.checkDateResult);
     logData("Trx Issue Detail : %s", trxData.trxIssueDetail);
     logData("Is Card Present Sent : %s", trxData.cardPresentedSent ? "true" : "false");
     logData("Is Rupay Txn : %s", trxData.isRupayTxn ? "true" : "false");

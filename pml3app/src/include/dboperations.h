@@ -381,6 +381,11 @@ void updateAirelReversalResponse(AirtelHostResponse airtelHostResponse, const ch
  **/
 void updateHostResponse(TransactionTable trxData);
 
+void updateReversalStatus(const char *transactionId, const char *reversalStatus,
+                          const char *txnStatus, const char *rrn, const char *authCode, const char *responseCode);
+
+void updateReversalStatusOnly(const char *transactionId, const char *reversalStatus);
+
 /*
  * To create test transaction data for offline
  */

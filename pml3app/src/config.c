@@ -20,8 +20,8 @@
 #include "ISO/utils.h"
 #include "include/abtinittable.h"
 
-#define VERSION "0.0.1"
-#define RELEASE_DATE "08-Jul-2025"
+#define VERSION "1.0.0"
+#define RELEASE_DATE "10-Nov-2025"
 
 struct applicationConfig appConfig;
 struct applicationData appData;
@@ -685,7 +685,7 @@ void loadAppConfig()
     }
     else
     {
-        appConfig.useConfigJson = false;
+        appConfig.useConfigJson = true;
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_ENABLE_ABT) != NULL)
@@ -1376,6 +1376,10 @@ int parseConfigAndUpdate(const char *data)
                 appConfig.useConfigJson = true;
             else
                 appConfig.useConfigJson = false;
+        }
+        else
+        {
+            appConfig.useConfigJson = true;
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_USE_ISO_HOST) != NULL)

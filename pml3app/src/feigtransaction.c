@@ -312,6 +312,8 @@ int callBackFinalOutcome(struct fetpf *client, const void *outcome,
     else
     {
         logData("Auto read card is NOT set");
+        *out_data_len = 6;
+        memcpy(out_data, FETPF_PROCEED_DONE_WITH_CARD_REMOVAL, 6);
     }
     return FETPF_RC_OK;
 }
@@ -628,7 +630,7 @@ int handle_online_request(const void *outcome, size_t outcome_len,
     // logData("ICC Data Len : %d", currentTxnData.iccDataLen);
 
     // To get the card expiry from the ICC Data
-    populateCardExpiry(buffer, buffer_len);
+    // populateCardExpiry(buffer, buffer_len);
 
     // Get the track 2 data from ICC and remove F padding
     struct tlv *tlv_data_record = NULL;
@@ -658,7 +660,7 @@ int handle_online_request(const void *outcome, size_t outcome_len,
 
     generateOrderId();
     logData("Order id of txn data : %s", currentTxnData.orderId);
-    encryptPanTrack2ExpDate();
+    // encryptPanTrack2ExpDate();
 
     // Save the txn to db
     strcpy(currentTxnData.txnStatus, STATUS_PENDING);
@@ -671,77 +673,82 @@ int handle_online_request(const void *outcome, size_t outcome_len,
 
     if (strcmp(currentTxnData.trxType, TRXTYPE_BALANCE_UPDATE) == 0)
     {
-        if (!appConfig.useAirtelHost)
-        {
-            logData("Balance update, generating mac for paytm");
-            generateMacBalanceUpdate(currentTxnData);
-            createTxnDataForOnline(currentTxnData);
-            long long endTime = getCurrentSeconds();
-            logTimeWarnData("Calculation completed : %lld", endTime);
-            logTimeWarnData("Time took for preparation : %lld", (endTime - startOnlineReqTime));
-            performHostUpdate(currentTxnData, appData.batchCounter, response, response_len, BALANCE_UPDATE);
-        }
-        else
-        {
-            logData("Balance update, generating for airtel");
-            createTxnDataForOnline(currentTxnData);
-            long long endTime = getCurrentSeconds();
-            logTimeWarnData("Calculation completed : %lld", endTime);
-            logTimeWarnData("Time took for preparation : %lld", (endTime - startOnlineReqTime));
-            logData("Going to perform airtel balance update");
-            performAirtelHostUpdate(currentTxnData, appData.batchCounter, response, response_len, BALANCE_UPDATE);
-        }
+        performHostBalanceUpdate(currentTxnData, appData.batchCounter, response, response_len);
+
+        // if (!appConfig.useAirtelHost)
+        // {
+        //     logData("Balance update, generating mac for paytm");
+        //     generateMacBalanceUpdate(currentTxnData);
+        //     createTxnDataForOnline(currentTxnData);
+        //     long long endTime = getCurrentSeconds();
+        //     logTimeWarnData("Calculation completed : %lld", endTime);
+        //     logTimeWarnData("Time took for preparation : %lld", (endTime - startOnlineReqTime));
+        //     performHostUpdate(currentTxnData, appData.batchCounter, response, response_len, BALANCE_UPDATE);
+        // }
+
+        // else
+        // {
+        //     logData("Balance update, generating for airtel");
+        //     createTxnDataForOnline(currentTxnData);
+        //     long long endTime = getCurrentSeconds();
+        //     logTimeWarnData("Calculation completed : %lld", endTime);
+        //     logTimeWarnData("Time took for preparation : %lld", (endTime - startOnlineReqTime));
+        //     logData("Going to perform airtel balance update");
+        //     performAirtelHostUpdate(currentTxnData, appData.batchCounter, response, response_len, BALANCE_UPDATE);
+        // }
     }
 
     if (strcmp(currentTxnData.trxType, TRXTYPE_SERVICE_CREATE) == 0)
     {
-        if (!appConfig.useAirtelHost)
-        {
-            logData("Service create, generating mac");
-            generateMacServiceCreation(currentTxnData);
-            createTxnDataForOnline(currentTxnData);
+        performHostServiceCreate(currentTxnData, appData.batchCounter, response, response_len);
+        //     if (!appConfig.useAirtelHost)
+        //     {
+        //         logData("Service create, generating mac");
+        //         generateMacServiceCreation(currentTxnData);
+        //         createTxnDataForOnline(currentTxnData);
 
-            long long endTime = getCurrentSeconds();
-            logTimeWarnData("Calculation completed : %lld", endTime);
-            logTimeWarnData("Time took for preparation : %lld", (endTime - startOnlineReqTime));
+        //         long long endTime = getCurrentSeconds();
+        //         logTimeWarnData("Calculation completed : %lld", endTime);
+        //         logTimeWarnData("Time took for preparation : %lld", (endTime - startOnlineReqTime));
 
-            performHostUpdate(currentTxnData, appData.batchCounter, response, response_len, SERVICE_CREATION);
-        }
-        else
-        {
-            logData("Service Create, generating for airtel");
-            createTxnDataForOnline(currentTxnData);
-            long long endTime = getCurrentSeconds();
-            logTimeWarnData("Calculation completed : %lld", endTime);
-            logTimeWarnData("Time took for preparation : %lld", (endTime - startOnlineReqTime));
-            logData("Going to perform airtel service create");
-            performAirtelHostUpdate(currentTxnData, appData.batchCounter, response, response_len, SERVICE_CREATION);
-        }
+        //         performHostUpdate(currentTxnData, appData.batchCounter, response, response_len, SERVICE_CREATION);
+        //     }
+        //     else
+        //     {
+        //         logData("Service Create, generating for airtel");
+        //         createTxnDataForOnline(currentTxnData);
+        //         long long endTime = getCurrentSeconds();
+        //         logTimeWarnData("Calculation completed : %lld", endTime);
+        //         logTimeWarnData("Time took for preparation : %lld", (endTime - startOnlineReqTime));
+        //         logData("Going to perform airtel service create");
+        //         performAirtelHostUpdate(currentTxnData, appData.batchCounter, response, response_len, SERVICE_CREATION);
+        //     }
     }
 
     if (strcmp(currentTxnData.trxType, TRXTYPE_MONEY_ADD) == 0)
     {
-        if (!appConfig.useAirtelHost)
-        {
-            logData("Money add, generating mac");
-            generateMacMoneyAdd(currentTxnData);
-            createTxnDataForOnline(currentTxnData);
-            long long endTime = getCurrentSeconds();
-            logTimeWarnData("Calculation completed : %lld", endTime);
-            logTimeWarnData("Time took for preparation : %lld", (endTime - startOnlineReqTime));
+        performHostMoneyAdd(currentTxnData, appData.batchCounter, response, response_len);
+        //     if (!appConfig.useAirtelHost)
+        //     {
+        //         logData("Money add, generating mac");
+        //         generateMacMoneyAdd(currentTxnData);
+        //         createTxnDataForOnline(currentTxnData);
+        //         long long endTime = getCurrentSeconds();
+        //         logTimeWarnData("Calculation completed : %lld", endTime);
+        //         logTimeWarnData("Time took for preparation : %lld", (endTime - startOnlineReqTime));
 
-            performHostUpdate(currentTxnData, appData.batchCounter, response, response_len, MONEY_ADD);
-        }
-        else
-        {
-            logData("Money Add, generating for airtel");
-            createTxnDataForOnline(currentTxnData);
-            long long endTime = getCurrentSeconds();
-            logTimeWarnData("Calculation completed : %lld", endTime);
-            logTimeWarnData("Time took for preparation : %lld", (endTime - startOnlineReqTime));
-            logData("Going to perform airtel Money Add");
-            performAirtelHostUpdate(currentTxnData, appData.batchCounter, response, response_len, MONEY_ADD);
-        }
+        //         performHostUpdate(currentTxnData, appData.batchCounter, response, response_len, MONEY_ADD);
+        //     }
+        //     else
+        //     {
+        //         logData("Money Add, generating for airtel");
+        //         createTxnDataForOnline(currentTxnData);
+        //         long long endTime = getCurrentSeconds();
+        //         logTimeWarnData("Calculation completed : %lld", endTime);
+        //         logTimeWarnData("Time took for preparation : %lld", (endTime - startOnlineReqTime));
+        //         logData("Going to perform airtel Money Add");
+        //         performAirtelHostUpdate(currentTxnData, appData.batchCounter, response, response_len, MONEY_ADD);
+        //     }
     }
 
     logData("Sending responses back to kernel");
@@ -813,12 +820,12 @@ int generatePreProcessData(void **preData, size_t *preDataLen)
  * Call back track 2 event received from kernel, where the encrypted PAN
  * or the plain track2 is received
  **/
-void callBacktrack2(struct fetpf *client, const void *track2, size_t track_len)
+void callBacktrack2(struct fetpf *client, const void *track2Tlv, size_t track_len)
 {
     (void)client;
     logData("%s() called", __func__);
 
-    const uint8_t *data = (uint8_t *)track2;
+    const uint8_t *data = (uint8_t *)track2Tlv;
     logData("Track 2 Length : %d", track_len);
 
     uint8_t dataBuffer[100];
@@ -831,9 +838,49 @@ void callBacktrack2(struct fetpf *client, const void *track2, size_t track_len)
     memset(dataBuffer, 0x00, sizeof(dataBuffer));
     tlv_encode_value(tlv_track2, dataBuffer, &dataBufferLen);
     byteToHex(dataBuffer, dataBufferLen, track2Data);
-    logData("Track 2 Parsed and received : %s", track2Data); // TODO : Remove
-    // tlv_free(tlv_track2);
+    logData("Track 2 Parsed and received : %s", track2Data);
     tlv_free(tlv_track2_outcome);
+
+    if (strcmp(currentTxnData.trxType, TRXTYPE_BALANCE_UPDATE) == 0 ||
+        strcmp(currentTxnData.trxType, TRXTYPE_SERVICE_CREATE) == 0 ||
+        strcmp(currentTxnData.trxType, TRXTYPE_MONEY_ADD) == 0)
+    {
+        logData("Transaction type is balance update / Service create, so performing track 2 encryption");
+        unsigned char ksn[10];
+        char hex[256], hex2[100];
+        // logData("Plain Track 2 : %s", track2); // TODO Remove
+        // logData("Track 2 len : %d", strlen(track2));
+
+        char track2WithTag[50];
+        strcpy(track2WithTag, "57");
+        char track2HexLen[12];
+        sprintf(track2HexLen, "%02X", strlen(track2Data) / 2);
+        // logData("Hex length of Track 2 : %s", track2HexLen);
+        strcat(track2WithTag, track2HexLen);
+        strcat(track2WithTag, track2Data);
+
+        // logData("Input Track2 : %s", track2WithTag);
+        // logData("Input track 2 len : %d", strlen(track2WithTag));
+
+        encryptPan(track2WithTag, ksn, hex);
+        logData("Result : %s", hex);
+        byteToHex(ksn, 10, hex2);
+        logData("KSN Received : %s", hex2);
+        logData("KSN Len : %d", strlen(hex2));
+        strcpy(currentTxnData.ksn, "00000000000000000000");
+        strcat(currentTxnData.ksn, hex2);
+        logData("TXN Data KSN Value : %s", currentTxnData.ksn);
+        logData("TXN Data KSN Len : %d", strlen(currentTxnData.ksn));
+
+        strcpy(currentTxnData.track2Enc, hex);
+        logData("TXN Track2 Encrypted Value : %s", currentTxnData.track2Enc);
+        logData("TXN Track2 Encrypted Len : %d", strlen(currentTxnData.track2Enc));
+    }
+    else
+    {
+        logData("Transaction is not balance update / service create, so no Track 2 encryption required");
+    }
+
     char *updatedTrack2 = removeTrack2FPadding(track2Data, dataBufferLen * 2);
     strcpy(currentTxnData.plainTrack2, updatedTrack2);
     currentTxnData.plainTrack2[strlen(updatedTrack2)] = '\0';

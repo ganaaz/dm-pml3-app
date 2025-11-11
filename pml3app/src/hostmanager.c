@@ -751,30 +751,32 @@ void verifyAndDoReversal()
     {
         logInfo("There is a pending reversal, trying to send to host");
         logInfo("Transaction id for reversal : %s", transactionId);
-        if (isReversalOngoing == true)
-        {
-            logData("There is already ongoing reversal, so thread no need to do again.");
-            return;
-        }
-        TransactionTable trxTable = getTransactionTableData(transactionId);
+        performReversal(transactionId, true, "E2");
 
-        if (strlen(trxTable.reversalMac) == 0)
-        {
-            if (appConfig.useAirtelHost)
-            {
-                strcpy(trxTable.reversalMac, "NoMac");
-            }
-            else
-            {
-                logData("There is no reversal mac present so generating it");
-                trxTable = generateMacReversal(trxTable, REVERSAL_CODE_22);
-                trxTable = generateMacEcho(trxTable, REVERSAL_CODE_22);
-            }
-            strcpy(trxTable.reversalInputResponseCode, REVERSAL_CODE_22);
-            strcpy(trxTable.reversalStatus, STATUS_PENDING);
-            updateReversalPreData(trxTable);
-        }
-        performReversal(trxTable);
+        // if (isReversalOngoing == true)
+        // {
+        //     logData("There is already ongoing reversal, so thread no need to do again.");
+        //     return;
+        // }
+        // TransactionTable trxTable = getTransactionTableData(transactionId);
+
+        // if (strlen(trxTable.reversalMac) == 0)
+        // {
+        //     if (appConfig.useAirtelHost)
+        //     {
+        //         strcpy(trxTable.reversalMac, "NoMac");
+        //     }
+        //     else
+        //     {
+        //         logData("There is no reversal mac present so generating it");
+        //         // trxTable = generateMacReversal(trxTable, REVERSAL_CODE_22);
+        //         // trxTable = generateMacEcho(trxTable, REVERSAL_CODE_22);
+        //     }
+        //     strcpy(trxTable.reversalInputResponseCode, REVERSAL_CODE_22);
+        //     strcpy(trxTable.reversalStatus, STATUS_PENDING);
+        //     updateReversalPreData(trxTable);
+        // }
+        // performReversal(trxTable);
     }
     else
     {
@@ -783,96 +785,95 @@ void verifyAndDoReversal()
 }
 
 /**
- * Perform the reversal with host connection
+ * Perform the reversal with host
  **/
-void performReversal(TransactionTable trxTable)
+void performReversal(const char *transactionId, bool isTimeOut, const char *responseCode)
 {
-    logInfo("Going to perform the reversal for transaction : %s", trxTable.transactionId);
-    isReversalOngoing = true;
+    logInfo("Going to perform the reversal for transaction : %s", transactionId);
+    logInfo("Time out scenario : %d", isTimeOut);
 
-    char responseMessage[1024 * 5] = {0};
-    if (!appConfig.useAirtelHost)
+    TransactionTable trxTable = getTransactionTableData(transactionId);
+    logData("STAN : %s", trxTable.stan);
+
+    REVERSAL_REQUEST reversal_request;
+
+    memcpy(reversal_request.DE03_PROC_CODE, trxTable.processingCode, sizeof(reversal_request.DE03_PROC_CODE));
+    memcpy(reversal_request.DE04_TXN_AMOUNT, trxTable.amount, sizeof(reversal_request.DE04_TXN_AMOUNT));
+    memcpy(reversal_request.DE11_STAN, trxTable.stan, sizeof(reversal_request.DE11_STAN));
+    memcpy(reversal_request.DE12_TXN_TIME, trxTable.time, sizeof(reversal_request.DE12_TXN_TIME));
+    memcpy(reversal_request.DE13_TXN_DATE, trxTable.date, sizeof(reversal_request.DE13_TXN_DATE));
+
+    // memcpy(reversal_request.DE35_TRACK_2_DATA, trxTable.track2, trxTable.track2Len);
+    // reversal_request.DE35_TRACK_2_DATA[trxTable.track2Len - 1] = '\0';
+    if (isTimeOut == false)
     {
-        char *message = generateReversalRequest(trxTable);
-        printf("Reversal Message : \n");
-        printf(message);
-        printf("\n");
-
-        logData("Sending data to PayTM");
-        sendHostRequest(message, appConfig.reversalUrl, responseMessage);
-        logData("Response length from server : %d", strlen(responseMessage));
-        printf("Response Message : %s", responseMessage);
-        free(message);
+        // responseCode : E1 in general
+        memcpy(reversal_request.DE37_RRN, trxTable.rrn, sizeof(reversal_request.DE37_RRN));
+        memcpy(reversal_request.DE38_AUTH_CODE, trxTable.authCode, sizeof(reversal_request.DE38_AUTH_CODE));
+        // memcpy(reversal_request.DE39_RESPONSE_CODE, trxTable.responseCode, sizeof(reversal_request.DE39_RESPONSE_CODE));
+        memcpy(reversal_request.DE39_RESPONSE_CODE, responseCode, sizeof(reversal_request.DE39_RESPONSE_CODE));
     }
     else
     {
-        char *message = generateAirtelReversalRequest(trxTable);
-        printf("Reversal Message : \n");
-        printf(message);
-        printf("\n");
-
-        removeSpaces(message);
-        char hmac_hex[HMAC_HEX_SIZE];
-        calculate_hmac_sha256(appConfig.airtelSignSalt, message, hmac_hex);
-        logData("Hmac hex of message : %s", hmac_hex);
-
-        char *uniqueId = malloc(UUID_STR_LEN);
-        generateUUID(uniqueId);
-        logInfo("Unique request Id : %s", uniqueId);
-
-        char body[1024 * 24] = {0};
-        strcpy(body, message);
-        free(message);
-        logData("Sending data to Airtel for reversal");
-        updateAirtelRequestData(trxTable.transactionId, body);
-        sendAirtelHostRequest(body, appConfig.airtelReversalUrl, responseMessage,
-                              uniqueId, hmac_hex);
-
-        logData("Response length from server : %d", strlen(responseMessage));
-        printf("Response Message : %s\n", responseMessage);
-        updateAirtelResponseData(trxTable.transactionId, responseMessage);
+        // responseCode : E2 in general
+        memcpy(reversal_request.DE39_RESPONSE_CODE, responseCode, sizeof(reversal_request.DE39_RESPONSE_CODE));
+        logInfo("Time out scenario so no RRN / Auth is sent to host only response code E2");
     }
 
-    if (strlen(responseMessage) == 0)
-    {
-        isReversalOngoing = false;
-        logError("There is no response to parse for reversal");
-        return;
-    }
+    reversal_request.DE55_ICC_DATA.value = (char *)malloc(trxTable.iccDataLen + 1);
+    memcpy(reversal_request.DE55_ICC_DATA.value, trxTable.iccData, trxTable.iccDataLen);
+    reversal_request.DE55_ICC_DATA.value[trxTable.iccDataLen] = '\0';
+    reversal_request.DE55_ICC_DATA.len = trxTable.iccDataLen;
 
-    HttpResponseData httpResponseData = parseHttpResponse(responseMessage);
+    memcpy(reversal_request.DE62_INVOICE_NUMBER, trxTable.stan, sizeof(reversal_request.DE62_INVOICE_NUMBER));
 
-    if (httpResponseData.code == 200 && httpResponseData.messageLen != 0)
+    reversal_request.DE63_PRIVATE_DATA.value = (char *)malloc(3);
+    strcpy(reversal_request.DE63_PRIVATE_DATA.value, "03");
+    reversal_request.DE63_PRIVATE_DATA.value[2] = '\0';
+    reversal_request.DE63_PRIVATE_DATA.len = 2;
+
+    REVERSAL_RESPONSE reversal_response;
+    int txn = REVERSAL;
+    if (isTimeOut == true)
+        txn = REVERSAL_TIMEOUT;
+
+    ISO8583_ERROR_CODES ret = process_reversal_transaction(&reversal_request, &reversal_response, txn);
+
+    logData("Reversal Return code : %d", ret);
+
+    free(reversal_request.DE55_ICC_DATA.value);
+    free(reversal_request.DE63_PRIVATE_DATA.value);
+
+    if (ret == TXN_SUCCESS)
     {
-        if (appConfig.useAirtelHost == false)
+        logData("Amount Received: %s", reversal_response.DE04_TXN_AMOUNT);
+        logData("Stan Received : %s", reversal_response.DE11_STAN);
+        logData("Txn Time Received : %s", reversal_response.DE12_TXN_TIME);
+        logData("Txn Date Received : %s", reversal_response.DE13_TXN_DATE);
+        logData("RRN Received : %s", reversal_response.DE37_RRN);
+        logData("Auth Code Received : %s", reversal_response.DE38_AUTH_CODE);
+        logData("Response Code Received : %s", reversal_response.DE39_RESPONSE_CODE);
+
+        if (strcmp(reversal_response.DE39_RESPONSE_CODE, "00") == 0)
         {
-            ReversalResponse reversalResponse = parseReversalHostResponseData(httpResponseData.message);
-            updateReversalResponse(reversalResponse, trxTable.transactionId);
-        }
-        else
-        {
-            logData("Parsing reversal / ack for airtel");
-            AirtelHostResponse hostResponse = parseAirtelHostResponseData(httpResponseData.message);
-            updateAirelReversalResponse(hostResponse, trxTable.transactionId);
-        }
-    }
-    else if (httpResponseData.code == 400 && httpResponseData.messageLen != 0)
-    {
-        if (appConfig.useAirtelHost)
-        {
-            logData("Parsing reversal error for airtel with code as 400");
-            AirtelHostResponse hostResponse = parseAirtelHostResponseData(httpResponseData.message);
-            updateAirelReversalResponse(hostResponse, trxTable.transactionId);
+            char txnStatus[50];
+            strcpy(txnStatus, trxTable.txnStatus);
+            logData("Current transaction status : %s", txnStatus);
+            if (strcmp(trxTable.txnStatus, STATUS_PENDING) == 0)
+            {
+                strcpy(txnStatus, STATUS_FAILURE);
+            }
+            logData("Updated transaction status : %s", txnStatus);
+
+            updateReversalStatus(transactionId, STATUS_SUCCESS, txnStatus,
+                                 reversal_response.DE37_RRN, reversal_response.DE38_AUTH_CODE,
+                                 reversal_response.DE39_RESPONSE_CODE);
         }
     }
     else
     {
-        logError("Http response error for reversal");
+        logData("Reversal Error  : %d", ret);
     }
-
-    isReversalOngoing = false;
-
-    free(httpResponseData.message);
 }
 
 /**
@@ -915,5 +916,632 @@ const char *getHostErrorString(ISO8583_ERROR_CODES errorCode)
     default:
         return "Error in processing with the host.";
         break;
+    }
+}
+
+/**
+ * Perform the balance update with host
+ **/
+void performHostBalanceUpdate(struct transactionData trxData, long batchCounter,
+                              uint8_t *response, size_t *response_len)
+{
+    char stan[7];
+    sprintf(stan, "%06ld", trxData.txnCounter);
+    logData("STAN : %s", stan);
+
+    char batch[7];
+    sprintf(batch, "%06ld", batchCounter);
+    logData("Batch : %s", batch);
+
+    BALANCE_UPDATE_REQUEST bal_update_req;
+    memcpy(bal_update_req.DE11_STAN, stan, sizeof(stan));
+
+    // Amount is always 0 for balance update
+    memcpy(bal_update_req.DE04_TXN_AMOUNT, "0", sizeof("0"));
+
+    memcpy(bal_update_req.DE35_TRACK_2_DATA, trxData.track2Enc, sizeof(trxData.track2Enc));
+
+    char ksn[45];
+    strcpy(ksn, "0020");
+    strcat(ksn, trxData.ksn);
+    memcpy(bal_update_req.DE53_SECURITY_DATA, ksn, sizeof(ksn));
+
+    bal_update_req.DE55_ICC_DATA.value = (char *)malloc(trxData.iccDataLen + 1);
+    memcpy(bal_update_req.DE55_ICC_DATA.value, trxData.iccData, trxData.iccDataLen);
+    bal_update_req.DE55_ICC_DATA.value[trxData.iccDataLen] = '\0';
+    bal_update_req.DE55_ICC_DATA.len = trxData.iccDataLen;
+
+    memcpy(bal_update_req.DE56_BATCH_NUMBER, batch, sizeof(batch));
+    memcpy(bal_update_req.DE62_INVOICE_NUMBER, stan, sizeof(stan));
+
+    createTxnDataForOnline(trxData);
+
+    BALANCE_UPDATE_RESPONSE bal_update_resp;
+    ISO8583_ERROR_CODES ret = process_balance_update_transaction(&bal_update_req, &bal_update_resp);
+
+    free(bal_update_req.DE55_ICC_DATA.value);
+
+    if (ret == TXN_SUCCESS)
+    {
+        logData("Stan Received: %s", bal_update_resp.DE11_STAN);
+        logData("Txn Time Received : %s", bal_update_resp.DE12_TXN_TIME);
+        logData("Txn Date Received : %s", bal_update_resp.DE13_TXN_DATE);
+        logData("RRN Received : %s", bal_update_resp.DE37_RRN);
+        logData("Authcode Received : %s", bal_update_resp.DE38_AUTH_CODE);
+        logData("bal_update_response Code Received : %s", bal_update_resp.DE39_RESPONSE_CODE);
+        logData("Field 55 Received : %s", bal_update_resp.DE55_ICC_DATA.value);
+
+        *response_len = 4;
+        response[0] = 0x8A;
+        response[1] = 0x02;
+        response[2] = (uint8_t)bal_update_resp.DE39_RESPONSE_CODE[0];
+        response[3] = (uint8_t)bal_update_resp.DE39_RESPONSE_CODE[1];
+
+        if (bal_update_resp.DE55_ICC_DATA.value != NULL)
+        {
+            *response_len = 4 + bal_update_resp.DE55_ICC_DATA.len / 2;
+            uint8_t issuer_authentication_data[96] = {0};
+            size_t issuer_authentication_data_len = bal_update_resp.DE55_ICC_DATA.len / 2;
+
+            libtlv_hex_to_bin(bal_update_resp.DE55_ICC_DATA.value, issuer_authentication_data,
+                              &issuer_authentication_data_len);
+
+            logData("91 Length : %d", issuer_authentication_data_len);
+            for (int i = 0; i < issuer_authentication_data_len; i++)
+            {
+                response[i + 4] = issuer_authentication_data[i];
+            }
+        }
+    }
+    else
+    {
+        logError("Host data failed with error code : %d", ret);
+    }
+
+    doBalanceUpdateHostResponseInDb(bal_update_resp, trxData.transactionId, ret);
+}
+
+/**
+ * Update the balance update txn host response in db
+ **/
+void doBalanceUpdateHostResponseInDb(BALANCE_UPDATE_RESPONSE bal_update_resp,
+                                     const char *transactionId, int hostResult)
+{
+    TransactionTable trxTable = getTransactionTableData(transactionId);
+    logData("Transaction id received : %s", trxTable.transactionId);
+    sprintf(trxTable.reversalStatus, "%s", "");
+    bool isReversal = false;
+
+    if (hostResult == 0)
+    {
+        if (bal_update_resp.DE37_RRN != NULL)
+        {
+            sprintf(trxTable.rrn, "%s", bal_update_resp.DE37_RRN);
+        }
+        else
+        {
+            memset(trxTable.rrn, 0, sizeof(trxTable.rrn));
+            logWarn("RRN Not Received");
+        }
+
+        if (bal_update_resp.DE38_AUTH_CODE != NULL)
+        {
+            sprintf(trxTable.authCode, "%s", bal_update_resp.DE38_AUTH_CODE);
+        }
+        else
+        {
+            memset(trxTable.authCode, 0, sizeof(trxTable.authCode));
+            logWarn("Authcode Not Received %s.", "");
+        }
+
+        if (bal_update_resp.DE39_RESPONSE_CODE != NULL)
+        {
+            sprintf(trxTable.hostResultCode, "%s", bal_update_resp.DE39_RESPONSE_CODE);
+        }
+        else
+        {
+            memset(trxTable.hostResultCode, 0, sizeof(trxTable.hostResultCode));
+            logWarn("Response Code Not Received %s.", "");
+        }
+
+        if (bal_update_resp.DE55_ICC_DATA.value != NULL)
+        {
+            // Get the update amount from the last 6 byte data
+            // TODO : Parse using TLV
+            char updateAmount[13];
+            int j = 0;
+            int iccLen = bal_update_resp.DE55_ICC_DATA.len;
+            for (int i = iccLen - 12; i < iccLen; i++)
+            {
+                updateAmount[j++] = bal_update_resp.DE55_ICC_DATA.value[i];
+            }
+            updateAmount[j] = '\0';
+            logData("Updated amount received : %s", updateAmount);
+            sprintf(trxTable.updateAmount, "%s", updateAmount);
+        }
+        else
+        {
+            memset(trxTable.updateAmount, 0, sizeof(trxTable.updateAmount));
+        }
+
+        if (strcmp(trxTable.hostResultCode, "00") == 0)
+        {
+            sprintf(trxTable.hostStatus, "%s", STATUS_SUCCESS);
+        }
+        else
+        {
+            sprintf(trxTable.hostStatus, "%s", STATUS_FAILURE);
+        }
+    }
+    else
+    {
+        sprintf(trxTable.hostError, "%s", getHostErrorString(hostResult));
+        logWarn("Host error : %s", getHostErrorString(hostResult));
+        sprintf(trxTable.hostStatus, "%s", STATUS_FAILURE);
+        logError("Host Failed");
+        trxTable.hostRetry++;
+
+        memset(trxTable.rrn, 0, sizeof(trxTable.rrn));
+        if (bal_update_resp.DE37_RRN != NULL)
+        {
+            sprintf(trxTable.rrn, "%s", bal_update_resp.DE37_RRN);
+        }
+        else
+        {
+            logWarn("RRN Not Received");
+        }
+
+        memset(trxTable.authCode, 0, sizeof(trxTable.authCode));
+        if (bal_update_resp.DE38_AUTH_CODE != NULL)
+        {
+            sprintf(trxTable.authCode, "%s", bal_update_resp.DE38_AUTH_CODE);
+        }
+        else
+        {
+            logWarn("Authcode Not Received %s.", "");
+        }
+
+        memset(trxTable.hostResultCode, 0, sizeof(trxTable.hostResultCode));
+        if (bal_update_resp.DE39_RESPONSE_CODE != NULL)
+        {
+            sprintf(trxTable.hostResultCode, "%s", bal_update_resp.DE39_RESPONSE_CODE);
+        }
+        else
+        {
+            logWarn("Response Code Not Received %s.", "");
+        }
+
+        memset(trxTable.reversalStatus, 0, sizeof(trxTable.reversalStatus));
+        if (hostResult == TXN_RECEIVE_FROM_HOST_FAILED ||
+            hostResult == TXN_RECEIVE_FROM_HOST_TIMEOUT)
+        {
+            sprintf(trxTable.reversalStatus, STATUS_PENDING);
+            isReversal = true;
+        }
+        else
+        {
+            logInfo("Host failed with error, No Reversal required");
+        }
+    }
+
+    updateHostResponse(trxTable);
+
+    if (isReversal)
+    {
+        // performReversal(transactionId, true, "E2");
+    }
+}
+
+/**
+ * Perform the service create with host
+ **/
+void performHostServiceCreate(struct transactionData trxData, long batchCounter,
+                              uint8_t *response, size_t *response_len)
+{
+    char stan[7];
+    sprintf(stan, "%06ld", trxData.txnCounter);
+    logData("STAN : %s", stan);
+
+    char batch[7];
+    sprintf(batch, "%06ld", batchCounter);
+    logData("Batch : %s", batch);
+
+    SERVICE_CREATE_REQUEST service_create_req;
+    memcpy(service_create_req.DE11_STAN, stan, sizeof(stan));
+
+    // Amount is always 0 for service create
+    memcpy(service_create_req.DE04_TXN_AMOUNT, "0", sizeof("0"));
+
+    memcpy(service_create_req.DE35_TRACK_2_DATA, trxData.track2Enc, sizeof(trxData.track2Enc));
+    logData("Track 2 : %s", service_create_req.DE35_TRACK_2_DATA);
+
+    char ksn[45];
+    strcpy(ksn, "0020");
+    strcat(ksn, trxData.ksn);
+    memcpy(service_create_req.DE53_SECURITY_DATA, ksn, sizeof(ksn));
+    logData("KSN : %s", service_create_req.DE53_SECURITY_DATA);
+
+    service_create_req.DE55_ICC_DATA.value = (char *)malloc(trxData.iccDataLen + 1);
+    memcpy(service_create_req.DE55_ICC_DATA.value, trxData.iccData, trxData.iccDataLen);
+    service_create_req.DE55_ICC_DATA.value[trxData.iccDataLen] = '\0';
+    service_create_req.DE55_ICC_DATA.len = trxData.iccDataLen;
+
+    memcpy(service_create_req.DE56_BATCH_NUMBER, batch, sizeof(batch));
+    memcpy(service_create_req.DE62_INVOICE_NUMBER, stan, sizeof(stan));
+
+    createTxnDataForOnline(trxData);
+
+    SERVICE_CREATE_RESPONSE service_create_resp;
+    ISO8583_ERROR_CODES ret = process_service_create_transaction(&service_create_req, &service_create_resp);
+
+    free(service_create_req.DE55_ICC_DATA.value);
+
+    if (ret == TXN_SUCCESS)
+    {
+        logData("Stan Received: %s", service_create_resp.DE11_STAN);
+        logData("Txn Time Received : %s", service_create_resp.DE12_TXN_TIME);
+        logData("Txn Date Received : %s", service_create_resp.DE13_TXN_DATE);
+        logData("RRN Received : %s", service_create_resp.DE37_RRN);
+        logData("Authcode Received : %s", service_create_resp.DE38_AUTH_CODE);
+        logData("Response Code Received : %s", service_create_resp.DE39_RESPONSE_CODE);
+        logData("Field 55 Received : %s", service_create_resp.DE55_ICC_DATA.value);
+
+        *response_len = 4;
+        response[0] = 0x8A;
+        response[1] = 0x02;
+        response[2] = (uint8_t)service_create_resp.DE39_RESPONSE_CODE[0];
+        response[3] = (uint8_t)service_create_resp.DE39_RESPONSE_CODE[1];
+
+        if (service_create_resp.DE55_ICC_DATA.value != NULL)
+        {
+            *response_len = 4 + service_create_resp.DE55_ICC_DATA.len / 2;
+            uint8_t issuer_authentication_data[96] = {0};
+            size_t issuer_authentication_data_len = service_create_resp.DE55_ICC_DATA.len / 2;
+
+            libtlv_hex_to_bin(service_create_resp.DE55_ICC_DATA.value, issuer_authentication_data,
+                              &issuer_authentication_data_len);
+
+            logData("91 Length : %d", issuer_authentication_data_len);
+            for (int i = 0; i < issuer_authentication_data_len; i++)
+            {
+                response[i + 4] = issuer_authentication_data[i];
+            }
+        }
+    }
+    else
+    {
+        logError("Service Create Host data failed with error code : %d", ret);
+    }
+
+    doServiceCreateUpdateHostResponseInDb(service_create_resp, trxData.transactionId, ret);
+}
+
+/**
+ * Update the service create txn host response in db
+ **/
+void doServiceCreateUpdateHostResponseInDb(SERVICE_CREATE_RESPONSE service_create_resp,
+                                           const char *transactionId, int hostResult)
+{
+    TransactionTable trxTable = getTransactionTableData(transactionId);
+    logData("Transaction id received : %s", trxTable.transactionId);
+    sprintf(trxTable.reversalStatus, "%s", "");
+    bool isReversal = false;
+
+    if (hostResult == 0)
+    {
+        if (service_create_resp.DE37_RRN != NULL)
+        {
+            sprintf(trxTable.rrn, "%s", service_create_resp.DE37_RRN);
+        }
+        else
+        {
+            memset(trxTable.rrn, 0, sizeof(trxTable.rrn));
+            logWarn("RRN Not Received");
+        }
+
+        if (service_create_resp.DE38_AUTH_CODE != NULL)
+        {
+            sprintf(trxTable.authCode, "%s", service_create_resp.DE38_AUTH_CODE);
+        }
+        else
+        {
+            memset(trxTable.authCode, 0, sizeof(trxTable.authCode));
+            logWarn("Authcode Not Received %s.", "");
+        }
+
+        if (service_create_resp.DE39_RESPONSE_CODE != NULL)
+        {
+            sprintf(trxTable.hostResultCode, "%s", service_create_resp.DE39_RESPONSE_CODE);
+        }
+        else
+        {
+            memset(trxTable.hostResultCode, 0, sizeof(trxTable.hostResultCode));
+            logWarn("Response Code Not Received %s.", "");
+        }
+
+        memset(trxTable.updateAmount, 0, sizeof(trxTable.updateAmount));
+
+        if (strcmp(trxTable.hostResultCode, "00") == 0)
+        {
+            sprintf(trxTable.hostStatus, "%s", STATUS_SUCCESS);
+        }
+        else
+        {
+            sprintf(trxTable.hostStatus, "%s", STATUS_FAILURE);
+        }
+    }
+    else
+    {
+        sprintf(trxTable.hostError, "%s", getHostErrorString(hostResult));
+        logWarn("Host error : %s", getHostErrorString(hostResult));
+        sprintf(trxTable.hostStatus, "%s", STATUS_FAILURE);
+        logError("Host Failed");
+        trxTable.hostRetry++;
+
+        memset(trxTable.rrn, 0, sizeof(trxTable.rrn));
+        if (service_create_resp.DE37_RRN != NULL)
+        {
+            sprintf(trxTable.rrn, "%s", service_create_resp.DE37_RRN);
+        }
+        else
+        {
+            logWarn("RRN Not Received");
+        }
+
+        memset(trxTable.authCode, 0, sizeof(trxTable.authCode));
+        if (service_create_resp.DE38_AUTH_CODE != NULL)
+        {
+            sprintf(trxTable.authCode, "%s", service_create_resp.DE38_AUTH_CODE);
+        }
+        else
+        {
+            logWarn("Authcode Not Received %s.", "");
+        }
+
+        memset(trxTable.hostResultCode, 0, sizeof(trxTable.hostResultCode));
+        if (service_create_resp.DE39_RESPONSE_CODE != NULL)
+        {
+            sprintf(trxTable.hostResultCode, "%s", service_create_resp.DE39_RESPONSE_CODE);
+        }
+        else
+        {
+            logWarn("Response Code Not Received %s.", "");
+        }
+
+        memset(trxTable.reversalStatus, 0, sizeof(trxTable.reversalStatus));
+        if (hostResult == TXN_RECEIVE_FROM_HOST_FAILED ||
+            hostResult == TXN_RECEIVE_FROM_HOST_TIMEOUT)
+        {
+            logInfo("Service create no need for reversal");
+            // sprintf(trxTable.reversalStatus, STATUS_PENDING);
+            // isReversal = true;
+        }
+        else
+        {
+            logInfo("Host failed with error, No Reversal required");
+        }
+    }
+
+    updateHostResponse(trxTable);
+
+    if (isReversal)
+    {
+        // performReversal(transactionId, true, "E2");
+    }
+}
+
+/**
+ * Perform the money add with host
+ **/
+void performHostMoneyAdd(struct transactionData trxData, long batchCounter,
+                         uint8_t *response, size_t *response_len)
+{
+    char stan[7];
+    sprintf(stan, "%06ld", trxData.txnCounter);
+    logData("STAN : %s", stan);
+
+    char batch[7];
+    sprintf(batch, "%06ld", batchCounter);
+    logData("Batch : %s", batch);
+
+    MONEY_ADD_REQUEST money_add_req;
+    memcpy(money_add_req.DE11_STAN, stan, sizeof(stan));
+
+    char sAmount[13];
+    convertAmount(trxData.amount, sAmount);
+
+    logData("Amount for money add : %s", sAmount);
+    memcpy(money_add_req.DE04_TXN_AMOUNT, sAmount, sizeof(sAmount));
+
+    memcpy(money_add_req.DE35_TRACK_2_DATA, trxData.track2Enc, sizeof(trxData.track2Enc));
+
+    char ksn[45];
+    strcpy(ksn, "0020");
+    strcat(ksn, trxData.ksn);
+    memcpy(money_add_req.DE53_SECURITY_DATA, ksn, sizeof(ksn));
+
+    money_add_req.DE55_ICC_DATA.value = (char *)malloc(trxData.iccDataLen + 1);
+    memcpy(money_add_req.DE55_ICC_DATA.value, trxData.iccData, trxData.iccDataLen);
+    money_add_req.DE55_ICC_DATA.value[trxData.iccDataLen] = '\0';
+    money_add_req.DE55_ICC_DATA.len = trxData.iccDataLen;
+
+    memcpy(money_add_req.DE56_BATCH_NUMBER, batch, sizeof(batch));
+    memcpy(money_add_req.DE62_INVOICE_NUMBER, stan, sizeof(stan));
+
+    createTxnDataForOnline(trxData);
+
+    MONEY_ADD_RESPONSE money_add_resp;
+    ISO8583_ERROR_CODES ret = process_money_add_transaction(&money_add_req, &money_add_resp);
+
+    free(money_add_req.DE55_ICC_DATA.value);
+
+    if (ret == TXN_SUCCESS)
+    {
+        logData("Stan Received: %s", money_add_resp.DE11_STAN);
+        logData("Txn Time Received : %s", money_add_resp.DE12_TXN_TIME);
+        logData("Txn Date Received : %s", money_add_resp.DE13_TXN_DATE);
+        logData("RRN Received : %s", money_add_resp.DE37_RRN);
+        logData("Authcode Received : %s", money_add_resp.DE38_AUTH_CODE);
+        logData("Money add Code Received : %s", money_add_resp.DE39_RESPONSE_CODE);
+        logData("Field 55 Received : %s", money_add_resp.DE55_ICC_DATA.value);
+
+        *response_len = 4;
+        response[0] = 0x8A;
+        response[1] = 0x02;
+        response[2] = (uint8_t)money_add_resp.DE39_RESPONSE_CODE[0];
+        response[3] = (uint8_t)money_add_resp.DE39_RESPONSE_CODE[1];
+
+        if (money_add_resp.DE55_ICC_DATA.value != NULL)
+        {
+            *response_len = 4 + money_add_resp.DE55_ICC_DATA.len / 2;
+            uint8_t issuer_authentication_data[96] = {0};
+            size_t issuer_authentication_data_len = money_add_resp.DE55_ICC_DATA.len / 2;
+
+            libtlv_hex_to_bin(money_add_resp.DE55_ICC_DATA.value, issuer_authentication_data,
+                              &issuer_authentication_data_len);
+
+            logData("91 Length : %d", issuer_authentication_data_len);
+            for (int i = 0; i < issuer_authentication_data_len; i++)
+            {
+                response[i + 4] = issuer_authentication_data[i];
+            }
+        }
+    }
+    else
+    {
+        logError("Host data failed with error code : %d", ret);
+    }
+
+    doMoneyAddHostResponseInDb(money_add_resp, trxData.transactionId, ret);
+}
+
+/**
+ * Update the money add txn host response in db
+ **/
+void doMoneyAddHostResponseInDb(MONEY_ADD_RESPONSE money_add_resp,
+                                const char *transactionId, int hostResult)
+{
+    TransactionTable trxTable = getTransactionTableData(transactionId);
+    logData("Transaction id received : %s", trxTable.transactionId);
+    sprintf(trxTable.reversalStatus, "%s", "");
+    bool isReversal = false;
+
+    if (hostResult == 0)
+    {
+        if (money_add_resp.DE37_RRN != NULL)
+        {
+            sprintf(trxTable.rrn, "%s", money_add_resp.DE37_RRN);
+        }
+        else
+        {
+            memset(trxTable.rrn, 0, sizeof(trxTable.rrn));
+            logWarn("RRN Not Received");
+        }
+
+        if (money_add_resp.DE38_AUTH_CODE != NULL)
+        {
+            sprintf(trxTable.authCode, "%s", money_add_resp.DE38_AUTH_CODE);
+        }
+        else
+        {
+            memset(trxTable.authCode, 0, sizeof(trxTable.authCode));
+            logWarn("Authcode Not Received %s.", "");
+        }
+
+        if (money_add_resp.DE39_RESPONSE_CODE != NULL)
+        {
+            sprintf(trxTable.hostResultCode, "%s", money_add_resp.DE39_RESPONSE_CODE);
+        }
+        else
+        {
+            memset(trxTable.hostResultCode, 0, sizeof(trxTable.hostResultCode));
+            logWarn("Response Code Not Received %s.", "");
+        }
+
+        if (money_add_resp.DE55_ICC_DATA.value != NULL)
+        {
+            // Get the update amount from the last 6 byte data
+            // TODO : Parse using TLV
+            char updateAmount[13];
+            int j = 0;
+            int iccLen = money_add_resp.DE55_ICC_DATA.len;
+            for (int i = iccLen - 12; i < iccLen; i++)
+            {
+                updateAmount[j++] = money_add_resp.DE55_ICC_DATA.value[i];
+            }
+            updateAmount[j] = '\0';
+            logData("Updated amount received : %s", updateAmount);
+            sprintf(trxTable.updateAmount, "%s", updateAmount);
+        }
+        else
+        {
+            memset(trxTable.updateAmount, 0, sizeof(trxTable.updateAmount));
+        }
+
+        if (strcmp(trxTable.hostResultCode, "00") == 0)
+        {
+            sprintf(trxTable.hostStatus, "%s", STATUS_SUCCESS);
+        }
+        else
+        {
+            sprintf(trxTable.hostStatus, "%s", STATUS_FAILURE);
+        }
+    }
+    else
+    {
+        sprintf(trxTable.hostError, "%s", getHostErrorString(hostResult));
+        logWarn("Host error : %s", getHostErrorString(hostResult));
+        sprintf(trxTable.hostStatus, "%s", STATUS_FAILURE);
+        logError("Host Failed");
+        trxTable.hostRetry++;
+
+        memset(trxTable.rrn, 0, sizeof(trxTable.rrn));
+        if (money_add_resp.DE37_RRN != NULL)
+        {
+            sprintf(trxTable.rrn, "%s", money_add_resp.DE37_RRN);
+        }
+        else
+        {
+            logWarn("RRN Not Received");
+        }
+
+        memset(trxTable.authCode, 0, sizeof(trxTable.authCode));
+        if (money_add_resp.DE38_AUTH_CODE != NULL)
+        {
+            sprintf(trxTable.authCode, "%s", money_add_resp.DE38_AUTH_CODE);
+        }
+        else
+        {
+            logWarn("Authcode Not Received %s.", "");
+        }
+
+        memset(trxTable.hostResultCode, 0, sizeof(trxTable.hostResultCode));
+        if (money_add_resp.DE39_RESPONSE_CODE != NULL)
+        {
+            sprintf(trxTable.hostResultCode, "%s", money_add_resp.DE39_RESPONSE_CODE);
+        }
+        else
+        {
+            logWarn("Response Code Not Received %s.", "");
+        }
+
+        memset(trxTable.reversalStatus, 0, sizeof(trxTable.reversalStatus));
+        if (hostResult == TXN_RECEIVE_FROM_HOST_FAILED ||
+            hostResult == TXN_RECEIVE_FROM_HOST_TIMEOUT)
+        {
+            sprintf(trxTable.reversalStatus, STATUS_PENDING);
+            isReversal = true;
+        }
+        else
+        {
+            logInfo("Host failed with error, No Reversal required");
+        }
+    }
+
+    updateHostResponse(trxTable);
+
+    if (isReversal)
+    {
+        performReversal(transactionId, true, "E2");
     }
 }

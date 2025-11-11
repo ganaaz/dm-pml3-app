@@ -1382,11 +1382,20 @@ void resetServiceCandidateList()
 
 void handleServiceData()
 {
-    char *transactionId = malloc(UUID_STR_LEN);
-    generateUUID(transactionId);
-    logInfo("Unique Transaction Id generated : %s", transactionId);
-    strcpy(currentTxnData.transactionId, transactionId);
-    free(transactionId);
+    if (isSecondTap == false)
+    {
+        logInfo("First Tap");
+        char *transactionId = malloc(UUID_STR_LEN);
+        generateUUID(transactionId);
+        logInfo("Unique Transaction Id generated : %s", transactionId);
+        strcpy(currentTxnData.transactionId, transactionId);
+        free(transactionId);
+    }
+    else
+    {
+        logInfo("Second Tap, not generating trx id");
+        logInfo("Current Transaction Id : %s", currentTxnData.transactionId);
+    }
 
     if (appConfig.beepOnCardFound)
     {

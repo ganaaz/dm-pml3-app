@@ -617,23 +617,23 @@ char *handleSearchCard(struct message reqMessage)
                 return buildResponseMessage(STATUS_ERROR, ERR_MONEY_ADD_AMOUNT_NOT_AVAILABLE);
             }
 
-            if (isValidTrxMode(reqMessage.mData.trxMode) == false)
-            {
-                logData("Money add, invalid trx mode");
-                return buildResponseMessage(STATUS_ERROR, ERR_MONEY_ADD_WRONG_TYPE);
-            }
+            // if (isValidTrxMode(reqMessage.mData.trxMode) == false)
+            // {
+            //     logData("Money add, invalid trx mode");
+            //     return buildResponseMessage(STATUS_ERROR, ERR_MONEY_ADD_WRONG_TYPE);
+            // }
 
-            strcpy(appData.moneyAddTrxType, reqMessage.mData.trxMode);
-            logData("Money add transaction type : %s", appData.moneyAddTrxType);
+            // strcpy(appData.moneyAddTrxType, reqMessage.mData.trxMode);
+            // logData("Money add transaction type : %s", appData.moneyAddTrxType);
 
-            if (strlen(reqMessage.mData.sourceTxnId) == 0)
-            {
-                logData("Money add source txn id missing");
-                return buildResponseMessage(STATUS_ERROR, ERR_MONEY_MISSING_SOURCE_TXN);
-            }
+            // if (strlen(reqMessage.mData.sourceTxnId) == 0)
+            // {
+            //     logData("Money add source txn id missing");
+            //     return buildResponseMessage(STATUS_ERROR, ERR_MONEY_MISSING_SOURCE_TXN);
+            // }
 
-            strcpy(appData.sourceTxnId, reqMessage.mData.sourceTxnId);
-            logData("Money add source txn id : %s", appData.sourceTxnId);
+            // strcpy(appData.sourceTxnId, reqMessage.mData.sourceTxnId);
+            // logData("Money add source txn id : %s", appData.sourceTxnId);
         }
         else
         {
@@ -921,15 +921,15 @@ struct message parseMessage(const char *data)
 
         if (strcmp(reqMessage.sCard.trxtype, TRXTYPE_MONEY_ADD) == 0)
         {
-            if (json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_TYPE)) != NULL)
-            {
-                strcpy(reqMessage.mData.trxMode, (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_TYPE)));
-            }
+            // if (json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_TYPE)) != NULL)
+            // {
+            //     strcpy(reqMessage.mData.trxMode, (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_TYPE)));
+            // }
 
-            if (json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_SOURCE_TXN_ID)) != NULL)
-            {
-                strcpy(reqMessage.mData.sourceTxnId, (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_SOURCE_TXN_ID)));
-            }
+            // if (json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_SOURCE_TXN_ID)) != NULL)
+            // {
+            //     strcpy(reqMessage.mData.sourceTxnId, (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_SOURCE_TXN_ID)));
+            // }
         }
 
         if (strcmp(reqMessage.sCard.trxtype, TRXTYPE_SERVICE_CREATE) == 0)

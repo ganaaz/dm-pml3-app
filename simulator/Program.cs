@@ -20,11 +20,11 @@ namespace Simulator
 {
     class Program
     {
-        private static DateTime releaseDate = new DateTime(2025, 7, 8);
-        private static bool requestUser = false;
-        public static string LocalIPForAirtel = "10.0.0.20";
+        private static DateTime releaseDate = new DateTime(2025, 11, 10);
+        private static bool requestUser = true;
+        public static string LocalIPForAirtel = "192.168.100.11"; // "10.0.0.20";
         //public static string LocalIPForPayTM = "192.168.29.248";
-        private static string l3Server = "10.0.0.40";
+        private static string l3Server = "192.168.100.10"; // "10.0.0.40";
         //private static string l3Server = "192.168.29.248";
         private static int port = 9090;
         private static int dataPort = 9091;
@@ -55,7 +55,7 @@ namespace Simulator
         {
             Console.WriteLine("-------------------------------------------");
             Console.WriteLine("Datamatics Transit Gate Application for PML3");
-            Console.WriteLine("Version : 0.0.1");
+            Console.WriteLine("Version : 1.0.0");
             Console.WriteLine($"Release Date : {releaseDate.ToLongDateString()}");
             Console.WriteLine("-------------------------------------------");
 
@@ -88,7 +88,7 @@ namespace Simulator
             var hitachiOpt = Console.ReadLine();
             if (!string.IsNullOrWhiteSpace(hitachiOpt) && hitachiOpt.Equals("Y", StringComparison.OrdinalIgnoreCase))
             {
-                var proxy = new TcpProxy(IPAddress.Parse(LocalIPForAirtel), 5804, "172.18.24.251", 5804);
+                var proxy = new TcpProxy(IPAddress.Parse(LocalIPForAirtel), 5804, "172.18.24.251", 5839);
                 Task.Run(proxy.Start);
             }
 
@@ -1524,7 +1524,20 @@ namespace Simulator
                 }
             };
 
-            var strData = JsonConvert.SerializeObject(command);
+            var command2 = new Command
+            {
+                Cmd = "set_config",
+                config = new Config
+                {
+                    psp = new Psp
+                    {
+                        merchantId = "123",
+                        terminalId = "456",
+                    },
+                }
+            };
+
+            var strData = JsonConvert.SerializeObject(command2);
             Console.WriteLine("Data to send : " + strData);
             SendMessage(strData);
         }
@@ -1623,43 +1636,6 @@ namespace Simulator
                 return;
             }
 
-            Console.WriteLine("Enter the Type, 1 - CC, 2 - DC, 3 - UPI, 4 - CASH, 5 - ACCOUNT");
-            Console.Write("Type : ");
-            var addType = Console.ReadLine();
-            var addTypeStr = "";
-
-            if (addType == "1")
-                addTypeStr = "CC";
-
-            if (addType == "2")
-                addTypeStr = "DC";
-
-            if (addType == "2")
-                addTypeStr = "UPI";
-
-            if (addType == "4")
-                addTypeStr = "CASH";
-
-            if (addType == "5")
-                addTypeStr = "ACCOUNT";
-
-            if (addTypeStr == "")
-            {
-                Console.WriteLine("Invalid type. ");
-                return;
-            }
-            Console.WriteLine("Money Add Type : " + addTypeStr);
-
-            Console.WriteLine("Enter the Source Txn Id for Money Add : ");
-            var sourceTxnId = Console.ReadLine();
-            if (sourceTxnId.Trim() == "")
-            {
-                Console.WriteLine("Invalid sourceTxnId. ");
-                return;
-            }
-            Console.WriteLine("sourceTxnId : " + sourceTxnId);
-
-
             var command = new Command
             {
                 Cmd = "search_card",
@@ -1667,8 +1643,6 @@ namespace Simulator
                 TrxType = "money_add",
                 TimeOut = 10 * 1000,
                 Amount = moneyAddAmount,
-                MoneyAddType = addTypeStr,
-                MoneyAddSourceTxn = sourceTxnId
             };
             var strData = JsonConvert.SerializeObject(command);
             SendMessage(strData);

@@ -1141,6 +1141,84 @@ void updateAirelReversalResponse(AirtelHostResponse airtelHostResponse, const ch
 }
 
 /**
+ * Update the reversal status
+ **/
+void updateReversalStatusOnly(const char *transactionId, const char *reversalStatus)
+{
+    logData("Going to update the reversal status for : %s", transactionId);
+    logData("Status : %s", reversalStatus);
+
+    const char *query = "UPDATE Transactions "
+                        "SET ReversalStatus = ? "
+                        "WHERE TransactionId = ?";
+
+    sqlite3_stmt *statement;
+
+    if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
+    {
+        logWarn("Failed to prepare updateReversalStatus only status query !!!");
+        return;
+    }
+
+    sqlite3_bind_text(statement, 1, reversalStatus, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 2, transactionId, -1, SQLITE_STATIC);
+
+    int result = sqlite3_step(statement);
+    if (result != SQLITE_DONE)
+    {
+        logWarn("Failed to update record : %d", result);
+        return;
+    }
+    logData("updateReversalStatus only status is success");
+    sqlite3_finalize(statement);
+}
+
+/**
+ * Update the reversal data
+ **/
+void updateReversalStatus(const char *transactionId, const char *reversalStatus,
+                          const char *txnStatus, const char *rrn, const char *authCode, const char *responseCode)
+{
+    logData("Going to update the reversal status for : %s", transactionId);
+    logData("Status : %s", reversalStatus);
+    logData("Txn Status : %s", txnStatus);
+
+    const char *query = "UPDATE Transactions "
+                        "SET ReversalStatus = ?, "
+                        "TxnStatus = ?, "
+                        "HostStatus = ?, "
+                        "ReversalRRN = ?, "
+                        "ReversalAuthCode = ?, "
+                        "ReversalResponsecode = ? "
+                        "WHERE TransactionId = ?";
+
+    sqlite3_stmt *statement;
+
+    if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
+    {
+        logWarn("Failed to prepare updateReversalStatus query !!!");
+        return;
+    }
+
+    sqlite3_bind_text(statement, 1, reversalStatus, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 2, txnStatus, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 3, STATUS_SUCCESS, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 4, rrn, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 5, authCode, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 6, responseCode, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 7, transactionId, -1, SQLITE_STATIC);
+
+    int result = sqlite3_step(statement);
+    if (result != SQLITE_DONE)
+    {
+        logWarn("Failed to update record : %d", result);
+        return;
+    }
+    logData("updateReversalStatus success");
+    sqlite3_finalize(statement);
+}
+
+/**
  * Update reversal response back to db
  **/
 void updateReversalResponse(ReversalResponse reversalResponse, const char *transactionId)

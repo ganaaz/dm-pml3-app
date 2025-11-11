@@ -38,11 +38,6 @@ void performAirtelHostUpdate(struct transactionData trxData, long batchCounter,
                              uint8_t *response, size_t *response_len, enum host_trx_type hostTrxType);
 
 /**
- * Perform reversal
- **/
-void performReversal(TransactionTable trxTable);
-
-/**
  *  To initiate a verify terminal and get the response
  */
 char *performVerifyTerminal(const char tid[50], const char mid[50]);
@@ -66,6 +61,29 @@ const char *getHostErrorString(ISO8583_ERROR_CODES errorCode);
  * Process the host offline transaction with host
  **/
 TransactionTable processHostOfflineTxn(TransactionTable trxData);
+
+void performHostBalanceUpdate(struct transactionData trxData, long batchCounter,
+                              uint8_t *response, size_t *response_len);
+
+void doBalanceUpdateHostResponseInDb(BALANCE_UPDATE_RESPONSE bal_update_resp,
+                                     const char *transactionId, int hostResult);
+
+void performHostServiceCreate(struct transactionData trxData, long batchCounter,
+                              uint8_t *response, size_t *response_len);
+
+void doServiceCreateUpdateHostResponseInDb(SERVICE_CREATE_RESPONSE service_create_resp,
+                                           const char *transactionId, int hostResult);
+
+void performHostMoneyAdd(struct transactionData trxData, long batchCounter,
+                         uint8_t *response, size_t *response_len);
+
+/**
+ * Update the money add txn host response in db
+ **/
+void doMoneyAddHostResponseInDb(MONEY_ADD_RESPONSE money_add_resp,
+                                const char *transactionId, int hostResult);
+
+void performReversal(const char *transactionId, bool isTimeOut, const char *responseCode);
 
 ///// old codes
 

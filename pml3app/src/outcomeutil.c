@@ -228,19 +228,9 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
         strcmp(currentTxnData.hostResponseCode, "00") == 0)
     {
         logInfo("Host is success, but card failed, so generating reversal with code : %s", REVERSAL_CODE_E1);
-        if (appConfig.useAirtelHost)
-        {
-            strcpy(trxTable.reversalMac, "NoMac");
-        }
-        else
-        {
-            trxTable = generateMacReversal(trxTable, REVERSAL_CODE_E1);
-            trxTable = generateMacEcho(trxTable, REVERSAL_CODE_E1);
-        }
-        strcpy(trxTable.reversalInputResponseCode, REVERSAL_CODE_E1);
-        strcpy(trxTable.reversalStatus, STATUS_PENDING);
-        updateReversalPreData(trxTable);
-        // performReversal(trxTable);
+        updateReversalStatusOnly(currentTxnData.transactionId, STATUS_PENDING);
+        logInfo("Host is success, but card failed, so generating reversal with E1");
+        performReversal(currentTxnData.transactionId, false, "E1");
     }
 
     logInfo("Transaction completed with status : %s", currentTxnData.txnStatus);
@@ -333,34 +323,39 @@ void doPanEncryption()
 
 void performCheckDate()
 {
-    logData("Expiry Date : %s", currentTxnData.plainExpDate);
+    logData("Performing check date");
+    // logData("Expiry Date : %s", currentTxnData.plainExpDate);
     logData("Check Date : %s", currentTxnData.checkDate);
 
-    struct tm ckDate = {0}, expDate = {0};
-    strptime(currentTxnData.checkDate, "%Y-%m-%d", &ckDate);
-    logData("Year : %d", ckDate.tm_year);
-    logData("Month : %d", ckDate.tm_mon);
-    logData("Day : %d", ckDate.tm_mday);
+    char fullExpiry[9];
+    strcpy(fullExpiry, "20");
+    strcat(fullExpiry, currentTxnData.plainExpDate);
+    // logData("Full Expiry : %s", fullExpiry);
 
-    strptime(currentTxnData.plainExpDate, "%y%m%d", &expDate);
-    // logData("Year : %d", expDate.tm_year);
-    // logData("Month : %d", expDate.tm_mon);
-    // logData("Day : %d", expDate.tm_mday);
-
-    time_t start_time, end_time;
-    start_time = mktime(&expDate);
-    end_time = mktime(&ckDate);
-
-    double seconds = difftime(start_time, end_time);
-    logData("Seconds : %f", seconds);
-    if (seconds > 0)
+    char checkDateClean[9] = {0};
+    int j = 0;
+    for (int i = 0; currentTxnData.checkDate[i] != '\0'; i++)
     {
-        currentTxnData.checkDateResult = 1;
+        if (currentTxnData.checkDate[i] != '-')
+        {
+            checkDateClean[j++] = currentTxnData.checkDate[i];
+        }
     }
+    checkDateClean[j] = '\0';
+    logData("Clean Check Date : %s", checkDateClean);
+
+    long long expVal = atoll(fullExpiry);
+    long long chkVal = atoll(checkDateClean);
+
+    // logData("Expiry (long): %lld", expVal);
+    logData("Check  (long): %lld", chkVal);
+
+    if (expVal >= chkVal)
+        currentTxnData.checkDateResult = 1; // valid
     else
-    {
-        currentTxnData.checkDateResult = 0;
-    }
+        currentTxnData.checkDateResult = 0; // expired
+
+    logData("Check Date Result : %d", currentTxnData.checkDateResult);
 }
 
 void populateCardExpiry(uint8_t *buffer, size_t buffer_len)
@@ -391,19 +386,18 @@ void handleSecondTapNotPresented()
     logInfo("Second tap, transaction id already created : %s", currentTxnData.transactionId);
     TransactionTable trxTable = getTransactionTableData(currentTxnData.transactionId);
 
-    strcpy(currentTxnData.updatedAmount, trxTable.updateAmount);
-    if (appConfig.useAirtelHost)
-        strcpy(currentTxnData.hostResponseCode, trxTable.airtelSwitchResponseCode);
-    else
-        strcpy(currentTxnData.hostResponseCode, trxTable.hostResultCode);
+    // Update the reversal status to pending
+    updateReversalStatusOnly(currentTxnData.transactionId, STATUS_PENDING);
 
+    strcpy(currentTxnData.updatedAmount, trxTable.updateAmount);
+    strcpy(currentTxnData.hostResponseCode, trxTable.hostResultCode);
     logData("Updated Amount : %s", currentTxnData.updatedAmount);
     logData("Host Response : %s", currentTxnData.hostResponseCode);
     strcpy(currentTxnData.updatedAmount, "000000000000");
     strcpy(currentTxnData.txnStatus, STATUS_FAILURE);
 
-    logData("Going to update the status for the  balance update / money add / service creation");
-    // Update data for balance update / money add / service creation
+    logData("Going to update the status for the balance update");
+    // Update data for balance update
     updateTransactionStatus(currentTxnData.transactionId, currentTxnData.txnStatus, trxTable.updatedBalance);
 
     if (appConfig.isTimingEnabled)
@@ -420,19 +414,9 @@ void handleSecondTapNotPresented()
         strcmp(currentTxnData.hostResponseCode, "00") == 0)
     {
         logInfo("Host is success, but card failed, so generating reversal with code : %s", REVERSAL_CODE_E2);
-        if (appConfig.useAirtelHost)
-        {
-            strcpy(trxTable.reversalMac, "NoMac");
-        }
-        else
-        {
-            trxTable = generateMacReversal(trxTable, REVERSAL_CODE_E2);
-            trxTable = generateMacEcho(trxTable, REVERSAL_CODE_E2);
-        }
-        strcpy(trxTable.reversalInputResponseCode, REVERSAL_CODE_E2);
-        strcpy(trxTable.reversalStatus, STATUS_PENDING);
-        updateReversalPreData(trxTable);
-        // performReversal(trxTable);
+        updateReversalStatusOnly(currentTxnData.transactionId, STATUS_PENDING);
+        logInfo("Host is success, but card failed, so generating reversal");
+        performReversal(currentTxnData.transactionId, false, "E2");
     }
 
     logInfo("Transaction completed with status : %s", currentTxnData.txnStatus);

@@ -1,3 +1,14 @@
+Version : 1.0.0
+Date : 10-Nov-25
+
+Changes
+
+- PML3 App with NPIC Certified for All online / offline transactions
+- Update the app_config with the right keys and host config / merchant / terminal id
+
+
+=============================================================================================
+
 Version : 0.0.1
 Date : 08-Jul-25
 

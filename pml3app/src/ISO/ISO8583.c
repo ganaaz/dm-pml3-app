@@ -118,7 +118,10 @@ ISO8583_MTI mti_def[] = {
     {BALANCE_ENQUIRY, "0220", "0230"},
     {SETTLEMENT, "0500", "0510"},
     {REVERSAL, "0400", "0410"},
-    {REVERSAL_TIMEOUT, "0400", "0410"}};
+    {REVERSAL_TIMEOUT, "0400", "0410"},
+    {SERVICE_CREATE, "0200", "0210"},
+    {MONEY_ADD_HOST, "0200", "0210"},
+};
 
 ISO8583_PROCESSING_CODES pro_codes_def[] = {
     {MONEY_LOAD_BALANCE_UPDATE, "840000", "840000"},
@@ -126,7 +129,10 @@ ISO8583_PROCESSING_CODES pro_codes_def[] = {
     {BALANCE_ENQUIRY, "000000", "000000"},
     {SETTLEMENT, "920000", "920000"},
     {REVERSAL, "000000", "840000"},
-    {REVERSAL_TIMEOUT, "000000", "840000"}};
+    {REVERSAL_TIMEOUT, "000000", "840000"},
+    {SERVICE_CREATE, "830000", "830000"},
+    {MONEY_ADD_HOST, "820000", "820000"},
+};
 
 ISO8583_BITMAP_MAPPING bitmap_def[] = {
     //{ MONEY_LOAD_BALANCE_UPDATE,    0x30200580, 0x20c00306, 0x30380000, 0x0e800202},
@@ -139,7 +145,10 @@ ISO8583_BITMAP_MAPPING bitmap_def[] = {
     {SETTLEMENT, 0x20200000, 0x00C00012, 0x20380000, 0x02800018},
     //{ REVERSAL,                     0x703C0480, 0x00C00206, 0x70380000, 0x0EC00006}
     {REVERSAL, 0x30380480, 0x2EC00206, 0x30380000, 0x0E800002},
-    {REVERSAL_TIMEOUT, 0x30380480, 0x22C00206, 0x30380000, 0x0E800002}};
+    {REVERSAL_TIMEOUT, 0x30380480, 0x22C00206, 0x30380000, 0x0E800002},
+    {SERVICE_CREATE, 0x30200580, 0x20C00B04, 0x30380000, 0x0e800e02}, // With security and for paycraft
+    {MONEY_ADD_HOST, 0x30200580, 0x20C00B06, 0x30380000, 0x0e800a02}, // With security and for paycraft
+};
 
 /********************************************************************** END DEFENISIONS **********************************************************************/
 
@@ -845,11 +854,11 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
     {
 
     case DE03_PROCESSING_CODE:
-        if (strncmp(pro_codes_def[txn].resp_proc_code, (const char *)resp_txn_obj->data[field].field_value.simple_field.value, strlen((const char *)resp_txn_obj->data[field].field_value.simple_field.value)))
-        {
-            logData("Processing Code Validation Failed");
-            return TXN_PACK_VALIDATION_FAILED;
-        }
+        // if (strncmp(pro_codes_def[txn].resp_proc_code, (const char *)resp_txn_obj->data[field].field_value.simple_field.value, strlen((const char *)resp_txn_obj->data[field].field_value.simple_field.value)))
+        // {
+        //     logData("Processing Code Validation Failed");
+        //     return TXN_PACK_VALIDATION_FAILED;
+        // }
         break;
     case DE11_STAN:
         if (strncmp((const char *)txn_obj->data[field].field_value.simple_field.value, (const char *)resp_txn_obj->data[field].field_value.simple_field.value, strlen((const char *)resp_txn_obj->data[field].field_value.simple_field.value)))

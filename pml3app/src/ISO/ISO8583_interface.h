@@ -88,6 +88,52 @@ typedef struct BALANCE_UPDATE_RESP
     VARIABLE_LENGTH_FIELD DE55_ICC_DATA;
 } BALANCE_UPDATE_RESPONSE;
 
+typedef struct MONEY_ADD_REQ
+{
+    char DE04_TXN_AMOUNT[13];
+    char DE11_STAN[7];
+    char DE35_TRACK_2_DATA[49];
+    VARIABLE_LENGTH_FIELD DE55_ICC_DATA;
+    char DE53_SECURITY_DATA[45];
+    char DE56_BATCH_NUMBER[7];
+    char DE62_INVOICE_NUMBER[7];
+} MONEY_ADD_REQUEST;
+
+typedef struct MONEY_ADD_RESP
+{
+    char DE04_TXN_AMOUNT[13];
+    char DE11_STAN[7];
+    char DE12_TXN_TIME[7];
+    char DE13_TXN_DATE[5];
+    char DE37_RRN[13];
+    char DE38_AUTH_CODE[7];
+    char DE39_RESPONSE_CODE[3];
+    VARIABLE_LENGTH_FIELD DE55_ICC_DATA;
+} MONEY_ADD_RESPONSE;
+
+typedef struct SERVICE_CREATE_REQ
+{
+    char DE04_TXN_AMOUNT[13];
+    char DE11_STAN[7];
+    char DE35_TRACK_2_DATA[49];
+    VARIABLE_LENGTH_FIELD DE55_ICC_DATA;
+    char DE53_SECURITY_DATA[45];
+    char DE56_BATCH_NUMBER[7];
+    char DE62_INVOICE_NUMBER[7];
+} SERVICE_CREATE_REQUEST;
+
+typedef struct SERVICE_CREATE_RESP
+{
+    char DE04_TXN_AMOUNT[13];
+    char DE11_STAN[7];
+    char DE12_TXN_TIME[7];
+    char DE13_TXN_DATE[5];
+    char DE37_RRN[13];
+    char DE38_AUTH_CODE[7];
+    char DE39_RESPONSE_CODE[3];
+    VARIABLE_LENGTH_FIELD DE55_ICC_DATA;
+} SERVICE_CREATE_RESPONSE;
+
 typedef struct BALANCE_ENQUIRY_REQ
 {
     char DE02_PAN_NUMBER[20];
@@ -179,6 +225,30 @@ ISO8583_ERROR_CODES initialize_static_data(ISO8583_STATIC_DATA *data);
     out: {Type : ISO8583_ERROR_CODES} : Status code : return TXN_SUCCESS if Success, Other ErrorCodes(ISO8583_ERROR_CODES) if failure.
 */
 ISO8583_ERROR_CODES process_balance_update_transaction(BALANCE_UPDATE_REQUEST *txn_obj, BALANCE_UPDATE_RESPONSE *resp);
+
+/*  func : process_money_add_transaction
+    description : Processes the money add transaction
+                  1) Validate and Pack ISO8583 request message.
+                  2) Process Transaction with Host.
+                  3) Parse and Validate ISO8583 response message from Host.
+                  4) Construct MONEY_ADD_RESPONSE* and return.
+    in: txn_obj : {Type : MONEY_ADD_REQUEST*} : Transaction Request Object to be passed after setting all the required fields.
+    out: resp : {Type : MONEY_ADD_RESPONSE*} : Transaction Response Object post processing the transaction with Host.
+    out: {Type : ISO8583_ERROR_CODES} : Status code : return TXN_SUCCESS if Success, Other ErrorCodes(ISO8583_ERROR_CODES) if failure.
+*/
+ISO8583_ERROR_CODES process_money_add_transaction(MONEY_ADD_REQUEST *txn_obj, MONEY_ADD_RESPONSE *resp);
+
+/*  func : process_service_create_transaction
+    description : Processes the service create transaction
+                  1) Validate and Pack ISO8583 request message.
+                  2) Process Transaction with Host.
+                  3) Parse and Validate ISO8583 response message from Host.
+                  4) Construct SERVICE_CREATE_RESPONSE* and return.
+    in: txn_obj : {Type : SERVICE_CREATE_REQUEST*} : Transaction Request Object to be passed after setting all the required fields.
+    out: resp : {Type : SERVICE_CREATE_RESPONSE*} : Transaction Response Object post processing the transaction with Host.
+    out: {Type : ISO8583_ERROR_CODES} : Status code : return TXN_SUCCESS if Success, Other ErrorCodes(ISO8583_ERROR_CODES) if failure.
+*/
+ISO8583_ERROR_CODES process_service_create_transaction(SERVICE_CREATE_REQUEST *txn_obj, SERVICE_CREATE_RESPONSE *resp);
 
 /*  func : process_offline_sale_transaction
     description : Processes the offline sale transaction

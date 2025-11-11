@@ -17,7 +17,7 @@ KEYID = 00A3
 #SLOTAPP = app0
 #KEYID = 00A0
 PIN = 648219
-VERSION = "0.0.1"
+VERSION = "1.0.0"
 APPDESC = "Datamatic L3 App - PML3"
 
 # Makefile settings - Can be customized.
@@ -47,7 +47,7 @@ $(shell mkdir -p obj/ISO)
 $(shell mkdir -p obj/JHost)
 $(shell mkdir -p obj/http-parser)
 
-all: cpsql $(APPNAME) signapp copyToTerminal
+all: cpsql $(APPNAME) signapp copyToTerminal update
 
 cpsql:
 	cp ./pre-built/sqlite3.o ./obj/sqlite3.o

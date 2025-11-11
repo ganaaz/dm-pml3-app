@@ -141,7 +141,9 @@ ISO8583_ERROR_CODES receive_from_host(unsigned char **outbuf, int *outbuf_len, i
         clean_socket(soc_fd, epfd);
         return TXN_RECEIVE_FROM_HOST_FAILED;
     }
+    logData("Going to wait");
     int ready = epoll_wait(epfd, events, 1, timeout_sec * 1000);
+    logData("Wait completed : %d", ready);
     if (ready == 0)
     {
         errno = ETIMEDOUT;
@@ -157,6 +159,14 @@ ISO8583_ERROR_CODES receive_from_host(unsigned char **outbuf, int *outbuf_len, i
             if (NULL != receive_buf)
             {
                 int bytes_received = recv(events[i].data.fd, receive_buf, receive_len, 0);
+                if (bytes_received == -1)
+                {
+                    logData("NULL Receive Buffer");
+                    if (receive_buf)
+                        free(receive_buf);
+                    clean_socket(soc_fd, epfd);
+                    return TXN_RECEIVE_FROM_HOST_FAILED;
+                }
                 {
                     char *hex_response = NULL;
                     bytearray_to_hexstr(receive_buf, bytes_received, &hex_response);
@@ -219,7 +229,10 @@ ISO8583_ERROR_CODES process_with_host(const char *address, int port, int timeout
 
     gettimeofday(&t2, NULL);
 
+    logData("Waiting for response\n");
+
     ret = receive_from_host(response, response_len, soc_fd, epfd, timeout_sec - (t2.tv_sec - t1.tv_sec), 1);
+    logData("Response : %d\n", ret);
     if (ret != TXN_SUCCESS)
     {
         return ret;

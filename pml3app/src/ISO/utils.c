@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "utils.h"
+#include "../include/commonutil.h"
 #include "log.h"
 #include "ISO8583_def.h"
 #include "../include/logutil.h"
@@ -12,8 +13,7 @@ int hexstr_to_decimal(char *hexstr, int size)
         return TXN_FAILED;
 
     char *len = (char *)malloc(size + NULL_BYTE_LEN);
-    strncpy(len, hexstr, size);
-    len[size] = '\0';
+    safe_strncpy(len, size + NULL_BYTE_LEN, hexstr, size);
     int length = strtod(len, NULL);
     if (len)
         free(len);
@@ -26,8 +26,7 @@ long hexstr_to_long(char *hexstr, int size)
         return TXN_FAILED;
 
     char *len = (char *)malloc(size + NULL_BYTE_LEN);
-    strncpy(len, hexstr, size);
-    len[size] = '\0';
+    safe_strncpy(len, size + NULL_BYTE_LEN, hexstr, size);
     long length = strtol(len, NULL, 16);
     if (len)
         free(len);

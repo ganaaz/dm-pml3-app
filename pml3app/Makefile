@@ -47,7 +47,7 @@ $(shell mkdir -p obj/ISO)
 $(shell mkdir -p obj/JHost)
 $(shell mkdir -p obj/http-parser)
 
-all: cpsql $(APPNAME) signapp copyToTerminal update
+all: cpsql $(APPNAME) signapp update
 
 cpsql:
 	cp ./pre-built/sqlite3.o ./obj/sqlite3.o
@@ -63,24 +63,16 @@ signapp:
 	cp /home/ganapathy/$(APPNAME) $(APPNAME)
 
 copyToTerminal:
-	sshpass -p '$(SLOTAPP)' scp ./$(APPNAME) $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)
-	sshpass -p '$(SLOTAPP)' scp ./src/config/app_config.json $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
-# 	sshpass -p '$(SLOTAPP)' scp ./src/config/emv_config.txt $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
-	sshpass -p '$(SLOTAPP)' scp ./src/config/emv_config.json $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
-	sshpass -p '$(SLOTAPP)' scp ./src/log4crc $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-	sshpass -p '$(SLOTAPP)' scp ./src/log4crc.info $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-	sshpass -p '$(SLOTAPP)' scp ./src/log4crc.debug $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-	sshpass -p '$(SLOTAPP)' scp ./src/log4crc.error $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-	sshpass -p '$(SLOTAPP)' scp ./l3start.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-	sshpass -p '$(SLOTAPP)' scp ./runl3.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/runl3.sh
-	sshpass -p '$(SLOTAPP)' scp ./autorun.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/autorun.sh
-
-#	sshpass -p '$(SLOTAPP)' scp ./$(APPNAME) $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-#	sshpass -p '$(SLOTAPP)' scp ./src/config/app_config.json $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
-#	sshpass -p '$(SLOTAPP)' scp ./src/config/emv_config.txt $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
-#	sshpass -p '$(SLOTAPP)' scp ./src/config/emv_config.json $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
-#	sshpass -p '$(SLOTAPP)' scp ./src/log4crc $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-#	sshpass -p '$(SLOTAPP)' scp ./l3start.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
+	scp ./$(APPNAME) $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)
+	scp ./src/config/app_config.json $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
+	scp ./src/config/emv_config.json $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
+	scp ./src/log4crc $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
+	scp ./src/log4crc.info $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
+	scp ./src/log4crc.debug $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
+	scp ./src/log4crc.error $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
+	scp ./l3start.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
+	scp ./runl3.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/runl3.sh
+	scp ./autorun.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/autorun.sh
 
 update_helper:
 	echo "Generating update package ..."
@@ -95,10 +87,7 @@ update_helper:
 	cp ./src/log4crc.info update/app/log4crc.info
 	cp ./src/l3_log_mode update/app/l3_log_mode
 	mkdir -p update/app/config/
-#	cp ./src/config/emv_config.txt update/app/config/emv_config.txt
 	cp ./src/config/emv_config.json update/app/config/emv_config.json
-#	cp ./src/config/app_data.json update/app/config/app_data.json
-#	cp ./src/config/app_config.json update/app/config/app_config.json
 	cp kolkata update/app/kolkata
 	cp version update/app/version
 	cd update/app && tar -cvf ../app.tar *

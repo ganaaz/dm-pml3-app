@@ -9,6 +9,7 @@
 
 #include "include/timeutil.h"
 #include "include/logutil.h"
+#include "include/commonutil.h"
 #include "include/pkcshelper.h"
 
 #define ARRAY_SIZE(array) \
@@ -63,7 +64,7 @@ CK_RV get_utc(CK_SESSION_HANDLE hSession, char utc[17])
     CK_ATTRIBUTE clockValue = {CKA_VALUE, utc, 16};
     CK_RV rv = CKR_OK;
 
-    strcpy(utc, "0000000000000000");
+    safe_strcpy(utc, 17, "0000000000000000");
 
     get_system_clock(hSession, &hClock);
 

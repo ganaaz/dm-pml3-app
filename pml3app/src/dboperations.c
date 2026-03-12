@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <json-c/json.h>
 #include <openssl/hmac.h>
+#include <stdbool.h>
 
 #include "include/dboperations.h"
 #include "include/commonutil.h"
@@ -19,10 +20,6 @@
 #include "include/commandmanager.h"
 #include "include/errorcodes.h"
 #include "include/appcodes.h"
-#include "JHost/jhost_interface.h"
-#include "JHost/jhostutil.h"
-#include "JAirtelHost/jairtel_hostutil.h"
-#include "JAirtelHost/jairtel_host_interface.h"
 #include "http-parser/http_util.h"
 
 #define MAX_FETCH_COUNT 50
@@ -39,6 +36,68 @@ int activeFetchId = 0;
 int fetchedCount = 0;
 
 FetchTrxId fetchTransactionIdList[MAX_FETCH_COUNT];
+
+/**
+ * To check if the column exists
+ */
+bool columnExists(sqlite3 *db, const char *tableName, const char *columnName)
+{
+    sqlite3_stmt *stmt = NULL;
+    char query[256];
+
+    snprintf(query, sizeof(query), "PRAGMA table_info(%s);", tableName);
+
+    if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK)
+        return false;
+
+    bool exists = false;
+
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        const unsigned char *colName = sqlite3_column_text(stmt, 1);
+        if (colName && strcmp((const char *)colName, columnName) == 0)
+        {
+            exists = true;
+            break;
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    return exists;
+}
+
+/**
+ * Add a column if not exists
+ */
+int addColumnIfNotExists(sqlite3 *db,
+                         const char *tableName,
+                         const char *columnName,
+                         const char *columnDefinition)
+{
+    if (columnExists(db, tableName, columnName))
+    {
+        logData("Column %s already exists", columnName);
+        return SQLITE_OK;
+    }
+
+    char query[512];
+    snprintf(query, sizeof(query),
+             "ALTER TABLE %s ADD COLUMN %s %s;",
+             tableName, columnName, columnDefinition);
+
+    char *errMsg = NULL;
+    int rc = sqlite3_exec(db, query, NULL, NULL, &errMsg);
+
+    if (rc != SQLITE_OK)
+    {
+        logData("Failed to add column %s: %s", columnName, errMsg);
+        sqlite3_free(errMsg);
+        return rc;
+    }
+
+    logData("Column %s added successfully", columnName);
+    return SQLITE_OK;
+}
 
 /**
  ** To get the count of available transaction records
@@ -107,10 +166,12 @@ void createTransactionData(struct transactionData *trxData)
                         "TerminalId,"
                         "MerchantId,"
                         "HostRetry, "
-                        "HostError "
+                        "HostError, "
+                        "AcqTransactionId, "
+                        "AcqUniqueTransactionId "
                         ") "
                         "VALUES("
-                        "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+                        "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     sqlite3_stmt *statement;
     int result = sqlite3_prepare_v2(
@@ -161,8 +222,10 @@ void createTransactionData(struct transactionData *trxData)
             sqlite3_bind_text(statement, 30, STATUS_NA, -1, SQLITE_STATIC);
         sqlite3_bind_text(statement, 31, appConfig.terminalId, -1, SQLITE_STATIC);
         sqlite3_bind_text(statement, 32, appConfig.merchantId, -1, SQLITE_STATIC);
-        sqlite3_bind_int(statement, 33, 0);                      // Host Retry
-        sqlite3_bind_text(statement, 34, "", -1, SQLITE_STATIC); // Host Error
+        sqlite3_bind_int(statement, 33, 0);                                                   // Host Retry
+        sqlite3_bind_text(statement, 34, "", -1, SQLITE_STATIC);                              // Host Error
+        sqlite3_bind_text(statement, 35, trxData->acqTransactionId, -1, SQLITE_STATIC);       // Acq Trx Id
+        sqlite3_bind_text(statement, 36, trxData->acqUniqueTransactionId, -1, SQLITE_STATIC); // Acq Unit trx id
 
         logData("Going to perform the insert of offline transaction date");
         int result = sqlite3_step(statement);
@@ -226,10 +289,14 @@ void createTxnDataForOnline(struct transactionData trxData)
                         "HostRetry, "
                         "ReversalStatus, "
                         "HostError, "
-                        "MoneyAddTrxType "
+                        "MoneyAddTrxType, "
+                        "MoneyAddRRN, "
+                        "MoneyAddTid, "
+                        "AcqTransactionId, "
+                        "AcqUniqueTransactionId "
                         ") "
                         "VALUES("
-                        "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+                        "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     sqlite3_stmt *statement;
     int result = sqlite3_prepare_v2(
@@ -283,6 +350,10 @@ void createTxnDataForOnline(struct transactionData trxData)
         sqlite3_bind_text(statement, 35, "", -1, SQLITE_STATIC); // Reversal Status should be empty by default
         sqlite3_bind_text(statement, 36, "", -1, SQLITE_STATIC); // Host Error
         sqlite3_bind_text(statement, 37, trxData.moneyAddTrxType, -1, SQLITE_STATIC);
+        sqlite3_bind_text(statement, 38, trxData.moneyAddRRN, -1, SQLITE_STATIC);
+        sqlite3_bind_text(statement, 39, trxData.moneyAddTid, -1, SQLITE_STATIC);
+        sqlite3_bind_text(statement, 40, trxData.acqTransactionId, -1, SQLITE_STATIC);       // Acq Trx Id
+        sqlite3_bind_text(statement, 41, trxData.acqUniqueTransactionId, -1, SQLITE_STATIC); // Acq Unit trx id
 
         logData("Going to perform insert of transaction for online");
         int result = sqlite3_step(statement);
@@ -520,182 +591,8 @@ void processHostPendingTransactions()
         }
         else
         {
-
-            int maxBatchSize = 5;
-            logData("Total records to be sent : %d", trxDataCount);
-            for (int index = 0; index < trxDataCount; index += maxBatchSize)
-            {
-                int max = maxBatchSize;
-                int pending = (trxDataCount - index);
-                if (pending < max)
-                    max = pending;
-                if (appConfig.useAirtelHost)
-                {
-                    logData("Processing Airtel from record %d with the count of %d", index, max);
-                    processAirtelHost(index, max, trxDataList);
-                    logData("Airtel Processing completed");
-                }
-                else
-                {
-                    logData("Processing PayTM from record %d with the count of %d", index, max);
-                    processPayTmHost(index, max, trxDataList);
-                    logData("PayTM Processing completed");
-                }
-            }
+            logData("Not supported");
         }
-    }
-}
-
-/**
- * To process airtel host and send to airtel and receive response
- */
-void processAirtelHost(int index, int max, TransactionTable trxDataList[])
-{
-    logData("Sending to Airtel from record %d with the count of %d", index, max);
-    char *message = generateAirtelOfflineSaleRequest(trxDataList, index, max);
-
-    removeSpaces(message);
-    char hmac_hex[HMAC_HEX_SIZE];
-    calculate_hmac_sha256(appConfig.airtelSignSalt, message, hmac_hex);
-    logData("Hmac hex of message : %s", hmac_hex);
-
-    char body[1024 * 24] = {0};
-    strcpy(body, message);
-    free(message);
-    char responseMessage[1024 * 32] = {0};
-    logData("Sending data to Airtel for offline sale");
-    int retStatus = sendAirtelHostRequest(body, appConfig.airtelOfflineUrl, responseMessage,
-                                          trxDataList[index].orderId, hmac_hex);
-    logData("Ret Status : %d", retStatus);
-    logData("Response length from server : %d", strlen(responseMessage));
-
-    if (retStatus == 0)
-    {
-        HttpResponseData httpResponseData = parseHttpResponse(responseMessage);
-
-        if (httpResponseData.code == 200 && httpResponseData.messageLen != 0)
-        {
-            // Parse and save to db
-            int responseCount;
-            OfflineSaleResponse offlineResponses[10];
-            parseAirtelOfflineSaleResponse(httpResponseData.message, &responseCount, offlineResponses);
-            saveAirtelOfflineResponseToDb(offlineResponses, responseCount);
-            logData("Saved Airtel offline response data to db");
-        }
-        else
-        {
-            logError("Http response error");
-            // Update all the host error category to timeout for the transactions for this part
-            for (int i = index; i < (index + max); i++)
-            {
-                TransactionTable trxTable = trxDataList[i];
-                updateHostErrorCategory(trxTable.transactionId, HOST_ERROR_CATEGORY_TIMEOUT);
-            }
-        }
-        free(httpResponseData.message);
-    }
-    else
-    {
-        logData("Invalid return status");
-        // Update all the host error category to timeout for the transactions for this part
-        for (int i = index; i < (index + max); i++)
-        {
-            TransactionTable trxTable = trxDataList[i];
-            updateHostErrorCategory(trxTable.transactionId, HOST_ERROR_CATEGORY_TIMEOUT);
-        }
-    }
-
-    memset(responseMessage, 0, sizeof(responseMessage));
-    memset(body, 0, sizeof(body));
-}
-
-/**
- * To process paytm host and send to paytm and receive response
- */
-void processPayTmHost(int index, int max, TransactionTable trxDataList[])
-{
-    logData("Sending to Paytm from record %d with the count of %d", index, max);
-    char *message = generateOfflineSaleRequest(trxDataList, index, max);
-    char body[1024 * 24] = {0};
-    strcpy(body, message);
-    free(message);
-    char responseMessage[1024 * 32] = {0};
-    logData("Sending data to PayTM for offline sale");
-    int retStatus = sendHostRequest(body, appConfig.offlineUrl, responseMessage);
-    logData("Ret Status : %d", retStatus);
-    logData("Response length from server : %d", strlen(responseMessage));
-
-    if (retStatus == 0)
-    {
-        HttpResponseData httpResponseData = parseHttpResponse(responseMessage);
-
-        if (httpResponseData.code == 200 && httpResponseData.messageLen != 0)
-        {
-            // Parse and save to db
-            int responseCount;
-            OfflineSaleResponse offlineResponses[20];
-            parseofflineSaleResponse(httpResponseData.message, &responseCount, offlineResponses);
-            saveOfflineResponseToDb(offlineResponses, responseCount);
-        }
-        else
-        {
-            logError("Http response error");
-            // Update all the host error category to timeout for the transactions for this part
-            for (int i = index; i < (index + max); i++)
-            {
-                TransactionTable trxTable = trxDataList[i];
-                updateHostErrorCategory(trxTable.transactionId, HOST_ERROR_CATEGORY_TIMEOUT);
-            }
-        }
-        free(httpResponseData.message);
-    }
-    else
-    {
-        logData("Invalid return status");
-        // Update all the host error category to timeout for the transactions for this part
-        for (int i = index; i < (index + max); i++)
-        {
-            TransactionTable trxTable = trxDataList[i];
-            updateHostErrorCategory(trxTable.transactionId, HOST_ERROR_CATEGORY_TIMEOUT);
-        }
-    }
-
-    memset(responseMessage, 0, sizeof(responseMessage));
-    memset(body, 0, sizeof(body));
-}
-
-/**
- * To save the Airtel offline response with the matching record in db
- */
-void saveAirtelOfflineResponseToDb(OfflineSaleResponse offlineResponses[], int count)
-{
-    logData("-------------------------------------------");
-    for (int i = 0; i < count; i++)
-    {
-        logData("Processing offline response : %d", i);
-        printOfflineResponse(offlineResponses[i]);
-        char transactionId[40];
-        if (strlen(offlineResponses[i].orderId) == 0)
-        {
-            logData("Order id not received, cannot update status.");
-        }
-        else
-        {
-            logData("Order id received from Airtel : %s", offlineResponses[i].orderId);
-            int trxCount = getTrxTableDataCountForAirtel(offlineResponses[i].orderId,
-                                                         "00", STATUS_SUCCESS, STATUS_PENDING, transactionId);
-            if (trxCount == 1)
-            {
-                logData("Found 1 item as expected. Going to update");
-                logData("Found transaction id : %s", transactionId);
-                updateAirtelOfflineTransactionStatus(transactionId, offlineResponses[i]);
-            }
-            else
-            {
-                logWarn("Order id %s receved from Airtel but not available in local db", offlineResponses[i].orderId);
-            }
-        }
-        logData("-------------------------------------------");
     }
 }
 
@@ -813,89 +710,6 @@ void updateOfflineTransactionStatus(const char *transactionId, OfflineSaleRespon
 }
 
 /**
- * Update the offline transaction status for Airtel Response
- **/
-void updateAirtelOfflineTransactionStatus(const char *transactionId, OfflineSaleResponse offlineSaleResponse)
-{
-    logData("Going to update the transaction status for : %s", transactionId);
-
-    const char *query = "UPDATE Transactions "
-                        "SET TxnStatus = ? , "
-                        "HostStatus = ? , "
-                        "HostResponseTimeStamp = ? , "
-                        "HostResultStatus = ? , "
-                        "HostResultMessage = ? , "
-                        "HostResultCode = ? , "
-                        "HostResultCodeId = ?, "
-                        "HostErrorCategory = ?, "
-                        "AirtelTxnStatus = ?, "
-                        "AirtelTxnId = ? "
-                        "WHERE TransactionId = ?";
-
-    sqlite3_stmt *statement;
-
-    if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
-    {
-        logWarn("Failed to prepare updateAirtelOfflineTransactionStatus query !!!");
-        return;
-    }
-
-    sqlite3_bind_text(statement, 1, STATUS_SUCCESS, -1, SQLITE_STATIC); // Txn Status
-    int airtelStatus = offlineSaleResponse.airtelTxnStatus;
-    if (airtelStatus == 0 || airtelStatus == 2) // 0 - Success, 2 - Accepted from Airtel
-    {
-        doLock();
-        activePendingTxnCount--;
-        logData("Offline trxn result is success");
-        logData("Active pending transaction count decreased and now is : %d", activePendingTxnCount);
-        if (activePendingTxnCount < appConfig.minRequiredForOnline)
-        {
-            logWarn("Now the transaction is below minRequiredForOnline, making the device online");
-            DEVICE_STATUS = STATUS_ONLINE;
-        }
-        printDeviceStatus();
-        doUnLock();
-
-        sqlite3_bind_text(statement, 2, STATUS_SUCCESS, -1, SQLITE_STATIC); // Host Status
-        sqlite3_bind_text(statement, 8, "", -1, SQLITE_STATIC);             // Host Error Category
-    }
-    else // Host Status as pending if the result is fail
-    {
-        // For airtel case
-        if (appConfig.useAirtelHost && strcmp(offlineSaleResponse.resultCodeId, "ATOS04") == 0)
-        {
-            sqlite3_bind_text(statement, 2, STATUS_FAILURE, -1, SQLITE_STATIC);
-            sqlite3_bind_text(statement, 8, HOST_ERROR_CATEGORY_FAILED, -1, SQLITE_STATIC); // Host Error Category
-        }
-        else
-        {
-            sqlite3_bind_text(statement, 2, STATUS_PENDING, -1, SQLITE_STATIC);
-            sqlite3_bind_text(statement, 8, HOST_ERROR_CATEGORY_FAILED, -1, SQLITE_STATIC); // Host Error Category
-        }
-    }
-
-    sqlite3_bind_text(statement, 3, offlineSaleResponse.responseTimeStamp, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 4, "", -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 5, offlineSaleResponse.resultMessage, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 6, "", -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 7, offlineSaleResponse.resultCodeId, -1, SQLITE_STATIC);
-
-    sqlite3_bind_int(statement, 9, offlineSaleResponse.airtelTxnStatus);
-    sqlite3_bind_text(statement, 10, offlineSaleResponse.airtelTxnId, -1, SQLITE_STATIC);
-
-    sqlite3_bind_text(statement, 11, transactionId, -1, SQLITE_STATIC);
-
-    int result = sqlite3_step(statement);
-    if (result != SQLITE_DONE)
-    {
-        logWarn("Failed to update record : %d", result);
-        return;
-    }
-    logData("updateAirtelOfflineTransactionStatus success");
-    sqlite3_finalize(statement);
-}
-
-/**
  * Get the transaction data
  **/
 TransactionTable getTransactionTableData(const char *transactionId)
@@ -951,46 +765,6 @@ int getTrxTableDataCount(const char *orderId, const char *stan, const char *trxB
     sqlite3_bind_text(statement, 3, stan, -1, SQLITE_STATIC);
     sqlite3_bind_text(statement, 4, txnStatus, -1, SQLITE_STATIC);
     sqlite3_bind_text(statement, 5, hostStatus, -1, SQLITE_STATIC);
-
-    int count = 0;
-
-    while (sqlite3_step(statement) != SQLITE_DONE)
-    {
-        count = sqlite3_column_int64(statement, 0);
-        sprintf(transactionId, "%s", sqlite3_column_text(statement, 1));
-        break;
-    }
-
-    sqlite3_finalize(statement);
-    logData("Count received : %d", count);
-    logData("Transaction id : %s", transactionId);
-    return count;
-}
-
-/**
- * Get the transaction data count For Airtel
- **/
-int getTrxTableDataCountForAirtel(const char *orderId, const char *trxBin,
-                                  const char *txnStatus, const char *hostStatus, char *transactionId)
-{
-    const char *query = "SELECT Count(*), TransactionId FROM Transactions WHERE "
-                        "TrxBin = ? and "
-                        "OrderId = ? and "
-                        "TxnStatus = ? and "
-                        "HostStatus = ? ";
-    sqlite3_stmt *statement;
-    logData("Going to get the count for %s", query);
-
-    if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
-    {
-        logWarn("Failed to prepare getTrxTableDataCountForAirtel query !!!");
-        return 0;
-    }
-
-    sqlite3_bind_text(statement, 1, trxBin, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 2, orderId, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 3, txnStatus, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 4, hostStatus, -1, SQLITE_STATIC);
 
     int count = 0;
 
@@ -1072,71 +846,6 @@ void updateTransactionStatus(const char *transactionId, const char *txnStatus, c
         return;
     }
     logData("updateTransactionStatus success");
-    sqlite3_finalize(statement);
-}
-
-/**
- * Update reversal response back to db for Airtel
- **/
-void updateAirelReversalResponse(AirtelHostResponse airtelHostResponse, const char *transactionId)
-{
-    logData("Going to update the updateAirelReversalResponse for : %s", transactionId);
-
-    const char *query = "UPDATE Transactions "
-                        "SET ReversalStatus = ?, "
-                        "HostStatus = ?, "
-                        "ReversalResponseCode = ?, "
-                        "ReversalRRN = ?, "
-                        "ReversalAuthCode = ?, "
-                        "AirtelAckTxnType = ?, "
-                        "AirtelAckPaymentMode = ?, "
-                        "AirtelAckRefundId = ? "
-                        "WHERE TransactionId = ?";
-
-    sqlite3_stmt *statement;
-
-    if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
-    {
-        logWarn("Failed to prepare updateAirelReversalResponse query !!!");
-        return;
-    }
-
-    if (airtelHostResponse.status == 0)
-    {
-        sqlite3_bind_text(statement, 1, STATUS_SUCCESS, -1, SQLITE_STATIC);
-    }
-    else
-    {
-        if (airtelHostResponse.status == 1 && strcmp(airtelHostResponse.responseCode, "ATAC01") == 0)
-        {
-            sqlite3_bind_text(statement, 1, STATUS_SUCCESS, -1, SQLITE_STATIC);
-        }
-        else if (airtelHostResponse.status == 1 && strcmp(airtelHostResponse.responseCode, "ATVF35") == 0)
-        {
-            sqlite3_bind_text(statement, 1, STATUS_FAILURE, -1, SQLITE_STATIC);
-        }
-        else
-        {
-            sqlite3_bind_text(statement, 1, STATUS_PENDING, -1, SQLITE_STATIC);
-        }
-    }
-    // sqlite3_bind_text(statement, 1, airtelHostResponse.status == 0 ? STATUS_SUCCESS : STATUS_PENDING, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 2, STATUS_SUCCESS, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 3, airtelHostResponse.switchResponseCode, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 4, airtelHostResponse.rrn, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 5, airtelHostResponse.authCode, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 6, airtelHostResponse.txnType, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 7, airtelHostResponse.paymentMode, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 8, airtelHostResponse.refundId, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 9, transactionId, -1, SQLITE_STATIC);
-
-    int result = sqlite3_step(statement);
-    if (result != SQLITE_DONE)
-    {
-        logWarn("Failed to update record : %d", result);
-        return;
-    }
-    logData("updateAirelReversalResponse success");
     sqlite3_finalize(statement);
 }
 
@@ -1384,8 +1093,7 @@ char *getReversal()
         int len = strlen(jsonData);
         char *data = malloc(len + 1);
 
-        strncpy(data, jsonData, len);
-        data[len] = '\0';
+        safe_strncpy(data, len + 1, jsonData, len);
         json_object_put(jobj); // Clear JSON memory
         return data;
     }
@@ -1437,76 +1145,6 @@ void clearReversalManual()
         return;
     }
     logData("clearReversalManual status is success");
-    sqlite3_finalize(statement);
-}
-
-/**
- * To update host response in database for Airtel
- **/
-void updateAirtelHostResponseInDb(AirtelHostResponse hostResponse, char transactionId[40])
-{
-    logData("Going to update the recevied airtel host response for transaction : %s", transactionId);
-    const char *query = "UPDATE Transactions "
-                        "SET rrn = ?, "
-                        "hostRetry = ?, "
-                        "authCode = ?, "
-                        "hostResponseTimeStamp = ?, "
-                        "hostError = ?, "
-                        "hostStatus = ?, "
-                        "updateAmount = ?, "
-                        "ReversalStatus = ?, "
-                        "AirtelTxnId = ?, "
-                        "AirtelResponseCode = ?, "
-                        "AirtelResponseDesc = ?, "
-                        "AirtelSwitchResponseCode = ?, "
-                        "AirtelSwitchTerminalId = ?, "
-                        "AirtelSwichMerchantId = ?, "
-                        "hostIccData = ? "
-                        "WHERE TransactionId = ?";
-
-    sqlite3_stmt *statement;
-
-    if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
-    {
-        logWarn("Failed to prepare updateAirtelHostResponseInDb query !!!");
-        return;
-    }
-
-    // Get the update amount from icc data
-    char updateAmount[13] = {0};
-    int j = 0;
-    int iccLen = strlen(hostResponse.iccData);
-    for (int i = iccLen - 12; i < iccLen; i++)
-    {
-        updateAmount[j++] = hostResponse.iccData[i];
-    }
-    updateAmount[j] = '\0';
-    logData("Updated amount received : %s", updateAmount);
-
-    sqlite3_bind_text(statement, 1, hostResponse.rrn, -1, SQLITE_STATIC);
-    sqlite3_bind_int(statement, 2, 0);
-    sqlite3_bind_text(statement, 3, hostResponse.authCode, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 4, hostResponse.hostResponseTimeStamp, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 5, "", -1, SQLITE_STATIC);             // Host Error
-    sqlite3_bind_text(statement, 6, STATUS_SUCCESS, -1, SQLITE_STATIC); // Host Status
-    sqlite3_bind_text(statement, 7, updateAmount, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 8, "", -1, SQLITE_STATIC); // Reversal status is empty on host success
-    sqlite3_bind_text(statement, 9, hostResponse.txnId, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 10, hostResponse.responseCode, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 11, hostResponse.responseDesc, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 12, hostResponse.switchResponseCode, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 13, hostResponse.switchTerminalId, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 14, hostResponse.switchMerchantId, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 15, hostResponse.iccData, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 16, transactionId, -1, SQLITE_STATIC);
-
-    int result = sqlite3_step(statement);
-    if (result != SQLITE_DONE)
-    {
-        logWarn("Failed to updateAirtelHostResponseInDb record : %d", result);
-        return;
-    }
-    logData("Update success for updateAirtelHostResponseInDb");
     sqlite3_finalize(statement);
 }
 
@@ -1666,34 +1304,74 @@ char *clearFetchedData()
     {
         memset(fetchTransactionIdList[i].trxId, 0, sizeof(fetchTransactionIdList[i].trxId));
     }
+
+    doVaccumTrxDb();
+
     return buildResponseMessage(STATUS_SUCCESS, 0);
 }
 
 /**
  * Get the fetch query
  **/
-const char *getFetchquery(enum fetch_mode fetchMode)
+// const char *getFetchquery(enum fetch_mode fetchMode)
+// {
+//     if (fetchMode == FETCH_MODE_FAILURE)
+//     {
+//         return "SELECT * FROM Transactions WHERE (HostStatus = ? or TxnStatus = ?) "
+//                " and TrxBin = '00' "
+//                " order by RowId asc LIMIT ? ";
+//     }
+
+//     if (fetchMode == FETCH_MODE_PENDING)
+//     {
+//         return "SELECT * FROM Transactions WHERE HostStatus = 'Pending' and TrxBin = '00' "
+//                " order by RowId asc LIMIT ? ";
+//     }
+
+//     return "SELECT * FROM Transactions WHERE HostStatus = ? and TrxBin = '00' order by RowId asc LIMIT ? ";
+// }
+
+void getFetchquery(enum fetch_mode fetchMode,
+                   bool isOnline,
+                   char *buffer,
+                   size_t size)
 {
+    const char *trxCondition = isOnline ? "TrxBin != '00'" : "TrxBin = '00'";
+
     if (fetchMode == FETCH_MODE_FAILURE)
     {
-        return "SELECT * FROM Transactions WHERE (HostStatus = ? or TxnStatus = ?) "
-               " and TrxBin = '00' "
-               " order by RowId asc LIMIT ? ";
+        snprintf(buffer, size,
+                 "SELECT * FROM Transactions "
+                 "WHERE (HostStatus = ? or TxnStatus = ?) "
+                 "and %s "
+                 "order by RowId asc LIMIT ? ",
+                 trxCondition);
+        return;
     }
 
     if (fetchMode == FETCH_MODE_PENDING)
     {
-        return "SELECT * FROM Transactions WHERE HostStatus = 'Pending' and TrxBin = '00' "
-               " order by RowId asc LIMIT ? ";
+        snprintf(buffer, size,
+                 "SELECT * FROM Transactions "
+                 "WHERE HostStatus = 'Pending' "
+                 "and %s "
+                 "order by RowId asc LIMIT ? ",
+                 trxCondition);
+        return;
     }
 
-    return "SELECT * FROM Transactions WHERE HostStatus = ? and TrxBin = '00' order by RowId asc LIMIT ? ";
+    snprintf(buffer, size,
+             "SELECT * FROM Transactions "
+             "WHERE HostStatus = ? "
+             "and %s "
+             "order by RowId asc LIMIT ? ",
+             trxCondition);
 }
 
 /**
  * Fetch the data to be sent to client
  **/
-char *fetchHostData(int maxRecordsRequested, enum fetch_mode fetchMode)
+char *fetchHostData(int maxRecordsRequested, enum fetch_mode fetchMode, bool isOnline)
 {
     json_object *jobj = json_object_new_object();
     json_object *jDataArrayObject = json_object_new_array();
@@ -1717,7 +1395,8 @@ char *fetchHostData(int maxRecordsRequested, enum fetch_mode fetchMode)
     else
         logData("Success transaction data requested");
 
-    const char *query = getFetchquery(fetchMode);
+    char query[512];
+    getFetchquery(fetchMode, isOnline, query, sizeof(query));
     logData("Query prepared : %s", query);
     sqlite3_stmt *statement;
 
@@ -1746,7 +1425,8 @@ char *fetchHostData(int maxRecordsRequested, enum fetch_mode fetchMode)
     while (sqlite3_step(statement) != SQLITE_DONE)
     {
         TransactionTable trxData = populateTableData(statement);
-        strcpy(fetchTransactionIdList[fetchedCount].trxId, trxData.transactionId);
+        safe_strcpy(fetchTransactionIdList[fetchedCount].trxId, sizeof(fetchTransactionIdList[fetchedCount].trxId),
+                    trxData.transactionId);
         json_object_array_add(jDataArrayObject, getJsonTxnData(trxData));
         printTransactionRow(trxData);
         fetchedCount++;
@@ -1781,8 +1461,7 @@ char *fetchHostData(int maxRecordsRequested, enum fetch_mode fetchMode)
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -1849,26 +1528,24 @@ void performMacRecalculation()
             resetTransactionData();
 
             // Set the values for recalc
-            strcpy(currentTxnData.transactionId, trxTable.transactionId);
-            strcpy(currentTxnData.processingCode, trxTable.processingCode);
+            safe_strcpy(currentTxnData.transactionId, sizeof(currentTxnData.transactionId), trxTable.transactionId);
+            safe_strcpy(currentTxnData.processingCode, sizeof(currentTxnData.processingCode), trxTable.processingCode);
             logData("String amount : %s", trxTable.amount);
             currentTxnData.amount = strtoull(trxTable.amount, NULL, 10);
             logData("Converted amount : %" PRIu64, currentTxnData.amount);
-            strcpy(currentTxnData.sAmount, trxTable.amount);
-            strcpy(currentTxnData.stan, trxTable.stan);
-            strcpy(currentTxnData.expDateEnc, trxTable.expDateEnc);
+            safe_strcpy(currentTxnData.sAmount, sizeof(currentTxnData.sAmount), trxTable.amount);
+            safe_strcpy(currentTxnData.stan, sizeof(currentTxnData.stan), trxTable.stan);
+            safe_strcpy(currentTxnData.expDateEnc, sizeof(currentTxnData.expDateEnc), trxTable.expDateEnc);
 
-            strcpy(currentTxnData.time, trxTable.time);
-            strcpy(currentTxnData.date, trxTable.date);
-            strcpy(currentTxnData.year, trxTable.year);
+            safe_strcpy(currentTxnData.time, sizeof(currentTxnData.time), trxTable.time);
+            safe_strcpy(currentTxnData.date, sizeof(currentTxnData.date), trxTable.date);
+            safe_strcpy(currentTxnData.year, sizeof(currentTxnData.year), trxTable.year);
 
-            strcpy(currentTxnData.panEncrypted, trxTable.panEncrypted);
-            strcpy(currentTxnData.iccData, trxTable.iccData);
-            strcpy(currentTxnData.orderId, trxTable.orderId);
+            safe_strcpy(currentTxnData.panEncrypted, sizeof(currentTxnData.panEncrypted), trxTable.panEncrypted);
+            safe_strcpy(currentTxnData.iccData, sizeof(currentTxnData.iccData), trxTable.iccData);
+            safe_strcpy(currentTxnData.orderId, sizeof(currentTxnData.orderId), trxTable.orderId);
 
             logData("Generating mac data now");
-            if (!appConfig.useAirtelHost)
-                generateMacOfflineSale(currentTxnData);
             logData("Mac data is generated, now updating the db");
 
             // Update the db back
@@ -1878,68 +1555,6 @@ void performMacRecalculation()
 
     logData("Recalculation completed and changing status back to ready");
     changeAppState(APP_STATUS_READY);
-}
-
-/**
- * To update the airtel request data in db
- */
-void updateAirtelRequestData(char transactionId[38], char requestData[1024 * 24])
-{
-    logData("Going to update the airtel request data in db for : %s", transactionId);
-
-    const char *query = "UPDATE Transactions "
-                        "SET airtelRequestData = ? "
-                        "WHERE transactionId = ?";
-
-    sqlite3_stmt *statement;
-
-    if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
-    {
-        logWarn("Failed to prepare updateAirtelRequestData only status query !!!");
-        return;
-    }
-
-    sqlite3_bind_text(statement, 1, requestData, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 2, transactionId, -1, SQLITE_STATIC);
-
-    int result = sqlite3_step(statement);
-    if (result != SQLITE_DONE)
-    {
-        logWarn("Failed to update the airtel request data in db for : %s", transactionId);
-    }
-
-    sqlite3_finalize(statement);
-}
-
-/**
- * To update the airtel response data in db
- */
-void updateAirtelResponseData(char transactionId[38], char responseData[1024 * 10])
-{
-    logData("Going to update the airtel response data in db for : %s", transactionId);
-
-    const char *query = "UPDATE Transactions "
-                        "SET airtelResponseData = ? "
-                        "WHERE transactionId = ?";
-
-    sqlite3_stmt *statement;
-
-    if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
-    {
-        logWarn("Failed to prepare updateAirtelResponseData only status query !!!");
-        return;
-    }
-
-    sqlite3_bind_text(statement, 1, responseData, -1, SQLITE_STATIC);
-    sqlite3_bind_text(statement, 2, transactionId, -1, SQLITE_STATIC);
-
-    int result = sqlite3_step(statement);
-    if (result != SQLITE_DONE)
-    {
-        logWarn("Failed to update the airtel response data in db for : %s", transactionId);
-    }
-
-    sqlite3_finalize(statement);
 }
 
 /**
@@ -2262,6 +1877,16 @@ TransactionTable populateTableData(sqlite3_stmt *statement)
     else
         memset(trxData.acqUniqueTransactionId, 0, sizeof(trxData.acqUniqueTransactionId));
 
+    if (sqlite3_column_text(statement, 73) != NULL)
+        sprintf(trxData.moneyAddRRN, "%s", sqlite3_column_text(statement, 73));
+    else
+        memset(trxData.moneyAddRRN, 0, sizeof(trxData.moneyAddRRN));
+
+    if (sqlite3_column_text(statement, 74) != NULL)
+        sprintf(trxData.moneyAddTid, "%s", sqlite3_column_text(statement, 74));
+    else
+        memset(trxData.moneyAddTid, 0, sizeof(trxData.moneyAddTid));
+
     return trxData;
 }
 
@@ -2319,17 +1944,26 @@ json_object *getJsonTxnData(TransactionTable trxData)
     json_object_object_add(jDataObject, "update_amount", jUpdateAmount);
     json_object_object_add(jDataObject, "reversal_status", jReversalStatus);
 
+    json_object_object_add(jDataObject, "txnStatus", json_object_new_string(trxData.txnStatus));
+    json_object_object_add(jDataObject, "hostStatus", json_object_new_string(trxData.hostStatus));
+    json_object_object_add(jDataObject, "updatedAmount", json_object_new_string(trxData.updateAmount));
+    json_object_object_add(jDataObject, "updatedBalance", json_object_new_string(trxData.updatedBalance));
+    json_object_object_add(jDataObject, "iccData", json_object_new_string(trxData.iccData));
+    json_object_object_add(jDataObject, "iccDataLen", json_object_new_int64(trxData.iccDataLen));
     json_object_object_add(jDataObject, "hostErrorCategory", json_object_new_string(trxData.hostErrorCategory));
     json_object_object_add(jDataObject, "resversalInputResponseCode", json_object_new_string(trxData.reversalInputResponseCode));
     json_object_object_add(jDataObject, "reversalAuthCode", json_object_new_string(trxData.reversalAuthCode));
     json_object_object_add(jDataObject, "reversalRRN", json_object_new_string(trxData.reversalRRN));
+    json_object_object_add(jDataObject, "reversalManualCleared", json_object_new_int(trxData.reversalManualCleared));
     json_object_object_add(jDataObject, "reversalResponsecode", json_object_new_string(trxData.reversalResponsecode));
     json_object_object_add(jDataObject, "acquirementId", json_object_new_string(trxData.acquirementId));
     json_object_object_add(jDataObject, "hostError", json_object_new_string(trxData.hostError));
     json_object_object_add(jDataObject, "hostResultCodeId", json_object_new_string(trxData.hostResultCodeId));
     json_object_object_add(jDataObject, "hostResultCode", json_object_new_string(trxData.hostResultCode));
     json_object_object_add(jDataObject, "hostResultMessage", json_object_new_string(trxData.hostResultMessage));
+    json_object_object_add(jDataObject, "hostResultStatus", json_object_new_string(trxData.hostResultStatus));
     json_object_object_add(jDataObject, "hostResponseTimeStamp", json_object_new_string(trxData.hostResponseTimeStamp));
+    json_object_object_add(jDataObject, "hostIccData", json_object_new_string(trxData.hostIccData));
     json_object_object_add(jDataObject, "hostRetry", json_object_new_int(trxData.hostRetry));
     json_object_object_add(jDataObject, "hostStatus", json_object_new_string(trxData.hostStatus));
     json_object_object_add(jDataObject, "txnStatus", json_object_new_string(trxData.txnStatus));
@@ -2341,18 +1975,21 @@ json_object *getJsonTxnData(TransactionTable trxData)
     json_object_object_add(jDataObject, "macKsn", json_object_new_string(trxData.macKsn));
     json_object_object_add(jDataObject, "reversalKsn", json_object_new_string(trxData.reversalKsn));
     json_object_object_add(jDataObject, "reversalMac", json_object_new_string(trxData.reversalMac));
-    json_object_object_add(jDataObject, "airtelTxnStatus", json_object_new_int(trxData.airtelTxnStatus));
-    json_object_object_add(jDataObject, "airtelTxnId", json_object_new_string(trxData.airtelTxnId));
-    json_object_object_add(jDataObject, "airtelRequestData", json_object_new_string(trxData.airtelRequestData));
-    json_object_object_add(jDataObject, "airtelResponseData", json_object_new_string(trxData.airtelResponseData));
-    json_object_object_add(jDataObject, "airtelResponseCode", json_object_new_string(trxData.airtelResponseCode));
-    json_object_object_add(jDataObject, "airtelResponseDesc", json_object_new_string(trxData.airtelResponseDesc));
-    json_object_object_add(jDataObject, "airtelSwitchResponseCode", json_object_new_string(trxData.airtelSwitchResponseCode));
-    json_object_object_add(jDataObject, "airtelSwitchTerminalId", json_object_new_string(trxData.airtelSwitchTerminalId));
-    json_object_object_add(jDataObject, "airtelSwichMerchantId", json_object_new_string(trxData.airtelSwichMerchantId));
-    json_object_object_add(jDataObject, "airtelAckTxnType", json_object_new_string(trxData.airtelAckTxnType));
-    json_object_object_add(jDataObject, "airtelAckPaymentMode", json_object_new_string(trxData.airtelAckPaymentMode));
-    json_object_object_add(jDataObject, "airtelAckRefundId", json_object_new_string(trxData.airtelAckRefundId));
+    json_object_object_add(jDataObject, "moneyAddTrxType", json_object_new_string(trxData.moneyAddTrxType));
+    json_object_object_add(jDataObject, "moneyAddRRN", json_object_new_string(trxData.moneyAddRRN));
+    json_object_object_add(jDataObject, "moneyAddTid", json_object_new_string(trxData.moneyAddTid));
+    // json_object_object_add(jDataObject, "airtelTxnStatus", json_object_new_int(trxData.airtelTxnStatus));
+    // json_object_object_add(jDataObject, "airtelTxnId", json_object_new_string(trxData.airtelTxnId));
+    // json_object_object_add(jDataObject, "airtelRequestData", json_object_new_string(trxData.airtelRequestData));
+    // json_object_object_add(jDataObject, "airtelResponseData", json_object_new_string(trxData.airtelResponseData));
+    // json_object_object_add(jDataObject, "airtelResponseCode", json_object_new_string(trxData.airtelResponseCode));
+    // json_object_object_add(jDataObject, "airtelResponseDesc", json_object_new_string(trxData.airtelResponseDesc));
+    // json_object_object_add(jDataObject, "airtelSwitchResponseCode", json_object_new_string(trxData.airtelSwitchResponseCode));
+    // json_object_object_add(jDataObject, "airtelSwitchTerminalId", json_object_new_string(trxData.airtelSwitchTerminalId));
+    // json_object_object_add(jDataObject, "airtelSwichMerchantId", json_object_new_string(trxData.airtelSwichMerchantId));
+    // json_object_object_add(jDataObject, "airtelAckTxnType", json_object_new_string(trxData.airtelAckTxnType));
+    // json_object_object_add(jDataObject, "airtelAckPaymentMode", json_object_new_string(trxData.airtelAckPaymentMode));
+    // json_object_object_add(jDataObject, "airtelAckRefundId", json_object_new_string(trxData.airtelAckRefundId));
     json_object_object_add(jDataObject, "acqTransactionId", json_object_new_string(trxData.acqTransactionId));
     json_object_object_add(jDataObject, "acqUniqueTransactionId", json_object_new_string(trxData.acqUniqueTransactionId));
 
@@ -2436,6 +2073,8 @@ void printTransactionRow(TransactionTable trxTable)
     logData("Host Airtel Response Switch Merchant Id : %s", trxTable.airtelSwichMerchantId);
     logData("Acquirer Transaction Id : %s", trxTable.acqTransactionId);
     logData("Acquirer Unique Transaction Id : %s", trxTable.acqUniqueTransactionId);
+    logData("Money Add TID : %s", trxTable.moneyAddTid);
+    logData("Mony Add RRN : %s", trxTable.moneyAddRRN);
 
     logData("===========================================");
 }

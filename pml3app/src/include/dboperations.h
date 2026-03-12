@@ -85,6 +85,8 @@ typedef struct TransactionTableType
     char airtelAckRefundId[100];
     char acqTransactionId[13];
     char acqUniqueTransactionId[21];
+    char moneyAddRRN[13];
+    char moneyAddTid[9];
 } TransactionTable;
 
 typedef struct host_response
@@ -180,6 +182,16 @@ typedef struct fetch_trx_id
 } FetchTrxId;
 
 /**
+ * To check if the column exists
+ */
+bool columnExists(sqlite3 *db, const char *tableName, const char *columnName);
+
+int addColumnIfNotExists(sqlite3 *db,
+                         const char *tableName,
+                         const char *columnName,
+                         const char *columnDefinition);
+
+/**
  ** To get the count of available transaction records
  */
 void checkRecordCount();
@@ -218,12 +230,14 @@ void processHostPendingTransactions();
 /**
  * Get the fetch query to retrieve the data from db
  **/
-const char *getFetchquery(enum fetch_mode fetchMode);
-
+void getFetchquery(enum fetch_mode fetchMode,
+                   bool isOnline,
+                   char *buffer,
+                   size_t size);
 /**
  * Fetch the data that is be returned to the client
  **/
-char *fetchHostData(int maxRecords, enum fetch_mode fetchMode);
+char *fetchHostData(int maxRecords, enum fetch_mode fetchMode, bool isOnline);
 
 /**
  * Get the json format of the transaction data
@@ -335,46 +349,6 @@ void performMacRecalculation();
  * To update the mac recalculation to db
  */
 void updateReCalcMacData(struct transactionData trxData);
-
-/**
- * To process paytm host and send to paytm and receive response
- */
-void processPayTmHost(int index, int max, TransactionTable trxDataList[]);
-
-/**
- * To process airtel host and send to airtel and receive response
- */
-void processAirtelHost(int index, int max, TransactionTable trxDataList[]);
-
-/**
- * To save the Airtel offline response with the matching record in db
- */
-void saveAirtelOfflineResponseToDb(OfflineSaleResponse offlineResponses[], int count);
-
-/**
- * Update the offline transaction status for Airtel Response
- **/
-void updateAirtelOfflineTransactionStatus(const char *transactionId, OfflineSaleResponse offlineSaleResponse);
-
-/**
- * Get the transaction data count For Airtel
- **/
-int getTrxTableDataCountForAirtel(const char *orderId, const char *trxBin,
-                                  const char *txnStatus, const char *hostStatus, char *transactionId);
-
-void updateAirtelResponseData(char transactionId[38], char responseData[1024 * 10]);
-
-void updateAirtelRequestData(char transactionId[38], char requestData[1024 * 24]);
-
-/**
- * To update host response in database for Airtel
- **/
-void updateAirtelHostResponseInDb(AirtelHostResponse hostResponse, char transactionId[40]);
-
-/**
- * Update reversal response back to db for Airtel
- **/
-void updateAirelReversalResponse(AirtelHostResponse airtelHostResponse, const char *transactionId);
 
 /**
  * Update the host response received in db

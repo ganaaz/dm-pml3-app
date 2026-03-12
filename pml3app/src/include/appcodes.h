@@ -55,6 +55,7 @@
 #define COMMAND_CHANGE_ONLY_IP "change_only_ip"
 #define COMMAND_CHANGE_ONLY_DNS "change_only_dns"
 #define COMMAND_CHANGE_LOG_MODE "change_log_mode"
+#define COMMAND_GET_LOG_MODE "get_log_mode"
 #define COMMAND_IS_KEY_PRESENT "is_key_present"
 #define COMMAND_DESTROY_KEY "destroy_key"
 #define COMMAND_DOWNLOAD_FILE "download_file"
@@ -66,13 +67,18 @@
 #define COMMAND_GATE_OPEN "gate_open"
 #define COMMAND_ABT_SUMMARY "abt_summary"
 #define COMMAND_ABT_FETCH "abt_fetch"
+#define COMMAND_GET_DISK_SPACE "get_disk_space"
+
+#define DISK_SPACE_PATH "disk_space_path"
 
 #define DOWNLOAD_FILE_NAME "download_file_name"
 #define DELETE_FILE_NAME "delete_file_name"
 
+#define LOG_MODE_INFO "Info"
 #define CHANGE_LOG_MODE "log_mode"
 #define LOG_MODE_DEBUG "Debug"
 #define LOG_MODE_ERROR "Error"
+#define LOG_MODE "logMode"
 
 #define CHANGE_IP_MODE "ip_mode"
 #define CHANGE_IP_DNS "dns"
@@ -99,6 +105,8 @@
 #define SEARCH_LOOP "loop"
 #define SEARCH_MONEY_ADD_TYPE "money_add_type"
 #define SEARCH_MONEY_ADD_SOURCE_TXN_ID "money_add_source_txn"
+#define SEARCH_MONEY_ADD_TID "money_add_tid"
+#define SEARCH_MONEY_ADD_RRN "money_add_rrn"
 #define SEARCH_SERVICE_ID "service_id"
 #define SEARCH_IS_SERVICE_BLOCK "is_service_block"
 #define SEARCH_CARD_CHECK_DATE "check_date"
@@ -115,6 +123,7 @@
 #define FETCH_MAX_RECORDS "maxrecords"
 #define FETCH_STATUS "fetchstatus"
 #define FETCH_MODE "mode"
+#define FETCH_MODE_ONLINE "isOnline"
 
 #define FETCH_SKIP "skipRecords"
 
@@ -176,6 +185,7 @@
 #define CONFIG_KEY_TIMINIG_ENABLED "timingEnabled"
 #define CONFIG_KEY_PRINT_DETAIL_TIMING_LOGS "printDetailTimingLogs"
 #define CONFIG_KEY_KEY_LABEL "label"
+#define CONFIG_KEY_KEY_MKLABEL "mkLabel"
 #define CONFIG_KEY_KEY_SLOT "slot"
 #define CONFIG_KEY_KEY_MKVERSION "mkVersion"
 #define CONFIG_KEY_KEY_AST_ID "astId"

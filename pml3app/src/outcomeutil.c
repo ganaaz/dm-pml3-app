@@ -29,8 +29,6 @@
 #include "include/appcodes.h"
 #include "include/tlvhelper.h"
 #include "include/dukpt-util.h"
-#include "JHost/jhost_interface.h"
-#include "JAirtelHost/jairtel_host_interface.h"
 #include "include/abtmanager.h"
 
 #define EMV_TRACK2 "\x57"
@@ -122,7 +120,7 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
         // char *transactionId = malloc(UUID_STR_LEN);
         // generateUUID(transactionId);
         // logInfo("Unique Transaction Id : %s", transactionId);
-        // strcpy(currentTxnData.transactionId, transactionId);
+        // safe_strcpy(currentTxnData.transactionId, transactionId);
         // free(transactionId);
 
         tlv_obj = tlv_find(tlv_get_child(tlv_outcome), FEIG_ID_OUTCOME_DATA_RECORD);
@@ -149,19 +147,21 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
         logInfo("Transaction id already created : %s", currentTxnData.transactionId);
         trxTable = getTransactionTableData(currentTxnData.transactionId);
         if (appConfig.useAirtelHost)
-            strcpy(currentTxnData.hostResponseCode, trxTable.airtelSwitchResponseCode);
+            safe_strcpy(currentTxnData.hostResponseCode, sizeof(currentTxnData.hostResponseCode),
+                        trxTable.airtelSwitchResponseCode);
         else
-            strcpy(currentTxnData.hostResponseCode, trxTable.hostResultCode);
+            safe_strcpy(currentTxnData.hostResponseCode, sizeof(currentTxnData.hostResponseCode),
+                        trxTable.hostResultCode);
 
         logData("Host Response : %s", currentTxnData.hostResponseCode);
 
         if (strcmp(currentTxnData.trxType, TRXTYPE_BALANCE_UPDATE) == 0 ||
             strcmp(currentTxnData.trxType, TRXTYPE_MONEY_ADD) == 0)
         {
-            strcpy(currentTxnData.updatedAmount, trxTable.updateAmount);
+            safe_strcpy(currentTxnData.updatedAmount, sizeof(currentTxnData.updatedAmount), trxTable.updateAmount);
             logData("Updated Amount Found : %s", currentTxnData.updatedAmount);
             char *updatedBal = getUpdatedBalance(tlv_outcome);
-            strcpy(currentTxnData.updatedBalance, updatedBal);
+            safe_strcpy(currentTxnData.updatedBalance, sizeof(currentTxnData.updatedBalance), updatedBal);
             free(updatedBal);
             logData("Updated Balance Found : %s", currentTxnData.updatedBalance);
         }
@@ -183,13 +183,13 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
     if (strcmp(outcomeStatus, STATUS_APPROVED) == 0)
     {
         displayLight(LED_ST_CARD_PROCESSED_SUCCESS);
-        strcpy(currentTxnData.txnStatus, STATUS_SUCCESS);
+        safe_strcpy(currentTxnData.txnStatus, sizeof(currentTxnData.txnStatus), STATUS_SUCCESS);
     }
     else
     {
         displayLight(LED_ST_CARD_PROCESSED_FAILURE);
-        strcpy(currentTxnData.updatedAmount, "000000000000");
-        strcpy(currentTxnData.txnStatus, STATUS_FAILURE);
+        safe_strcpy(currentTxnData.updatedAmount, sizeof(currentTxnData.updatedAmount), "000000000000");
+        safe_strcpy(currentTxnData.txnStatus, sizeof(currentTxnData.txnStatus), STATUS_FAILURE);
     }
 
     printCurrentTxnData(currentTxnData);
@@ -262,11 +262,6 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
             printDeviceStatus();
             doUnLock();
 
-            // encryptPanExpDate();
-            //  if (!appConfig.useAirtelHost)
-            //  {
-            //      generateMacOfflineSale(currentTxnData);
-            //  }
             createTransactionData(&currentTxnData);
         }
     }
@@ -287,23 +282,23 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
 void doPanEncryption()
 {
     char pan[21];
-    strcpy(pan, currentTxnData.plainPan);
+    safe_strcpy(pan, sizeof(pan), currentTxnData.plainPan);
     logData("Performing pan encryption for purchase transaction");
     unsigned char ksn[10];
     char hex[256], hex2[100];
     char panWithTag[25];
-    strcpy(panWithTag, "5A");
+    safe_strcpy(panWithTag, sizeof(panWithTag), "5A");
 
     logData("Mod val : %d", strlen(pan) % 2);
     if (strlen(pan) % 2 != 0)
-        strcat(pan, "F");
+        safe_strcat(pan, sizeof(pan), "F");
 
     char panHexLen[12];
     sprintf(panHexLen, "%02X", strlen(pan) / 2);
     logData("Hex length of Pan : %s", panHexLen);
-    strcat(panWithTag, panHexLen);
-    strcat(panWithTag, pan);
-    strcpy(currentTxnData.plainPanWithTag, panWithTag);
+    safe_strcat(panWithTag, sizeof(panWithTag), panHexLen);
+    safe_strcat(panWithTag, sizeof(panWithTag), pan);
+    safe_strcpy(currentTxnData.plainPanWithTag, sizeof(currentTxnData.plainPanWithTag), panWithTag);
     logData("Pan with tag used for encryption : %s", currentTxnData.plainPanWithTag);
 
     encryptPan(panWithTag, ksn, hex);
@@ -311,12 +306,12 @@ void doPanEncryption()
     byteToHex(ksn, 10, hex2);
     logData("KSN Received : %s", hex2);
     logData("KSN Len : %d", strlen(hex2));
-    strcpy(currentTxnData.ksn, "00000000000000000000");
-    strcat(currentTxnData.ksn, hex2);
+    safe_strcpy(currentTxnData.ksn, sizeof(currentTxnData.ksn), "00000000000000000000");
+    safe_strcat(currentTxnData.ksn, sizeof(currentTxnData.ksn), hex2);
     logData("TXN Data KSN Value : %s", currentTxnData.ksn);
     logData("TXN Data KSN Len : %d", strlen(currentTxnData.ksn));
 
-    strcpy(currentTxnData.panEncrypted, hex);
+    safe_strcpy(currentTxnData.panEncrypted, sizeof(currentTxnData.panEncrypted), hex);
     logData("TXN Pan Encrypted Value : %s", currentTxnData.panEncrypted);
     logData("TXN Pan Encrypted Len : %d", strlen(currentTxnData.panEncrypted));
 }
@@ -328,8 +323,8 @@ void performCheckDate()
     logData("Check Date : %s", currentTxnData.checkDate);
 
     char fullExpiry[9];
-    strcpy(fullExpiry, "20");
-    strcat(fullExpiry, currentTxnData.plainExpDate);
+    safe_strcpy(fullExpiry, sizeof(fullExpiry), "20");
+    safe_strcat(fullExpiry, sizeof(fullExpiry), currentTxnData.plainExpDate);
     // logData("Full Expiry : %s", fullExpiry);
 
     char checkDateClean[9] = {0};
@@ -373,7 +368,7 @@ void populateCardExpiry(uint8_t *buffer, size_t buffer_len)
     // logData("Expiry Date : %s", expDate); // TODO : Remove
     tlv_free(tlv_date);
     tlv_free(tlv_date_outcome);
-    strcpy(currentTxnData.plainExpDate, expDate);
+    safe_strcpy(currentTxnData.plainExpDate, sizeof(currentTxnData.plainExpDate), expDate);
     // logData("Plain Expiry Date : %s", currentTxnData.plainExpDate);
 }
 
@@ -389,12 +384,12 @@ void handleSecondTapNotPresented()
     // Update the reversal status to pending
     updateReversalStatusOnly(currentTxnData.transactionId, STATUS_PENDING);
 
-    strcpy(currentTxnData.updatedAmount, trxTable.updateAmount);
-    strcpy(currentTxnData.hostResponseCode, trxTable.hostResultCode);
+    safe_strcpy(currentTxnData.updatedAmount, sizeof(currentTxnData.updatedAmount), trxTable.updateAmount);
+    safe_strcpy(currentTxnData.hostResponseCode, sizeof(currentTxnData.hostResponseCode), trxTable.hostResultCode);
     logData("Updated Amount : %s", currentTxnData.updatedAmount);
     logData("Host Response : %s", currentTxnData.hostResponseCode);
-    strcpy(currentTxnData.updatedAmount, "000000000000");
-    strcpy(currentTxnData.txnStatus, STATUS_FAILURE);
+    safe_strcpy(currentTxnData.updatedAmount, sizeof(currentTxnData.updatedAmount), "000000000000");
+    safe_strcpy(currentTxnData.txnStatus, sizeof(currentTxnData.txnStatus), STATUS_FAILURE);
 
     logData("Going to update the status for the balance update");
     // Update data for balance update
@@ -410,13 +405,20 @@ void handleSecondTapNotPresented()
     logData("TXN Status : %s", currentTxnData.txnStatus);
     logData("Host Response : %s", currentTxnData.hostResponseCode);
 
-    if (strcmp(currentTxnData.txnStatus, STATUS_FAILURE) == 0 &&
-        strcmp(currentTxnData.hostResponseCode, "00") == 0)
+    if (strcmp(currentTxnData.trxType, TRXTYPE_SERVICE_CREATE) == 0)
     {
-        logInfo("Host is success, but card failed, so generating reversal with code : %s", REVERSAL_CODE_E2);
-        updateReversalStatusOnly(currentTxnData.transactionId, STATUS_PENDING);
-        logInfo("Host is success, but card failed, so generating reversal");
-        performReversal(currentTxnData.transactionId, false, "E2");
+        logError("Service creation host success, but card failed, no need for any reversal");
+    }
+    else
+    {
+        if (strcmp(currentTxnData.txnStatus, STATUS_FAILURE) == 0 &&
+            strcmp(currentTxnData.hostResponseCode, "00") == 0)
+        {
+            logInfo("Host is success, but card failed, so generating reversal with code : %s", REVERSAL_CODE_E2);
+            updateReversalStatusOnly(currentTxnData.transactionId, STATUS_PENDING);
+            logInfo("Host is success, but card failed, so generating reversal");
+            performReversal(currentTxnData.transactionId, false, "E2");
+        }
     }
 
     logInfo("Transaction completed with status : %s", currentTxnData.txnStatus);

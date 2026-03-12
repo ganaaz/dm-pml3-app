@@ -8,6 +8,7 @@
 #include <stdbool.h>
 
 #include "include/serialmanager.h"
+#include "include/commonutil.h"
 #include "include/config.h"
 #include "include/logutil.h"
 #include "include/commandmanager.h"
@@ -76,7 +77,7 @@ void *createAndListenForUSB()
         memset(&readBuffer, '\0', sizeof(readBuffer));
         int bytesRead = 0;
         int readCount = 0;
-        strcpy(readBuffer, "");
+        safe_strcpy(readBuffer, sizeof(readBuffer), "");
         do
         {
             char buffer[256] = {0};
@@ -85,7 +86,7 @@ void *createAndListenForUSB()
             {
                 logData("Serial Read first part of data with length : %d", bytesRead);
                 logData("Data is : %s", buffer);
-                strncat(readBuffer, buffer, bytesRead);
+                safe_strncat(readBuffer, sizeof(readBuffer), buffer, bytesRead);
                 readCount += bytesRead;
             }
         } while (bytesRead > 0);

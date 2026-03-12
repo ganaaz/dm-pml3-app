@@ -490,7 +490,8 @@ int c13_service_signal_req_pre_gpo_handling(struct tlv *tlv_req, struct tlv **tl
         selectedService = NULL;
         *tlv_reply = tlv_new(C13_ID_SERVICE_ID, 2, no_service_id);
         logWarn("NO SERVICE AVAILABLE HERE, Transaction to be rejected");
-        strcpy(currentTxnData.trxIssueDetail, "No Mutal Service Available");
+        safe_strcpy(currentTxnData.trxIssueDetail, sizeof(currentTxnData.trxIssueDetail),
+                    "No Mutal Service Available");
 
         pthread_mutex_lock(&lockRupayService);
         // changeAppState(APP_STATUS_CARD_PRESENTED);
@@ -802,8 +803,8 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
                 char sha[65];
                 generatePanToken(pan, currentTxnData.plainTrack2, sha);
                 logData("SHA Generated for Pan : %s\n", sha);
-                strcpy(currentTxnData.plainPan, pan);
-                strcpy(currentTxnData.token, sha);
+                safe_strcpy(currentTxnData.plainPan, sizeof(currentTxnData.plainPan), pan);
+                safe_strcpy(currentTxnData.token, sizeof(currentTxnData.token), sha);
             }
 
             if (tag[0] == 0x5F && tag[1] == 0x25)
@@ -937,7 +938,8 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
     {
         if (!isServiceSpaceAvailable(defaultSMI, serviceAvailabilityInfo_DF03))
         {
-            strcpy(currentTxnData.trxIssueDetail, "No space for requested service available!");
+            safe_strcpy(currentTxnData.trxIssueDetail, sizeof(currentTxnData.trxIssueDetail),
+                        "No space for requested service available!");
             printf("No space for requested service available!\n");
             // Set Transaction Certificate Type to 0x00 to decline Transaction -> AAC
             transactionCertificateType[0] = 0x00;
@@ -1063,7 +1065,7 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
             currentTxnData.amount = userAmount;
             char sAmount[13];
             convertAmount(currentTxnData.amount, sAmount);
-            strcpy(currentTxnData.sAmount, sAmount);
+            safe_strcpy(currentTxnData.sAmount, sizeof(currentTxnData.sAmount), sAmount);
 
             // Convert to BCD
             libtlv_u64_to_bcd(userAmount, amountAuthorised_9F02, sizeof(amountAuthorised_9F02));
@@ -1215,8 +1217,9 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
     rc = rupay_sbt_finalize(&crypto_data, &input, &output);
     if (RS_RC_OK != rc)
     {
-        strcpy(currentTxnData.trxIssueDetail, "Key not injected or its wrong");
-        logError("Key not injected or its wrong, rupay_sbt_finalize failed!!!");
+        safe_strcpy(currentTxnData.trxIssueDetail, sizeof(currentTxnData.trxIssueDetail),
+                    "Key not injected or its wrong");
+        logError("Key not injected or its wrong, rupay_sbt_finalize failed!!!. RC : %d", rc);
         // Set Transaction Certificate Type to 0x00 to decline Transaction -> AAC
         transactionCertificateType[0] = 0x00;
         *tlv_reply = tlv_new(FEIG_C13_ID_TRANSACTION_CERTIFICATE_TYPE, 1, transactionCertificateType);
@@ -1388,7 +1391,7 @@ void handleServiceData()
         char *transactionId = malloc(UUID_STR_LEN);
         generateUUID(transactionId);
         logInfo("Unique Transaction Id generated : %s", transactionId);
-        strcpy(currentTxnData.transactionId, transactionId);
+        safe_strcpy(currentTxnData.transactionId, sizeof(currentTxnData.transactionId), transactionId);
         free(transactionId);
     }
     else

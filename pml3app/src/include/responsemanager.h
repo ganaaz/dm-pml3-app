@@ -122,4 +122,14 @@ char *buildAirtelVerifyTerminalResponseMessage(AirtelVerifyTerminalResponse resp
  **/
 char *buildAirtelHealthCheckResponseMessage(AirtelHealthCheckResponse response, int status);
 
+/**
+ * Log mode response string
+ */
+char *buildLogModeResponseMessage(const char *status, const char *logMode, int errorCode);
+
+/**
+ * Build the disk space message
+ **/
+char *buildDiskSpaceMessage(const char path[200]);
+
 #endif

@@ -328,9 +328,7 @@ char *fetchAbtData(struct abtFetchData fData)
     const char *jsonData = (char *)json_object_to_json_string(jobj);
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
-
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -564,7 +562,7 @@ void processAbtPendingTransactions()
             logData("Sending to ABT Server from record %d with the count of %d", index, max);
             char *message = generateAbtTapRequest(trxDataList, index, max);
             char body[1024 * 24] = {0};
-            strcpy(body, message);
+            safe_strcpy(body, sizeof(body), message);
             free(message);
             char responseMessage[1024 * 32] = {0};
             logData("Sending data to ABT for tap request");

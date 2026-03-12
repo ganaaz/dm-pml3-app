@@ -14,6 +14,7 @@
 #include "include/dboperations.h"
 #include "include/errorcodes.h"
 #include "include/abtdbmanager.h"
+#include "include/spaceutil.h"
 
 extern struct applicationData appData;
 extern struct applicationConfig appConfig;
@@ -42,8 +43,7 @@ char *buildResponseMessage(const char *status, int errorCode)
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -64,7 +64,7 @@ char *buildFirmwareVersionMessage()
     int rc = fetrm_get_firmware_string(version, sizeof(version));
     if (rc != 0)
     {
-        strcpy(version, "ERROR");
+        safe_strcpy(version, sizeof(version), "ERROR");
     }
 
     json_object *jVersionData = json_object_new_string(version);
@@ -78,8 +78,44 @@ char *buildFirmwareVersionMessage()
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
+    json_object_put(jobj); // Clear JSON memory
+
+    return data;
+}
+
+/**
+ * Build the disk space message
+ **/
+char *buildDiskSpaceMessage(const char path[200])
+{
+    json_object *jobj = json_object_new_object();
+
+    // Root
+    json_object *jCommand = json_object_new_string(COMMAND_GET_DISK_SPACE);
+    json_object *jData = json_object_new_object();
+
+    DiskSpace diskSpace = getDiskSpace(path);
+
+    char total[50];
+    char used[50];
+    char available[50];
+
+    formatDiskSpaceMB(&diskSpace, total, used, available, sizeof(total));
+
+    json_object_object_add(jData, "totalSpace", json_object_new_string(total));
+    json_object_object_add(jData, "usedSpace", json_object_new_string(used));
+    json_object_object_add(jData, "availableSpace", json_object_new_string(available));
+
+    json_object_object_add(jobj, COMMAND, jCommand);
+    json_object_object_add(jobj, COMMAND_DATA, jData);
+
+    const char *jsonData = json_object_to_json_string(jobj);
+
+    int len = strlen(jsonData);
+    char *data = malloc(len + 1);
+
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -101,7 +137,7 @@ char *buildGetProductOrderNumberMessage()
 
     if (rc != 0)
     {
-        strcpy(order, "ERROR");
+        safe_strcpy(order, sizeof(order), "ERROR");
     }
 
     json_object_object_add(jData, CODE_KEY, json_object_new_string(order));
@@ -113,8 +149,7 @@ char *buildGetProductOrderNumberMessage()
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -138,8 +173,7 @@ char *buildCommandResponseMessage(const char *command, const char *status, int e
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -156,7 +190,7 @@ void sendFileToSocket(const char fileName[])
     /*
     char *strData = malloc(size * 2 + 1);
     memset(strData, 0, size + 1);
-    strcpy(strData, "");
+    safe_strcpy(strData, "");
     for (int i = 0; i < size; i++)
     {
         char temp[3];
@@ -231,8 +265,36 @@ char *buildKeyPresentMessage(int result, char *label, bool isBdk)
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
+    json_object_put(jobj); // Clear JSON memory
+
+    return data;
+}
+
+/**
+ * Log mode response string
+ */
+char *buildLogModeResponseMessage(const char *status, const char *logMode, int errorCode)
+{
+    json_object *jobj = json_object_new_object();
+    json_object *jCommand = json_object_new_string(COMMAND_GET_LOG_MODE);
+    json_object *jState = json_object_new_string(status);
+    json_object *jErrorCode = json_object_new_int(errorCode);
+
+    json_object_object_add(jobj, COMMAND, jCommand);
+    json_object_object_add(jobj, COMMAND_STATE, jState);
+    json_object_object_add(jobj, COMMAND_ERROR_CODE, jErrorCode);
+
+    json_object *jData = json_object_new_object();
+
+    json_object_object_add(jData, LOG_MODE, json_object_new_string(logMode));
+    json_object_object_add(jobj, COMMAND_DATA, jData);
+
+    const char *jsonData = (char *)json_object_to_json_string(jobj);
+    int len = strlen(jsonData);
+    char *data = malloc(len + 1);
+
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -268,8 +330,7 @@ char *buildDestroyKeyMessage(int result, char *label, bool isBdk)
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -297,8 +358,7 @@ char *buildVersionMessage()
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -328,8 +388,7 @@ char *buildDeviceIdMessage()
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -357,8 +416,7 @@ char *buildNoReversalMessage()
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -389,8 +447,7 @@ char *buildDeleteFileResponse(const char *message, int code)
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -418,8 +475,7 @@ char *buildSetTimeResponse(const char *status)
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -475,8 +531,7 @@ char *buildVerifyTerminalResponseMessage(VerifyTerminalResponse response, int mi
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -519,8 +574,7 @@ char *buildAirtelVerifyTerminalResponseMessage(AirtelVerifyTerminalResponse resp
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -564,8 +618,7 @@ char *buildAirtelHealthCheckResponseMessage(AirtelHealthCheckResponse response, 
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -642,8 +695,11 @@ void sendAbtCardPresented(struct transactionData trxData)
     json_object *jCommand = json_object_new_string(COMMAND_STATUS);
     json_object *jState = json_object_new_string(STATE_CARD_PRESENTED_ABT);
 
+    logData("Amount IS :: %lld", trxData.amount);
+    logData("Amount is : %s", trxData.sAmount);
+
     // Data
-    json_object *jToken = json_object_new_string(trxData.plainTrack2);
+    json_object *jToken = json_object_new_string(trxData.token);
     json_object *jValidFrom = json_object_new_string(trxData.effectiveDate);
     json_object *jOrderId = json_object_new_string(trxData.orderId);
 
@@ -651,7 +707,7 @@ void sendAbtCardPresented(struct transactionData trxData)
     json_object_object_add(jDataObject, "tuid", json_object_new_string(trxData.transactionId));
     json_object_object_add(jDataObject, "token", jToken);
     json_object_object_add(jDataObject, "valid_from", jValidFrom);
-    json_object_object_add(jDataObject, "amount", json_object_new_string("0"));
+    json_object_object_add(jDataObject, "amount", json_object_new_int64(trxData.amount));
     json_object_object_add(jDataObject, "orderId", jOrderId);
 
     logData("GMT Time IS :: %s", trxData.gmtTime);
@@ -728,8 +784,7 @@ char *buildPendingOfflineSummaryMessage()
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -761,9 +816,7 @@ char *buildAbtTrxSummaryMessage()
 
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
-
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -1000,6 +1053,7 @@ char *buildGetConfigMessage()
         json_object *jKeyData = json_object_new_object();
 
         json_object_object_add(jKeyData, CONFIG_KEY_KEY_LABEL, json_object_new_string(keyData->label));
+        json_object_object_add(jKeyData, CONFIG_KEY_KEY_MKLABEL, json_object_new_string(keyData->mkLabel));
         json_object_object_add(jKeyData, CONFIG_KEY_KEY_SLOT, json_object_new_int(keyData->slot));
         json_object_object_add(jKeyData, CONFIG_KEY_KEY_MKVERSION, json_object_new_int(keyData->mkVersion));
         json_object_object_add(jKeyData, CONFIG_KEY_KEY_AST_ID, json_object_new_string(keyData->astId));
@@ -1046,8 +1100,7 @@ char *buildGetConfigMessage()
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;

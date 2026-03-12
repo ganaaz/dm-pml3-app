@@ -36,7 +36,7 @@ char *generateAbtTapRequest(AbtTransactionTable trxDataList[], int start, int tr
         json_object *txnBodyObj = json_object_new_object();
         char timeData[22];
         populateCurrentTime(timeData);
-        strcat(timeData, "Z");
+        safe_strcat(timeData, sizeof(timeData), "Z");
         json_object_object_add(txnBodyObj, "date_time", json_object_new_string(timeData));
         json_object_object_add(txnBodyObj, "device_id", json_object_new_string(deviceId));
         if (strcmp(trxTable.gateStatus, "true") == 0)
@@ -74,8 +74,8 @@ char *generateAbtTapRequest(AbtTransactionTable trxDataList[], int start, int tr
     const char *jsonData = (char *)json_object_to_json_string(jobj);
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
+
     json_object_put(jobj); // Clear JSON memory
 
     return data;
@@ -116,24 +116,28 @@ void parseAbtTapResponse(const char *data, int *count, AbtTapResponse abtTapResp
         jResponseValue = json_object_array_get_idx(responses, i);
         if (json_object_object_get(jResponseValue, "tuid") != NULL)
         {
-            strcpy(abtTapResponses[i].tuid,
-                   (char *)json_object_get_string(json_object_object_get(jResponseValue, "tuid")));
+            const char *tuid =
+                json_object_get_string(json_object_object_get(jResponseValue, "tuid"));
+
+            safe_strcpy(abtTapResponses[i].tuid,
+                        sizeof(abtTapResponses[i].tuid),
+                        tuid);
         }
 
         if (json_object_object_get(jResponseValue, "result") != NULL)
         {
-            strcpy(abtTapResponses[i].result,
-                   (char *)json_object_get_string(json_object_object_get(jResponseValue, "result")));
+            safe_strcpy(abtTapResponses[i].result, sizeof(abtTapResponses[i].result),
+                        (char *)json_object_get_string(json_object_object_get(jResponseValue, "result")));
         }
 
         if (json_object_object_get(jResponseValue, "reason") != NULL)
         {
-            strcpy(abtTapResponses[i].reason,
-                   (char *)json_object_get_string(json_object_object_get(jResponseValue, "reason")));
+            safe_strcpy(abtTapResponses[i].reason, sizeof(abtTapResponses[i].reason),
+                        (char *)json_object_get_string(json_object_object_get(jResponseValue, "reason")));
         }
         else
         {
-            strcpy(abtTapResponses[i].reason, "");
+            safe_strcpy(abtTapResponses[i].reason, sizeof(abtTapResponses[i].reason), "");
         }
     }
 

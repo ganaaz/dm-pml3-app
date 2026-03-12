@@ -20,11 +20,11 @@ namespace Simulator
 {
     class Program
     {
-        private static DateTime releaseDate = new DateTime(2025, 11, 10);
-        private static bool requestUser = true;
-        public static string LocalIPForAirtel = "192.168.100.11"; // "10.0.0.20";
+        private static DateTime releaseDate = new DateTime(2026, 3, 11);
+        private static bool requestUser = false;
+        public static string LocalIPForAirtel = "10.0.0.20";
         //public static string LocalIPForPayTM = "192.168.29.248";
-        private static string l3Server = "192.168.100.10"; // "10.0.0.40";
+        private static string l3Server = "10.0.0.40";
         //private static string l3Server = "192.168.29.248";
         private static int port = 9090;
         private static int dataPort = 9091;
@@ -55,7 +55,7 @@ namespace Simulator
         {
             Console.WriteLine("-------------------------------------------");
             Console.WriteLine("Datamatics Transit Gate Application for PML3");
-            Console.WriteLine("Version : 1.0.0");
+            Console.WriteLine("Version : 1.0.1");
             Console.WriteLine($"Release Date : {releaseDate.ToLongDateString()}");
             Console.WriteLine("-------------------------------------------");
 
@@ -409,6 +409,49 @@ namespace Simulator
                         }
                         break;
 
+                    case "42":
+                        if (ValidateConnect())
+                        {
+                            GetLogMode();
+                        }
+                        break;
+
+                    case "43":
+                        if (ValidateConnect())
+                        {
+                            isLoopMode = true;
+                            AbtSale();
+                        }
+                        break;
+
+                    case "44":
+                        if (ValidateConnect())
+                        {
+                            FetchAuth("Pending", true);
+                        }
+                        break;
+
+                    case "45":
+                        if (ValidateConnect())
+                        {
+                            FetchAuth("Success", true);
+                        }
+                        break;
+
+                    case "46":
+                        if (ValidateConnect())
+                        {
+                            FetchAuth("Failure", true);
+                        }
+                        break;
+
+                    case "47":
+                        if (ValidateConnect())
+                        {
+                            GetDiskSpace();
+                        }
+                        break;
+
                     case "99":
                         if (ValidateConnect())
                         {
@@ -758,6 +801,12 @@ namespace Simulator
             Console.WriteLine("39. ABT Fetch Data");
             Console.WriteLine("40. Verify Airtel Terminal");
             Console.WriteLine("41. Airtel Health Check");
+            Console.WriteLine("42. Get Log Mode");
+            Console.WriteLine("43. Abt Sale");
+            Console.WriteLine("44. Fetch Auth Online Pending");
+            Console.WriteLine("45. Fetch Auth Online Success");
+            Console.WriteLine("46. Fetch Auth Online Failure");
+            Console.WriteLine("47. Get Disk Space");
             Console.WriteLine("101. Stop Search");
             Console.WriteLine("100. Reboot");
             Console.WriteLine("Q. Quit");
@@ -1219,12 +1268,36 @@ namespace Simulator
             SendMessage(strData);
         }
 
+        private static void GetLogMode()
+        {
+            var command = new Command
+            {
+                Cmd = "get_log_mode"
+            };
+            var strData = JsonConvert.SerializeObject(command);
+            SendMessage(strData);
+        }
+
         private static void GetFirmwareVersion()
         {
             var command = new Command
             {
                 Cmd = "get_firmware_version"
             };
+            var strData = JsonConvert.SerializeObject(command);
+            SendDataSocketMessage(strData);
+        }
+
+        private static void GetDiskSpace()
+        {
+            var command = new Command
+            {
+                Cmd = "get_disk_space"
+            };
+
+            Console.WriteLine("Enter the path : ");
+            command.DiskSpacePath = Console.ReadLine().Trim();
+
             var strData = JsonConvert.SerializeObject(command);
             SendDataSocketMessage(strData);
         }
@@ -1542,7 +1615,7 @@ namespace Simulator
             SendMessage(strData);
         }
 
-        private static void FetchAuth(string mode)
+        private static void FetchAuth(string mode, bool isOnline = false)
         {
             if (fetchAuthLoop)
             {
@@ -1551,7 +1624,8 @@ namespace Simulator
                     Cmd = "fetch_auth",
                     Mode = mode,
                     FetchId = 1,
-                    MaxRecords = 2
+                    MaxRecords = 2,
+                    IsOnline = isOnline
                 };
                 var data = JsonConvert.SerializeObject(command1);
                 SendDataSocketMessage(data);
@@ -1636,6 +1710,46 @@ namespace Simulator
                 return;
             }
 
+            Console.WriteLine("Enter the Type, 2 - Cash Paid, 4 - Other Cards");
+            Console.Write("Type : ");
+            var addType = Console.ReadLine();
+            var addTypeStr = "";
+
+            if (addType == "2")
+                addTypeStr = "02";
+
+            if (addType == "4")
+                addTypeStr = "04";
+
+            if (addTypeStr == "")
+            {
+                Console.WriteLine("Invalid type. Only 2 or 4 is supported");
+                return;
+            }
+
+            var tid = "";
+            var rrn = "";
+            if (addTypeStr == "04")
+            {
+                Console.WriteLine("Enter the TID (max 8 characters) : ");
+                tid = Console.ReadLine();
+                if (tid.Length > 8 || string.IsNullOrWhiteSpace(tid))
+                {
+                    Console.WriteLine("TID cannot be more than 8 characters or empty");
+                    return;
+                }
+
+                Console.WriteLine("Enter the RRN (max 12 characters) : ");
+                rrn = Console.ReadLine();
+                if (rrn.Length > 12 || string.IsNullOrWhiteSpace(tid))
+                {
+                    Console.WriteLine("RRN cannot be more than 12 characters or empty");
+                    return;
+                }
+            }
+
+            Console.WriteLine("Money Add Type : " + addTypeStr);
+
             var command = new Command
             {
                 Cmd = "search_card",
@@ -1643,6 +1757,9 @@ namespace Simulator
                 TrxType = "money_add",
                 TimeOut = 10 * 1000,
                 Amount = moneyAddAmount,
+                MoneyAddType = addTypeStr,
+                MoneyAddTID = tid,
+                MoneyAddRRN = rrn
             };
             var strData = JsonConvert.SerializeObject(command);
             SendMessage(strData);
@@ -1901,7 +2018,26 @@ namespace Simulator
             var result = SendMessage(strData);
 
             Console.WriteLine($"Result : {result}");
+        }
 
+        private static void AbtSale()
+        {
+            isPurchase = true;
+            Console.WriteLine("Purchase amount to be entered without decimal '.'");
+            Console.WriteLine("For example if the amount is 110.00, Please enter as 11000");
+            Console.Write("Enter the purchase amount : ");
+            purchaseAmount = Console.ReadLine();
+            Console.WriteLine("Purchase Amount : " + purchaseAmount);
+            var command = new Command
+            {
+                Cmd = "search_card",
+                Mode = "single",
+                TrxType = "purchase",
+                TimeOut = searchTimeOut
+            };
+            command.Amount = purchaseAmount;
+            var strData = JsonConvert.SerializeObject(command);
+            SendMessage(strData);
         }
 
         private static void PurchaseSingleWithData()

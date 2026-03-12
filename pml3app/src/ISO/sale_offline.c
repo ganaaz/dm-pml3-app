@@ -89,6 +89,12 @@ ISO8583_ERROR_CODES construct_transaction_request_object_for_offline_sale(ISO858
                         return ret;
                     break;
 
+                case DE38_AUTHORIZATION_IDENTIFICATION_RESPONSE:
+                    ret = copy_value(req_txn_obj, DE38_AUTHORIZATION_IDENTIFICATION_RESPONSE, "000000");
+                    if (ret != TXN_SUCCESS)
+                        return ret;
+                    break;
+
                 case DE41_CARD_ACCEPTOR_TERMINAL_ID:
                     ret = copy_value(req_txn_obj, DE41_CARD_ACCEPTOR_TERMINAL_ID, static_data.DE41_TERMINAL_ID);
                     if (ret != TXN_SUCCESS)

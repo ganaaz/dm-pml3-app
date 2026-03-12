@@ -34,7 +34,6 @@
 #include "ISO/ISO8583_interface.h"
 #include "ISO/log.h"
 #include "ISO/utils.h"
-#include "JHost/jhost_interface.h"
 
 #define EMVCO_MAX_OUTCOME_LENGTH 4096
 #define EMVCO_MAX_UI_REQUEST_LENGTH 1024
@@ -42,7 +41,7 @@
 #define EMV_TRACK2 "\x57"
 #define EMV_TERMINAL_FLOOR_LIMT "\x9F\x1B"
 #define FETPF_PROCEED_DONE_WITHOUT_CARD_REMOVAL "\xDF\xFE\xF1\x00\x01\x02\xDF\xFE\xF1\x02\x03\x00\x00\x00"
-#define FETPF_PROCEED_TRY_NEXT_WITH_CARD_FOUND_CB_AT_EVERY_RETRY "\xDF\xFE\xF1\x00\x01\x04"
+#define FETPF_PROCEED_TRY_NEXT_WITH_CARD_FOUND_CB_AT_EVERY_RETRY_LOCAL "\xDF\xFE\xF1\x00\x01\x04"
 
 extern struct applicationData appData;
 extern struct applicationConfig appConfig;
@@ -284,9 +283,9 @@ int closed_loop_card_found(struct fetpf *client,
 
     *out_data_len = 6;
     /* Set new value to tell FETPF that card_found callback is needed again*/
-    printf("\t++++ FETPF_PROCEED_TRY_NEXT_WITH_CARD_FOUND_CB_AT_EVERY_RETRY ++++\n");
+    printf("\t++++ FETPF_PROCEED_TRY_NEXT_WITH_CARD_FOUND_CB_AT_EVERY_RETRY_LOCAL ++++\n");
 
-    memcpy(out_data, FETPF_PROCEED_TRY_NEXT_WITH_CARD_FOUND_CB_AT_EVERY_RETRY, 6);
+    memcpy(out_data, FETPF_PROCEED_TRY_NEXT_WITH_CARD_FOUND_CB_AT_EVERY_RETRY_LOCAL, 6);
 
     return FETPF_RC_OK;
 }
@@ -328,30 +327,32 @@ void populateTrxDetails(uint64_t amount_authorized_bin)
     currentTxnData.trxTypeBin = appData.trxTypeBin;
     char sAmount[13];
     convertAmount(currentTxnData.amount, sAmount);
-    strcpy(currentTxnData.sAmount, sAmount);
-    strcpy(currentTxnData.trxType, appData.trxType);
+    safe_strcpy(currentTxnData.sAmount, sizeof(currentTxnData.sAmount), sAmount);
+    safe_strcpy(currentTxnData.trxType, sizeof(currentTxnData.trxType), appData.trxType);
 
     if (appData.isCheckDateAvailable)
-        strcpy(currentTxnData.checkDate, appData.checkDate);
+        safe_strcpy(currentTxnData.checkDate, sizeof(currentTxnData.checkDate), appData.checkDate);
 
     if (currentTxnData.trxTypeBin == 0x00)
-        strcpy(currentTxnData.processingCode, "000000");
+        safe_strcpy(currentTxnData.processingCode, sizeof(currentTxnData.processingCode), "000000");
     if (currentTxnData.trxTypeBin == 0x83) // Service Create
-        strcpy(currentTxnData.processingCode, "830000");
+        safe_strcpy(currentTxnData.processingCode, sizeof(currentTxnData.processingCode), "830000");
     if (currentTxnData.trxTypeBin == 0x31) // Balance Inquiry
-        strcpy(currentTxnData.processingCode, "");
+        safe_strcpy(currentTxnData.processingCode, sizeof(currentTxnData.processingCode), "310000");
     if (currentTxnData.trxTypeBin == 0x29) // Balance Update
-        strcpy(currentTxnData.processingCode, "840000");
+        safe_strcpy(currentTxnData.processingCode, sizeof(currentTxnData.processingCode), "840000");
     if (currentTxnData.trxTypeBin == 0x28) // Money Add
-        strcpy(currentTxnData.processingCode, "820000");
+        safe_strcpy(currentTxnData.processingCode, sizeof(currentTxnData.processingCode), "820000");
 
     currentTxnData.txnCounter = appData.transactionCounter;
     char stan[7];
     snprintf(stan, 7, "%06ld", currentTxnData.txnCounter);
     logData("Stan : %s", stan);
-    strcpy(currentTxnData.stan, stan);
-    strcpy(currentTxnData.moneyAddTrxType, appData.moneyAddTrxType);
-    strcpy(currentTxnData.sourceTxnId, appData.sourceTxnId);
+    safe_strcpy(currentTxnData.stan, sizeof(currentTxnData.stan), stan);
+    safe_strcpy(currentTxnData.moneyAddTrxType, sizeof(currentTxnData.moneyAddTrxType), appData.moneyAddTrxType);
+    safe_strcpy(currentTxnData.moneyAddRRN, sizeof(currentTxnData.moneyAddRRN), appData.moneyAddRRN);
+    safe_strcpy(currentTxnData.moneyAddTid, sizeof(currentTxnData.moneyAddTid), appData.moneyAddTid);
+    safe_strcpy(currentTxnData.sourceTxnId, sizeof(currentTxnData.sourceTxnId), appData.sourceTxnId);
 }
 
 /**
@@ -374,7 +375,7 @@ void readAndStoreLimit(void *config, size_t configLen)
     {
         char temp[3];
         sprintf(temp, "%02X", ((uint8_t *)buffer)[i]);
-        strcat(limitStr, temp);
+        safe_strcat(limitStr, temp);
     }
 
     logData("Contactless limit string : %s", limitStr);
@@ -404,7 +405,7 @@ void readAndStoreCVMLimit(void *config, size_t configLen)
     {
         char data[3];
         sprintf(data, "%02X", ((uint8_t *)cvmBuffer)[i]);
-        strcat(cvmLimitStr, data);
+        safe_strcat(cvmLimitStr, data);
     }
     cvmLimitStr[12] = '\0';
 
@@ -435,12 +436,12 @@ void readAndStoreFloorLimit(void *config, size_t configLen)
     {
         char data[3];
         sprintf(data, "%02X", ((uint8_t *)floorBuffer)[i]);
-        strcat(floorLimitStr, data);
+        safe_strcat(floorLimitStr, data);
     }
     floorLimitStr[8] = '\0';
     logData("Floor limit string : %s", floorLimitStr);
-    //strcpy(floorLimitStr, "00004E20");
-    strcpy(floorLimitStr, "00030D40");
+    //safe_strcpy(floorLimitStr, "00004E20");
+    safe_strcpy(floorLimitStr, "00030D40");
     logData("Floor limit string : %s", floorLimitStr);
 
     appConfig.floorLimit = strtol(floorLimitStr, NULL, 16);
@@ -530,7 +531,7 @@ int callBackDataExchange(struct fetpf *client,
             logData("%s(): Source: DF-Name %s",
                     __func__, libtlv_bin_to_hex(df_name, df_name_sz, df_name_str));
 
-            strncpy(currentTxnData.aid, df_name_str, (2 * df_name_sz) + 1);
+            safe_strncpy(currentTxnData.aid, sizeof(currentTxnData.aid), df_name_str, (2 * df_name_sz) + 1);
         }
 
         tlv_free(tlv_source);
@@ -643,7 +644,7 @@ int handle_online_request(const void *outcome, size_t outcome_len,
         tlv_encode_value(tlv_obj, buffer, &buffer_len);
         byteToHex(buffer, buffer_len, track2);
         char *updatedTrack2 = removeTrack2FPadding(track2, buffer_len * 2);
-        strcpy(currentTxnData.plainTrack2, updatedTrack2);
+        safe_strcpy(currentTxnData.plainTrack2, sizeof(currentTxnData.plainTrack2), updatedTrack2);
         currentTxnData.plainTrack2[strlen(updatedTrack2)] = '\0';
         free(updatedTrack2);
         // logData("Plain Track 2 received : %s", currentTxnData.plainTrack2); // TODO : Remove
@@ -663,12 +664,12 @@ int handle_online_request(const void *outcome, size_t outcome_len,
     // encryptPanTrack2ExpDate();
 
     // Save the txn to db
-    strcpy(currentTxnData.txnStatus, STATUS_PENDING);
+    safe_strcpy(currentTxnData.txnStatus, sizeof(currentTxnData.txnStatus), STATUS_PENDING);
     logData("Already generated txn id : %s", currentTxnData.transactionId);
     // char *transactionId = malloc(UUID_STR_LEN);
     // generateUUID(transactionId);
     // logInfo("Unique Transaction Id : %s", transactionId);
-    // strcpy(currentTxnData.transactionId, transactionId);
+    // safe_strcpy(currentTxnData.transactionId, transactionId);
     // free(transactionId);
 
     if (strcmp(currentTxnData.trxType, TRXTYPE_BALANCE_UPDATE) == 0)
@@ -852,12 +853,12 @@ void callBacktrack2(struct fetpf *client, const void *track2Tlv, size_t track_le
         // logData("Track 2 len : %d", strlen(track2));
 
         char track2WithTag[50];
-        strcpy(track2WithTag, "57");
+        safe_strcpy(track2WithTag, sizeof(track2WithTag), "57");
         char track2HexLen[12];
         sprintf(track2HexLen, "%02X", strlen(track2Data) / 2);
         // logData("Hex length of Track 2 : %s", track2HexLen);
-        strcat(track2WithTag, track2HexLen);
-        strcat(track2WithTag, track2Data);
+        safe_strcat(track2WithTag, sizeof(track2WithTag), track2HexLen);
+        safe_strcat(track2WithTag, sizeof(track2WithTag), track2Data);
 
         // logData("Input Track2 : %s", track2WithTag);
         // logData("Input track 2 len : %d", strlen(track2WithTag));
@@ -867,12 +868,12 @@ void callBacktrack2(struct fetpf *client, const void *track2Tlv, size_t track_le
         byteToHex(ksn, 10, hex2);
         logData("KSN Received : %s", hex2);
         logData("KSN Len : %d", strlen(hex2));
-        strcpy(currentTxnData.ksn, "00000000000000000000");
-        strcat(currentTxnData.ksn, hex2);
+        safe_strcpy(currentTxnData.ksn, sizeof(currentTxnData.ksn), "00000000000000000000");
+        safe_strcat(currentTxnData.ksn, sizeof(currentTxnData.ksn), hex2);
         logData("TXN Data KSN Value : %s", currentTxnData.ksn);
         logData("TXN Data KSN Len : %d", strlen(currentTxnData.ksn));
 
-        strcpy(currentTxnData.track2Enc, hex);
+        safe_strcpy(currentTxnData.track2Enc, sizeof(currentTxnData.track2Enc), hex);
         logData("TXN Track2 Encrypted Value : %s", currentTxnData.track2Enc);
         logData("TXN Track2 Encrypted Len : %d", strlen(currentTxnData.track2Enc));
     }
@@ -882,7 +883,7 @@ void callBacktrack2(struct fetpf *client, const void *track2Tlv, size_t track_le
     }
 
     char *updatedTrack2 = removeTrack2FPadding(track2Data, dataBufferLen * 2);
-    strcpy(currentTxnData.plainTrack2, updatedTrack2);
+    safe_strcpy(currentTxnData.plainTrack2, sizeof(currentTxnData.plainTrack2), updatedTrack2);
     currentTxnData.plainTrack2[strlen(updatedTrack2)] = '\0';
     free(updatedTrack2);
 
@@ -890,30 +891,46 @@ void callBacktrack2(struct fetpf *client, const void *track2Tlv, size_t track_le
     {
         logData("Its an ABT on callback track 2, so generating token");
         logData("Plain track 2 after F removed : %s", currentTxnData.plainTrack2);
-        strcpy(currentTxnData.token, currentTxnData.plainTrack2);
+        // safe_strcpy(currentTxnData.token, currentTxnData.plainTrack2);
 
-        char delimiter = 'D';
-        char *token = strtok(currentTxnData.plainTrack2, &delimiter);
-        strncpy(currentTxnData.maskPan, token, 20);
-        currentTxnData.maskPan[sizeof(currentTxnData.maskPan) - 1] = '\0';
+        int plainTrack2Len = strlen(currentTxnData.plainTrack2);
+        logData("Plain Track 2 length to be used: %d", plainTrack2Len);
 
-        // char plainTrack2[track_len * 2];
-        // memset(plainTrack2, 0, track_len * 2);
-        // for (int i = 0; i < track_len; i++)
-        // {
-        //     char temp[3];
-        //     sprintf(temp, "%02X", data[i]);
-        //     strcat(plainTrack2, temp);
-        // }
+        char plainTrack2[plainTrack2Len];
+        memset(plainTrack2, 0, plainTrack2Len);
+        safe_strcpy(plainTrack2, sizeof(plainTrack2), currentTxnData.plainTrack2);
 
-        // plainTrack2[track_len * 2] = '\0';
-        // logData("Plain Track 2 received : %s", plainTrack2);
-        // logData("Plain text track 2 len : %d", strlen(plainTrack2));
+        logData("Plain Track 2 received : %s", plainTrack2);
+        logData("Plain text track 2 len : %d", strlen(plainTrack2));
 
-        // char sha[65];
-        // generatePanToken(currentTxnData.plainPan, plainTrack2, sha);
-        // logData("SHA Generated for Pan : %s\n", sha);
-        // strcpy(currentTxnData.token, sha);
+        // char delimiter = 'D';
+        // char *token = strtok(currentTxnData.plainTrack2, &delimiter);
+        // safe_strncpy(currentTxnData.maskPan, sizeof(currentTxnData.maskPan), token, 20);
+        // currentTxnData.maskPan[sizeof(currentTxnData.maskPan) - 1] = '\0';
+        char *token = strtok(currentTxnData.plainTrack2, "D");
+        if (token != NULL)
+        {
+            safe_strncpy(currentTxnData.maskPan,
+                         sizeof(currentTxnData.maskPan),
+                         token,
+                         20);
+        }
+
+        safe_strncpy(currentTxnData.plainPan, sizeof(currentTxnData.plainPan), token, 20);
+        currentTxnData.plainPan[sizeof(currentTxnData.plainPan) - 1] = '\0';
+        // logData("Plain pan : %s", currentTxnData.plainPan);
+
+        logData("Its abt transaction so generating transaction id here");
+        char *transactionId = malloc(UUID_STR_LEN);
+        generateUUID(transactionId);
+        logInfo("Unique Transaction Id generated : %s", transactionId);
+        safe_strcpy(currentTxnData.transactionId, sizeof(currentTxnData.transactionId), transactionId);
+        free(transactionId);
+
+        char sha[65];
+        generatePanToken(currentTxnData.plainPan, plainTrack2, sha);
+        logData("SHA Generated for Pan : %s\n", sha);
+        safe_strcpy(currentTxnData.token, sizeof(currentTxnData.token), sha);
     }
 
     if (appConfig.isDebugEnabled != 1)

@@ -14,6 +14,7 @@
 #include <feig/feig_trace_tags.h>
 #include <feig/emvco_ep.h>
 
+#include "include/commonutil.h"
 #include "include/logutil.h"
 #include "include/config.h"
 #include "include/tlvhelper.h"
@@ -148,8 +149,8 @@ void getHostLogFileName(char *fileName)
     sprintf(index, "%d", paytmLogIndex);
     logData("Index : %s", index);
 
-    strcpy(currFileName, "host.log.");
-    strcat(currFileName, index);
+    safe_strcpy(currFileName, sizeof(currFileName), "host.log.");
+    safe_strcat(currFileName, sizeof(currFileName), index);
 
     logData("Generated file name : %s", currFileName);
 
@@ -158,7 +159,7 @@ void getHostLogFileName(char *fileName)
     // Check the file exists
     if (exists == false)
     {
-        strcpy(fileName, currFileName);
+        safe_strcpy(fileName, 50, currFileName);
         logData("Log file doesnot exists, so using that");
         return;
     }
@@ -170,7 +171,7 @@ void getHostLogFileName(char *fileName)
     if (fileSize < maxSize)
     {
         logData("File size under the limit, so using that");
-        strcpy(fileName, currFileName);
+        safe_strcpy(fileName, 50, currFileName);
         return;
     }
 
@@ -193,8 +194,8 @@ void getHostLogFileName(char *fileName)
     sprintf(newIndex, "%d", paytmLogIndex);
     logData("newIndex : %s", newIndex);
 
-    strcpy(newFileName, "paytm.log.");
-    strcat(newFileName, newIndex);
+    safe_strcpy(newFileName, 50, "paytm.log.");
+    safe_strcat(newFileName, 50, newIndex);
 
     logData("Generated new file name : %s", newFileName);
 
@@ -209,7 +210,7 @@ void getHostLogFileName(char *fileName)
     logData("File %s is reset", newFileName);
     long size = getFileSize(newFileName);
     logData("Size is : %d", size);
-    strcpy(fileName, newFileName);
+    safe_strcpy(fileName, 50, newFileName);
 }
 
 /**
@@ -328,10 +329,10 @@ void logData(const char *fmt, ...)
         char buffer[26];
         getDateTime(buffer);
         char *data = (char*)malloc(strlen(fmt) + 31);
-        strcpy(data, buffer);
-        strcat(data, fmt);
+        safe_strcpy(data, buffer);
+        safe_strcat(data, fmt);
         va_list args;
-        strcat(data, "\n");
+        safe_strcat(data, "\n");
         va_start(args, data);
         vfprintf(stdout, data, args);
         va_end(args);

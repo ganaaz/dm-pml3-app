@@ -62,12 +62,15 @@ char *handleClientFetchMessage(const char *data)
         logData("Starting to process fetch auth  : %d\n", ix++);
         if (strcmp(reqMessage.fData.mode, STATUS_SUCCESS) == 0)
         {
-            return fetchHostData(reqMessage.fData.maxrecords, FETCH_MODE_SUCCESS);
+            return fetchHostData(reqMessage.fData.maxrecords, FETCH_MODE_SUCCESS,
+                                 reqMessage.fData.isOnline);
         }
         else if (strcmp(reqMessage.fData.mode, STATUS_FAILURE) == 0)
-            return fetchHostData(reqMessage.fData.maxrecords, FETCH_MODE_FAILURE);
+            return fetchHostData(reqMessage.fData.maxrecords, FETCH_MODE_FAILURE,
+                                 reqMessage.fData.isOnline);
         else
-            return fetchHostData(reqMessage.fData.maxrecords, FETCH_MODE_PENDING);
+            return fetchHostData(reqMessage.fData.maxrecords, FETCH_MODE_PENDING,
+                                 reqMessage.fData.isOnline);
     }
 
     if (strcmp(reqMessage.cmd, COMMAND_ABT_FETCH) == 0)
@@ -137,6 +140,11 @@ char *handleClientFetchMessage(const char *data)
         return buildFirmwareVersionMessage();
     }
 
+    if (strcmp(reqMessage.cmd, COMMAND_GET_DISK_SPACE) == 0)
+    {
+        return buildDiskSpaceMessage(reqMessage.dSpace.path);
+    }
+
     if (strcmp(reqMessage.cmd, COMMAND_GET_PRODUCT_ORDER_NUMBER) == 0)
     {
         return buildGetProductOrderNumberMessage();
@@ -164,7 +172,7 @@ char *handleClientFetchMessage(const char *data)
     if (strcmp(reqMessage.cmd, COMMAND_SET_TIME) == 0)
     {
         char utc[17];
-        strncpy(utc, reqMessage.tData.time, 14);
+        safe_strncpy(utc, 17, reqMessage.tData.time, 14);
         logData("Received time for changing : %s and len : %d", utc, strlen(utc));
         utc[14] = '0';
         utc[15] = '0';
@@ -204,17 +212,51 @@ char *handleClientMessage(const char *data)
 
         if (strcmp(reqMessage.logData.logMode, LOG_MODE_DEBUG) == 0)
         {
-            r = system("cp log4crc.debug log4crc");
-            logInfo("Out of log error copy : %d", r);
+            // r = system("cp log4crc.debug log4crc");
+            r = writeLogMode(0);
+            logInfo("Result of write logmode : %d", r);
+        }
+
+        if (strcmp(reqMessage.logData.logMode, LOG_MODE_INFO) == 0)
+        {
+            r = writeLogMode(1);
+            logInfo("Result of write logmode : %d", r);
         }
 
         if (strcmp(reqMessage.logData.logMode, LOG_MODE_ERROR) == 0)
         {
-            r = system("cp log4crc.error log4crc");
-            logInfo("Out of log error copy : %d", r);
+            // r = system("cp log4crc.error log4crc");
+            r = writeLogMode(2);
+            logInfo("Result of write logmode : %d", r);
+        }
+
+        if (r != 0)
+        {
+            return buildCommandResponseMessage(COMMAND_CHANGE_LOG_MODE, STATUS_ERROR, r);
         }
 
         return buildCommandResponseMessage(COMMAND_CHANGE_LOG_MODE, STATUS_SUCCESS, r);
+    }
+
+    if (strcmp(reqMessage.cmd, COMMAND_GET_LOG_MODE) == 0)
+    {
+        int r = getLogMode();
+        if (r == 0)
+        {
+            return buildLogModeResponseMessage(STATUS_SUCCESS, LOG_MODE_DEBUG, 0);
+        }
+        else if (r == 1)
+        {
+            return buildLogModeResponseMessage(STATUS_SUCCESS, LOG_MODE_INFO, 0);
+        }
+        else if (r == 2)
+        {
+            return buildLogModeResponseMessage(STATUS_SUCCESS, LOG_MODE_ERROR, 0);
+        }
+        else
+        {
+            return buildLogModeResponseMessage(STATUS_ERROR, "None", r);
+        }
     }
 
     if (strcmp(reqMessage.cmd, COMMAND_STATUS) == 0)
@@ -326,44 +368,44 @@ char *handleClientMessage(const char *data)
         return buildResponseMessage(STATUS_STOPPING, ERR_DEVICE_IN_STOPPING);
     }
 
-    if (strcmp(reqMessage.cmd, COMMAND_VERIFY_TERMINAL) == 0)
-    {
-        if (appData.isKeyInjectionSuccess == false)
-            return buildResponseMessage(STATUS_KEYS_NOT_LOADED, 0);
+    // if (strcmp(reqMessage.cmd, COMMAND_VERIFY_TERMINAL) == 0)
+    // {
+    //     if (appData.isKeyInjectionSuccess == false)
+    //         return buildResponseMessage(STATUS_KEYS_NOT_LOADED, 0);
 
-        if (appData.status == APP_STATUS_AWAIT_CARD)
-        {
-            return buildCommandResponseMessage(COMMAND_VERIFY_TERMINAL, STATUS_ERROR, ERR_ALREADY_SEARCHING);
-        }
+    //     if (appData.status == APP_STATUS_AWAIT_CARD)
+    //     {
+    //         return buildCommandResponseMessage(COMMAND_VERIFY_TERMINAL, STATUS_ERROR, ERR_ALREADY_SEARCHING);
+    //     }
 
-        return performVerifyTerminal(reqMessage.vData.tid, reqMessage.vData.mid);
-    }
+    //     return performVerifyTerminal(reqMessage.vData.tid, reqMessage.vData.mid);
+    // }
 
-    if (strcmp(reqMessage.cmd, COMMAND_AIRTEL_VERIFY_TERMINAL) == 0)
-    {
-        if (appData.isKeyInjectionSuccess == false)
-            return buildResponseMessage(STATUS_KEYS_NOT_LOADED, 0);
+    // if (strcmp(reqMessage.cmd, COMMAND_AIRTEL_VERIFY_TERMINAL) == 0)
+    // {
+    //     if (appData.isKeyInjectionSuccess == false)
+    //         return buildResponseMessage(STATUS_KEYS_NOT_LOADED, 0);
 
-        if (appData.status == APP_STATUS_AWAIT_CARD)
-        {
-            return buildCommandResponseMessage(COMMAND_AIRTEL_VERIFY_TERMINAL, STATUS_ERROR, ERR_ALREADY_SEARCHING);
-        }
+    //     if (appData.status == APP_STATUS_AWAIT_CARD)
+    //     {
+    //         return buildCommandResponseMessage(COMMAND_AIRTEL_VERIFY_TERMINAL, STATUS_ERROR, ERR_ALREADY_SEARCHING);
+    //     }
 
-        return performAirtelVerifyTerminal();
-    }
+    //     return performAirtelVerifyTerminal();
+    // }
 
-    if (strcmp(reqMessage.cmd, COMMAND_AIRTEL_HEALTH_CHECK) == 0)
-    {
-        if (appData.isKeyInjectionSuccess == false)
-            return buildResponseMessage(STATUS_KEYS_NOT_LOADED, 0);
+    // if (strcmp(reqMessage.cmd, COMMAND_AIRTEL_HEALTH_CHECK) == 0)
+    // {
+    //     if (appData.isKeyInjectionSuccess == false)
+    //         return buildResponseMessage(STATUS_KEYS_NOT_LOADED, 0);
 
-        if (appData.status == APP_STATUS_AWAIT_CARD)
-        {
-            return buildCommandResponseMessage(COMMAND_AIRTEL_HEALTH_CHECK, STATUS_ERROR, ERR_ALREADY_SEARCHING);
-        }
+    //     if (appData.status == APP_STATUS_AWAIT_CARD)
+    //     {
+    //         return buildCommandResponseMessage(COMMAND_AIRTEL_HEALTH_CHECK, STATUS_ERROR, ERR_ALREADY_SEARCHING);
+    //     }
 
-        return performAirtelHealthCheck();
-    }
+    //     return performAirtelHealthCheck();
+    //}
 
     if (appData.status == APP_STATUS_TID_MID_EMPTY)
     {
@@ -441,7 +483,7 @@ char *handleClientMessage(const char *data)
             logData("There is no card presented, so nothing to write");
             return buildResponseMessage(STATUS_ERROR, ERR_CARD_NOT_PRESENTED);
         }
-        strcpy(writeCardAmount, reqMessage.wCard.amount);
+        safe_strcpy(writeCardAmount, sizeof(writeCardAmount), reqMessage.wCard.amount);
         toUpper(reqMessage.wCard.serviceData);
 
         logData("Service data available : %d", isServiceDataAvailable);
@@ -449,7 +491,7 @@ char *handleClientMessage(const char *data)
 
         if (isServiceDataAvailable == 1)
         {
-            strcpy(writeCardServiceData, reqMessage.wCard.serviceData);
+            safe_strcpy(writeCardServiceData, sizeof(writeCardServiceData), reqMessage.wCard.serviceData);
             logData("Service data available : %s", writeCardServiceData);
         }
         else
@@ -563,7 +605,7 @@ char *handleSearchCard(struct message reqMessage)
     }*/
 
     logData("TRX TYPE : %s", reqMessage.sCard.trxtype);
-    strcpy(appData.trxType, reqMessage.sCard.trxtype);
+    safe_strcpy(appData.trxType, sizeof(appData.trxType), reqMessage.sCard.trxtype);
 
     if (strcmp(reqMessage.sCard.trxtype, TRXTYPE_PURCHASE) == 0)
     {
@@ -582,7 +624,7 @@ char *handleSearchCard(struct message reqMessage)
         if (reqMessage.sCard.isCheckDateAvailable)
         {
             appData.isCheckDateAvailable = true;
-            strcpy(appData.checkDate, reqMessage.sCard.checkDate);
+            safe_strcpy(appData.checkDate, sizeof(appData.checkDate), reqMessage.sCard.checkDate);
         }
         else
         {
@@ -623,8 +665,14 @@ char *handleSearchCard(struct message reqMessage)
             //     return buildResponseMessage(STATUS_ERROR, ERR_MONEY_ADD_WRONG_TYPE);
             // }
 
-            // strcpy(appData.moneyAddTrxType, reqMessage.mData.trxMode);
-            // logData("Money add transaction type : %s", appData.moneyAddTrxType);
+            safe_strcpy(appData.moneyAddTrxType, sizeof(appData.moneyAddTrxType), reqMessage.mData.trxMode);
+            logData("Money add transaction type : %s", appData.moneyAddTrxType);
+
+            safe_strcpy(appData.moneyAddTid, sizeof(appData.moneyAddTid), reqMessage.mData.moneyAddTid);
+            logData("Money add tid : %s", appData.moneyAddTid);
+
+            safe_strcpy(appData.moneyAddRRN, sizeof(appData.moneyAddRRN), reqMessage.mData.moneyAddRRn);
+            logData("Money add rrn : %s", appData.moneyAddRRN);
 
             // if (strlen(reqMessage.mData.sourceTxnId) == 0)
             // {
@@ -632,7 +680,7 @@ char *handleSearchCard(struct message reqMessage)
             //     return buildResponseMessage(STATUS_ERROR, ERR_MONEY_MISSING_SOURCE_TXN);
             // }
 
-            // strcpy(appData.sourceTxnId, reqMessage.mData.sourceTxnId);
+            // safe_strcpy(appData.sourceTxnId, reqMessage.mData.sourceTxnId);
             // logData("Money add source txn id : %s", appData.sourceTxnId);
         }
         else
@@ -672,7 +720,7 @@ char *handleSearchCard(struct message reqMessage)
         appData.trxTypeBin = 0x83;
         // appData.amountKnownAtStart = 1;
         appData.isServiceBlock = reqMessage.sCard.isServiceBlock;
-        strcpy(appData.createServiceId, reqMessage.sCard.serviceId);
+        safe_strcpy(appData.createServiceId, sizeof(appData.createServiceId), reqMessage.sCard.serviceId);
     }
 
     logData("Transaction Type to be processed : %02x", appData.trxTypeBin);
@@ -705,21 +753,36 @@ struct message parseMessage(const char *data)
     struct message reqMessage;
     json_object *jObject = json_tokener_parse(data);
 
-    strcpy(reqMessage.cmd, (char *)json_object_get_string(json_object_object_get(jObject, COMMAND)));
+    safe_strcpy(reqMessage.cmd, sizeof(reqMessage.cmd),
+                (char *)json_object_get_string(json_object_object_get(jObject, COMMAND)));
 
     logData("Command : %s", reqMessage.cmd);
+
+    if (strcmp(reqMessage.cmd, COMMAND_GET_DISK_SPACE) == 0)
+    {
+        if (json_object_get_string(json_object_object_get(jObject, DISK_SPACE_PATH)) != NULL)
+        {
+            safe_strcpy(reqMessage.dSpace.path, sizeof(reqMessage.dSpace.path), (char *)json_object_get_string(json_object_object_get(jObject, DISK_SPACE_PATH)));
+        }
+        else
+        {
+            logData("Path is missing, so setting to default /");
+            safe_strcpy(reqMessage.dSpace.path, sizeof(reqMessage.dSpace.path), "/");
+        }
+    }
 
     if (strcmp(reqMessage.cmd, COMMAND_VERIFY_TERMINAL) == 0)
     {
         if (json_object_get_string(json_object_object_get(jObject, VERIFY_TRM_TID)) != NULL)
         {
-            strcpy(reqMessage.vData.tid, (char *)json_object_get_string(json_object_object_get(jObject, VERIFY_TRM_TID)));
+            safe_strcpy(reqMessage.vData.tid, sizeof(reqMessage.vData.tid), (char *)json_object_get_string(json_object_object_get(jObject, VERIFY_TRM_TID)));
         }
 
         memset(reqMessage.vData.mid, 0, sizeof(reqMessage.vData.mid));
         if (json_object_get_string(json_object_object_get(jObject, VERIFY_TRM_MID)) != NULL)
         {
-            strcpy(reqMessage.vData.mid, (char *)json_object_get_string(json_object_object_get(jObject, VERIFY_TRM_MID)));
+            safe_strcpy(reqMessage.vData.mid, sizeof(reqMessage.vData.mid),
+                        (char *)json_object_get_string(json_object_object_get(jObject, VERIFY_TRM_MID)));
         }
     }
 
@@ -727,7 +790,8 @@ struct message parseMessage(const char *data)
     {
         if (json_object_get_string(json_object_object_get(jObject, CHANGE_LOG_MODE)) != NULL)
         {
-            strcpy(reqMessage.logData.logMode, json_object_get_string(json_object_object_get(jObject, CHANGE_LOG_MODE)));
+            safe_strcpy(reqMessage.logData.logMode, sizeof(reqMessage.logData.logMode),
+                        json_object_get_string(json_object_object_get(jObject, CHANGE_LOG_MODE)));
         }
     }
 
@@ -735,7 +799,8 @@ struct message parseMessage(const char *data)
     {
         if (json_object_get_string(json_object_object_get(jObject, DOWNLOAD_FILE_NAME)) != NULL)
         {
-            strcpy(reqMessage.dData.fileName, json_object_get_string(json_object_object_get(jObject, DOWNLOAD_FILE_NAME)));
+            safe_strcpy(reqMessage.dData.fileName, sizeof(reqMessage.dData.fileName),
+                        json_object_get_string(json_object_object_get(jObject, DOWNLOAD_FILE_NAME)));
         }
     }
 
@@ -743,7 +808,8 @@ struct message parseMessage(const char *data)
     {
         if (json_object_get_string(json_object_object_get(jObject, DELETE_FILE_NAME)) != NULL)
         {
-            strcpy(reqMessage.delFileData.fileName, json_object_get_string(json_object_object_get(jObject, DELETE_FILE_NAME)));
+            safe_strcpy(reqMessage.delFileData.fileName, sizeof(reqMessage.delFileData.fileName),
+                        json_object_get_string(json_object_object_get(jObject, DELETE_FILE_NAME)));
         }
     }
 
@@ -751,37 +817,43 @@ struct message parseMessage(const char *data)
     {
         if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_MODE)) != NULL)
         {
-            strcpy(reqMessage.ipData.ipMode, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_MODE)));
+            safe_strcpy(reqMessage.ipData.ipMode, sizeof(reqMessage.ipData.ipMode),
+                        json_object_get_string(json_object_object_get(jObject, CHANGE_IP_MODE)));
         }
 
         memset(reqMessage.ipData.dns, 0, sizeof(reqMessage.ipData.dns));
         if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS)) != NULL)
         {
-            strcpy(reqMessage.ipData.dns, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS)));
+            safe_strcpy(reqMessage.ipData.dns, sizeof(reqMessage.ipData.dns),
+                        json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS)));
         }
 
         memset(reqMessage.ipData.dns2, 0, sizeof(reqMessage.ipData.dns2));
         if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS2)) != NULL)
         {
-            strcpy(reqMessage.ipData.dns2, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS2)));
+            safe_strcpy(reqMessage.ipData.dns2, sizeof(reqMessage.ipData.dns2),
+                        json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS2)));
         }
 
         memset(reqMessage.ipData.dns3, 0, sizeof(reqMessage.ipData.dns3));
         if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS3)) != NULL)
         {
-            strcpy(reqMessage.ipData.dns3, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS3)));
+            safe_strcpy(reqMessage.ipData.dns3, sizeof(reqMessage.ipData.dns3),
+                        json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS3)));
         }
 
         memset(reqMessage.ipData.dns4, 0, sizeof(reqMessage.ipData.dns4));
         if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS4)) != NULL)
         {
-            strcpy(reqMessage.ipData.dns4, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS4)));
+            safe_strcpy(reqMessage.ipData.dns4, sizeof(reqMessage.ipData.dns4),
+                        json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS4)));
         }
 
         memset(reqMessage.ipData.searchDomain, 0, sizeof(reqMessage.ipData.searchDomain));
         if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_SEARCH_DOMAIN)) != NULL)
         {
-            strcpy(reqMessage.ipData.searchDomain, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_SEARCH_DOMAIN)));
+            safe_strcpy(reqMessage.ipData.searchDomain, sizeof(reqMessage.ipData.searchDomain),
+                        json_object_get_string(json_object_object_get(jObject, CHANGE_IP_SEARCH_DOMAIN)));
         }
 
         memset(reqMessage.ipData.ipAddress, 0, sizeof(reqMessage.ipData.ipAddress));
@@ -791,17 +863,20 @@ struct message parseMessage(const char *data)
         {
             if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_ADDRESS)) != NULL)
             {
-                strcpy(reqMessage.ipData.ipAddress, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_ADDRESS)));
+                safe_strcpy(reqMessage.ipData.ipAddress, sizeof(reqMessage.ipData.ipAddress),
+                            json_object_get_string(json_object_object_get(jObject, CHANGE_IP_ADDRESS)));
             }
 
             if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_NETMASK)) != NULL)
             {
-                strcpy(reqMessage.ipData.netmask, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_NETMASK)));
+                safe_strcpy(reqMessage.ipData.netmask, sizeof(reqMessage.ipData.netmask),
+                            json_object_get_string(json_object_object_get(jObject, CHANGE_IP_NETMASK)));
             }
 
             if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_GATEWAY)) != NULL)
             {
-                strcpy(reqMessage.ipData.gateway, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_GATEWAY)));
+                safe_strcpy(reqMessage.ipData.gateway, sizeof(reqMessage.ipData.gateway),
+                            json_object_get_string(json_object_object_get(jObject, CHANGE_IP_GATEWAY)));
             }
         }
     }
@@ -811,31 +886,36 @@ struct message parseMessage(const char *data)
         memset(reqMessage.ipData.dns, 0, sizeof(reqMessage.ipData.dns));
         if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS)) != NULL)
         {
-            strcpy(reqMessage.ipData.dns, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS)));
+            safe_strcpy(reqMessage.ipData.dns, sizeof(reqMessage.ipData.dns),
+                        json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS)));
         }
 
         memset(reqMessage.ipData.dns2, 0, sizeof(reqMessage.ipData.dns2));
         if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS2)) != NULL)
         {
-            strcpy(reqMessage.ipData.dns2, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS2)));
+            safe_strcpy(reqMessage.ipData.dns2, sizeof(reqMessage.ipData.dns2),
+                        json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS2)));
         }
 
         memset(reqMessage.ipData.dns3, 0, sizeof(reqMessage.ipData.dns3));
         if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS3)) != NULL)
         {
-            strcpy(reqMessage.ipData.dns3, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS3)));
+            safe_strcpy(reqMessage.ipData.dns3, sizeof(reqMessage.ipData.dns3),
+                        json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS3)));
         }
 
         memset(reqMessage.ipData.dns4, 0, sizeof(reqMessage.ipData.dns4));
         if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS4)) != NULL)
         {
-            strcpy(reqMessage.ipData.dns4, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS4)));
+            safe_strcpy(reqMessage.ipData.dns4, sizeof(reqMessage.ipData.dns4),
+                        json_object_get_string(json_object_object_get(jObject, CHANGE_IP_DNS4)));
         }
 
         memset(reqMessage.ipData.searchDomain, 0, sizeof(reqMessage.ipData.searchDomain));
         if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_SEARCH_DOMAIN)) != NULL)
         {
-            strcpy(reqMessage.ipData.searchDomain, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_SEARCH_DOMAIN)));
+            safe_strcpy(reqMessage.ipData.searchDomain, sizeof(reqMessage.ipData.searchDomain),
+                        json_object_get_string(json_object_object_get(jObject, CHANGE_IP_SEARCH_DOMAIN)));
         }
     }
 
@@ -843,7 +923,8 @@ struct message parseMessage(const char *data)
     {
         if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_MODE)) != NULL)
         {
-            strcpy(reqMessage.ipData.ipMode, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_MODE)));
+            safe_strcpy(reqMessage.ipData.ipMode, sizeof(reqMessage.ipData.ipMode),
+                        json_object_get_string(json_object_object_get(jObject, CHANGE_IP_MODE)));
         }
 
         memset(reqMessage.ipData.ipAddress, 0, sizeof(reqMessage.ipData.ipAddress));
@@ -853,30 +934,35 @@ struct message parseMessage(const char *data)
         {
             if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_ADDRESS)) != NULL)
             {
-                strcpy(reqMessage.ipData.ipAddress, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_ADDRESS)));
+                safe_strcpy(reqMessage.ipData.ipAddress, sizeof(reqMessage.ipData.ipAddress),
+                            json_object_get_string(json_object_object_get(jObject, CHANGE_IP_ADDRESS)));
             }
 
             if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_NETMASK)) != NULL)
             {
-                strcpy(reqMessage.ipData.netmask, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_NETMASK)));
+                safe_strcpy(reqMessage.ipData.netmask, sizeof(reqMessage.ipData.netmask),
+                            json_object_get_string(json_object_object_get(jObject, CHANGE_IP_NETMASK)));
             }
 
             if (json_object_get_string(json_object_object_get(jObject, CHANGE_IP_GATEWAY)) != NULL)
             {
-                strcpy(reqMessage.ipData.gateway, json_object_get_string(json_object_object_get(jObject, CHANGE_IP_GATEWAY)));
+                safe_strcpy(reqMessage.ipData.gateway, sizeof(reqMessage.ipData.gateway),
+                            json_object_get_string(json_object_object_get(jObject, CHANGE_IP_GATEWAY)));
             }
         }
     }
 
     if (strcmp(reqMessage.cmd, COMMAND_SET_TIME) == 0)
     {
-        strcpy(reqMessage.tData.time, (char *)json_object_get_string(json_object_object_get(jObject, TIME_DATA_KEY)));
+        safe_strcpy(reqMessage.tData.time, sizeof(reqMessage.tData.time),
+                    (char *)json_object_get_string(json_object_object_get(jObject, TIME_DATA_KEY)));
     }
 
     if (strcmp(reqMessage.cmd, COMMAND_IS_KEY_PRESENT) == 0 ||
         strcmp(reqMessage.cmd, COMMAND_DESTROY_KEY) == 0)
     {
-        strcpy(reqMessage.kData.label, (char *)json_object_get_string(json_object_object_get(jObject, KEY_DATA_LABEL)));
+        safe_strcpy(reqMessage.kData.label, sizeof(reqMessage.kData.label),
+                    (char *)json_object_get_string(json_object_object_get(jObject, KEY_DATA_LABEL)));
 
         json_bool jIsBdk = json_object_get_boolean(json_object_object_get(jObject, KEY_DATA_ISBDK));
 
@@ -888,10 +974,12 @@ struct message parseMessage(const char *data)
 
     if (strcmp(reqMessage.cmd, COMMAND_SEARCH_CARD) == 0)
     {
-        strcpy(reqMessage.sCard.mode, (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_CARD_MODE)));
+        safe_strcpy(reqMessage.sCard.mode, sizeof(reqMessage.sCard.mode),
+                    (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_CARD_MODE)));
         reqMessage.sCard.timeout = json_object_get_int(json_object_object_get(jObject, SEARCH_CARD_TIMEOUT));
 
-        strcpy(reqMessage.sCard.trxtype, (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_CARD_TRXTYPE)));
+        safe_strcpy(reqMessage.sCard.trxtype, sizeof(reqMessage.sCard.trxtype),
+                    (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_CARD_TRXTYPE)));
         reqMessage.sCard.amountAvailable = 0;
 
         if (strcmp(reqMessage.sCard.trxtype, TRXTYPE_PURCHASE) == 0 ||
@@ -900,7 +988,8 @@ struct message parseMessage(const char *data)
             if (json_object_get_string(json_object_object_get(jObject, SEARCH_CARD_AMOUNT)) != NULL)
             {
                 reqMessage.sCard.amountAvailable = 1;
-                strcpy(reqMessage.sCard.amount, (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_CARD_AMOUNT)));
+                safe_strcpy(reqMessage.sCard.amount, sizeof(reqMessage.sCard.amount),
+                            (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_CARD_AMOUNT)));
             }
             else
             {
@@ -910,7 +999,8 @@ struct message parseMessage(const char *data)
             if (json_object_get_string(json_object_object_get(jObject, SEARCH_CARD_CHECK_DATE)) != NULL)
             {
                 reqMessage.sCard.isCheckDateAvailable = true;
-                strcpy(reqMessage.sCard.checkDate, (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_CARD_CHECK_DATE)));
+                safe_strcpy(reqMessage.sCard.checkDate, sizeof(reqMessage.sCard.checkDate),
+                            (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_CARD_CHECK_DATE)));
             }
             else
             {
@@ -921,14 +1011,27 @@ struct message parseMessage(const char *data)
 
         if (strcmp(reqMessage.sCard.trxtype, TRXTYPE_MONEY_ADD) == 0)
         {
-            // if (json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_TYPE)) != NULL)
-            // {
-            //     strcpy(reqMessage.mData.trxMode, (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_TYPE)));
-            // }
+            if (json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_TYPE)) != NULL)
+            {
+                safe_strcpy(reqMessage.mData.trxMode, sizeof(reqMessage.mData.trxMode),
+                            (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_TYPE)));
+            }
+
+            if (json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_TID)) != NULL)
+            {
+                safe_strcpy(reqMessage.mData.moneyAddTid, sizeof(reqMessage.mData.moneyAddTid),
+                            (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_TID)));
+            }
+
+            if (json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_RRN)) != NULL)
+            {
+                safe_strcpy(reqMessage.mData.moneyAddRRn, sizeof(reqMessage.mData.moneyAddRRn),
+                            (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_RRN)));
+            }
 
             // if (json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_SOURCE_TXN_ID)) != NULL)
             // {
-            //     strcpy(reqMessage.mData.sourceTxnId, (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_SOURCE_TXN_ID)));
+            //     safe_strcpy(reqMessage.mData.sourceTxnId, (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_MONEY_ADD_SOURCE_TXN_ID)));
             // }
         }
 
@@ -936,7 +1039,8 @@ struct message parseMessage(const char *data)
         {
             if (json_object_get_string(json_object_object_get(jObject, SEARCH_SERVICE_ID)) != NULL)
             {
-                strcpy(reqMessage.sCard.serviceId, (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_SERVICE_ID)));
+                safe_strcpy(reqMessage.sCard.serviceId, sizeof(reqMessage.sCard.serviceId),
+                            (char *)json_object_get_string(json_object_object_get(jObject, SEARCH_SERVICE_ID)));
             }
 
             reqMessage.sCard.isServiceBlock = 0;
@@ -964,7 +1068,8 @@ struct message parseMessage(const char *data)
         logData("Going to read the amount");
         memset(reqMessage.wCard.serviceData, 0, 200);
 
-        strcpy(reqMessage.wCard.amount, (char *)json_object_get_string(json_object_object_get(jObject, WRITE_CARD_AMOUNT)));
+        safe_strcpy(reqMessage.wCard.amount, sizeof(reqMessage.wCard.amount),
+                    (char *)json_object_get_string(json_object_object_get(jObject, WRITE_CARD_AMOUNT)));
         if (json_object_get_string(json_object_object_get(jObject, WRITE_CARD_SERVICE_DATA)) == NULL)
         {
             logData("No service data available");
@@ -976,8 +1081,8 @@ struct message parseMessage(const char *data)
             isServiceDataAvailable = 1;
             logData("Service data provided : %s",
                     (char *)json_object_get_string(json_object_object_get(jObject, WRITE_CARD_SERVICE_DATA)));
-            strcpy(reqMessage.wCard.serviceData,
-                   (char *)json_object_get_string(json_object_object_get(jObject, WRITE_CARD_SERVICE_DATA)));
+            safe_strcpy(reqMessage.wCard.serviceData, sizeof(reqMessage.wCard.serviceData),
+                        (char *)json_object_get_string(json_object_object_get(jObject, WRITE_CARD_SERVICE_DATA)));
         }
         logData("Data read is : %s", reqMessage.wCard.serviceData);
     }
@@ -986,14 +1091,26 @@ struct message parseMessage(const char *data)
     {
         reqMessage.fData.fetchid = json_object_get_int(json_object_object_get(jObject, FETCH_AUTH_ID));
         reqMessage.fData.maxrecords = json_object_get_int(json_object_object_get(jObject, FETCH_MAX_RECORDS));
-        strcpy(reqMessage.fData.mode, (char *)json_object_get_string(json_object_object_get(jObject, FETCH_MODE)));
+        safe_strcpy(reqMessage.fData.mode, sizeof(reqMessage.fData.mode),
+                    (char *)json_object_get_string(json_object_object_get(jObject, FETCH_MODE)));
+
+        reqMessage.fData.isOnline = false;
+        if (json_object_object_get(jObject, FETCH_MODE_ONLINE) != NULL)
+        {
+            json_bool jIsOnline = json_object_get_boolean(json_object_object_get(jObject, FETCH_MODE_ONLINE));
+            if (jIsOnline == TRUE)
+            {
+                reqMessage.fData.isOnline = true;
+            }
+        }
     }
 
     if (strcmp(reqMessage.cmd, COMMAND_ABT_FETCH) == 0)
     {
         reqMessage.abtFetch.skipRecords = json_object_get_int(json_object_object_get(jObject, FETCH_SKIP));
         reqMessage.abtFetch.maxrecords = json_object_get_int(json_object_object_get(jObject, FETCH_MAX_RECORDS));
-        strcpy(reqMessage.abtFetch.mode, (char *)json_object_get_string(json_object_object_get(jObject, FETCH_MODE)));
+        safe_strcpy(reqMessage.abtFetch.mode, sizeof(reqMessage.abtFetch.mode),
+                    (char *)json_object_get_string(json_object_object_get(jObject, FETCH_MODE)));
     }
 
     if (strcmp(reqMessage.cmd, COMMAND_FETCH_ACK) == 0)

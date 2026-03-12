@@ -102,7 +102,9 @@ ISO8583_ERROR_CODES construct_transaction_request_object_for_money_add(ISO8583_T
 
                     // Fixed with 2 as only supported is Cash mode of money add now
                 case DE63_RESERVED_PRIVATE_3:
-                    ret = copy_value(req_txn_obj, DE63_RESERVED_PRIVATE_3, "02");
+                    // ret = copy_value(req_txn_obj, DE63_RESERVED_PRIVATE_3, "02");
+                    // ret = copy_value(req_txn_obj, DE63_RESERVED_PRIVATE_3, txn_obj->DE63_FUND_TYPE);
+                    ret = copy_value(req_txn_obj, DE63_RESERVED_PRIVATE_3, txn_obj->DE63_FUND_TYPE.value);
                     if (ret != TXN_SUCCESS)
                         return ret;
                     break;

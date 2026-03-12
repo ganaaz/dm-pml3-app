@@ -34,6 +34,7 @@ struct fetchData
     int fetchid;
     int maxrecords;
     char mode[20];
+    bool isOnline;
 };
 
 struct abtFetchData
@@ -45,8 +46,10 @@ struct abtFetchData
 
 struct moneyAddData
 {
-    char trxMode[20];
+    char trxMode[3];
     char sourceTxnId[50];
+    char moneyAddTid[9];
+    char moneyAddRRn[13];
 };
 
 /**
@@ -105,6 +108,11 @@ struct gateOpen
     bool status;
 };
 
+struct diskSpace
+{
+    char path[200];
+};
+
 /**
  * Base message structure that is received from client
  **/
@@ -124,6 +132,7 @@ struct message
     struct deleteFile delFileData;
     struct gateOpen gateOpenData;
     struct abtFetchData abtFetch;
+    struct diskSpace dSpace;
 };
 
 /**

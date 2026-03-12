@@ -20,8 +20,8 @@
 #include "ISO/utils.h"
 #include "include/abtinittable.h"
 
-#define VERSION "1.0.0"
-#define RELEASE_DATE "10-Nov-2025"
+#define VERSION "1.0.1"
+#define RELEASE_DATE "11-Mar-2026"
 
 struct applicationConfig appConfig;
 struct applicationData appData;
@@ -101,15 +101,7 @@ void initTransactionTable()
         exit(-1);
     }
 
-    int rc = sqlite3_exec(sqlite3Db, "VACUUM;", 0, 0, 0);
-    if (rc != SQLITE_OK)
-    {
-        logError("Error in VACUUM for database: %s", sqlite3_errmsg(sqlite3Db));
-    }
-    else
-    {
-        logData("VACUUM operation successful.");
-    }
+    doVaccumTrxDb();
 
     logData("Transactions database opened successfully");
 
@@ -186,7 +178,9 @@ void initTransactionTable()
                                    "AirtelAckPaymentMode TEXT, "
                                    "AirtelAckRefundId TEXT, "
                                    "AcqTransactionId TEXT, "
-                                   "AcqUniqueTransactionId TEXT "
+                                   "AcqUniqueTransactionId TEXT, "
+                                   "MoneyAddRRN TEXT, "
+                                   "MoneyAddTid TEXT "
                                    ");";
 
     char *errormsg = 0;
@@ -209,6 +203,19 @@ void initTransactionTable()
     if (errormsg)
     {
         free(errormsg);
+    }
+}
+
+void doVaccumTrxDb()
+{
+    int rc = sqlite3_exec(sqlite3Db, "VACUUM;", 0, 0, 0);
+    if (rc != SQLITE_OK)
+    {
+        logError("Error in VACUUM for database: %s", sqlite3_errmsg(sqlite3Db));
+    }
+    else
+    {
+        logInfo("VACUUM operation successful for NCRTC Trx Database.");
     }
 }
 
@@ -315,6 +322,7 @@ void printConfig()
         logData("------------------------------------------------------------");
         logData("Key : %d", (i + 1));
         logData("Label : %s", appConfig.keyDataList[i]->label);
+        logData("MK Label : %s", appConfig.keyDataList[i]->mkLabel);
         logData("Slot : %d", appConfig.keyDataList[i]->slot);
         logData("MK Version : %d", appConfig.keyDataList[i]->mkVersion);
         logData("AST Id : %s", appConfig.keyDataList[i]->astId);
@@ -457,28 +465,46 @@ void loadAppConfig()
     json_object *jObject = json_tokener_parse(buffer);
 
     // Fixed in code
-    strcpy(appConfig.version, VERSION);
-    strcpy(appConfig.releaseDate, RELEASE_DATE);
+    safe_strcpy(appConfig.version, sizeof(appConfig.version), VERSION);
+    safe_strcpy(appConfig.releaseDate, sizeof(appConfig.releaseDate), RELEASE_DATE);
 
-    strcpy(appConfig.name, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_NAME)));
-    strcpy(appConfig.currencyCode, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_CURR_CODE)));
-    strcpy(appConfig.emvConfigFile, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_EMV_FILE)));
-    strcpy(appConfig.terminalId, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_TERMINALID)));
-    strcpy(appConfig.merchantId, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_MERCHANT_ID)));
-    strcpy(appConfig.clientId, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_CLIENT_ID)));
-    strcpy(appConfig.clientName, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_CLIENT_NAME)));
-    strcpy(appConfig.hostVersion, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_HOST_VERSION)));
-    strcpy(appConfig.nii, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_NII)));
-    strcpy(appConfig.tpdu, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_TPDU)));
-    strcpy(appConfig.hostIP, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_HOST_IP)));
-    strcpy(appConfig.httpsHostName, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_HTTPS_HOST_NAME)));
-    strcpy(appConfig.offlineUrl, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_OFFLINE_URL)));
-    strcpy(appConfig.serviceCreationUrl, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_SERVRICE_CREATION_URL)));
-    strcpy(appConfig.balanceUpdateUrl, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_BALANCE_UPDATE_URL)));
-    strcpy(appConfig.moneyLoadUrl, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_MONEY_LOAD_URL)));
-    strcpy(appConfig.verifyTerminalUrl, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_VERIFY_TERMINAL_URL)));
-    strcpy(appConfig.reversalUrl, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_REVERSAL_URL)));
-    strcpy(appConfig.kldIP, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_KLD_IP)));
+    safe_strcpy(appConfig.name, sizeof(appConfig.name), (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_NAME)));
+    safe_strcpy(appConfig.currencyCode, sizeof(appConfig.currencyCode),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_CURR_CODE)));
+    safe_strcpy(appConfig.emvConfigFile, sizeof(appConfig.emvConfigFile),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_EMV_FILE)));
+    safe_strcpy(appConfig.terminalId, sizeof(appConfig.terminalId),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_TERMINALID)));
+    safe_strcpy(appConfig.merchantId, sizeof(appConfig.merchantId),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_MERCHANT_ID)));
+    safe_strcpy(appConfig.clientId, sizeof(appConfig.clientId),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_CLIENT_ID)));
+    safe_strcpy(appConfig.clientName, sizeof(appConfig.clientName),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_CLIENT_NAME)));
+    safe_strcpy(appConfig.hostVersion, sizeof(appConfig.hostVersion),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_HOST_VERSION)));
+    safe_strcpy(appConfig.nii, sizeof(appConfig.nii),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_NII)));
+    safe_strcpy(appConfig.tpdu, sizeof(appConfig.tpdu),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_TPDU)));
+    safe_strcpy(appConfig.hostIP, sizeof(appConfig.hostIP),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_HOST_IP)));
+    safe_strcpy(appConfig.httpsHostName, sizeof(appConfig.httpsHostName),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_HTTPS_HOST_NAME)));
+    safe_strcpy(appConfig.offlineUrl, sizeof(appConfig.offlineUrl),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_OFFLINE_URL)));
+    safe_strcpy(appConfig.serviceCreationUrl, sizeof(appConfig.serviceCreationUrl),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_SERVRICE_CREATION_URL)));
+    safe_strcpy(appConfig.balanceUpdateUrl, sizeof(appConfig.balanceUpdateUrl),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_BALANCE_UPDATE_URL)));
+    safe_strcpy(appConfig.moneyLoadUrl, sizeof(appConfig.moneyLoadUrl),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_MONEY_LOAD_URL)));
+    safe_strcpy(appConfig.verifyTerminalUrl, sizeof(appConfig.verifyTerminalUrl),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_VERIFY_TERMINAL_URL)));
+    safe_strcpy(appConfig.reversalUrl, sizeof(appConfig.reversalUrl),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_REVERSAL_URL)));
+    safe_strcpy(appConfig.kldIP, sizeof(appConfig.kldIP),
+                (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_KLD_IP)));
     appConfig.hostPort = json_object_get_int(json_object_object_get(jObject, CONFIG_KEY_HOST_PORT));
     appConfig.hostTxnTimeout = json_object_get_int(json_object_object_get(jObject, CONFIG_KEY_HOST_TXN_TIMEOUT));
     appConfig.writeCardWaitTimeMs = json_object_get_int(json_object_object_get(jObject, CONFIG_KEY_WRITE_CARD_WAIT));
@@ -489,19 +515,21 @@ void loadAppConfig()
 
     if (json_object_object_get(jObject, CONFIG_KEY_PURCHASE_LIMIT) != NULL)
     {
-        strcpy(appConfig.purchaseLimit, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_PURCHASE_LIMIT)));
+        safe_strcpy(appConfig.purchaseLimit, sizeof(appConfig.purchaseLimit),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_PURCHASE_LIMIT)));
     }
     else
     {
-        strcpy(appConfig.purchaseLimit, "20000");
+        safe_strcpy(appConfig.purchaseLimit, sizeof(appConfig.purchaseLimit), "20000");
     }
     if (json_object_object_get(jObject, CONFIG_KEY_MONEY_ADD_LIMIT) != NULL)
     {
-        strcpy(appConfig.moneyAddLimit, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_MONEY_ADD_LIMIT)));
+        safe_strcpy(appConfig.moneyAddLimit, sizeof(appConfig.moneyAddLimit),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_MONEY_ADD_LIMIT)));
     }
     else
     {
-        strcpy(appConfig.moneyAddLimit, "200000");
+        safe_strcpy(appConfig.moneyAddLimit, sizeof(appConfig.moneyAddLimit), "200000");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_REVERSAL_PROCESS_TIMEOUT) != NULL)
@@ -616,47 +644,52 @@ void loadAppConfig()
 
     if (json_object_object_get(jObject, CONFIG_KEY_DEVICE_CODE) != NULL)
     {
-        strcpy(appConfig.deviceCode, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_DEVICE_CODE)));
+        safe_strcpy(appConfig.deviceCode, sizeof(appConfig.deviceCode),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_DEVICE_CODE)));
     }
     else
     {
-        strcpy(appConfig.deviceCode, "1234567890");
+        safe_strcpy(appConfig.deviceCode, sizeof(appConfig.deviceCode), "1234567890");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_EQUIPMENT_TYPE) != NULL)
     {
-        strcpy(appConfig.equipmentType, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_EQUIPMENT_TYPE)));
+        safe_strcpy(appConfig.equipmentType, sizeof(appConfig.equipmentType),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_EQUIPMENT_TYPE)));
     }
     else
     {
-        strcpy(appConfig.equipmentType, "eqType");
+        safe_strcpy(appConfig.equipmentType, sizeof(appConfig.equipmentType), "eqType");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_EQUIPMENT_CODE) != NULL)
     {
-        strcpy(appConfig.equipmentCode, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_EQUIPMENT_CODE)));
+        safe_strcpy(appConfig.equipmentCode, sizeof(appConfig.equipmentCode),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_EQUIPMENT_CODE)));
     }
     else
     {
-        strcpy(appConfig.equipmentCode, "eqCode");
+        safe_strcpy(appConfig.equipmentCode, sizeof(appConfig.equipmentCode), "eqCode");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_STATION_ID) != NULL)
     {
-        strcpy(appConfig.stationId, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_STATION_ID)));
+        safe_strcpy(appConfig.stationId, sizeof(appConfig.stationId),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_STATION_ID)));
     }
     else
     {
-        strcpy(appConfig.stationId, "123");
+        safe_strcpy(appConfig.stationId, sizeof(appConfig.stationId), "123");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_STATION_NAME) != NULL)
     {
-        strcpy(appConfig.stationName, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_STATION_NAME)));
+        safe_strcpy(appConfig.stationName, sizeof(appConfig.stationName),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_STATION_NAME)));
     }
     else
     {
-        strcpy(appConfig.stationName, "Station-Name-123");
+        safe_strcpy(appConfig.stationName, sizeof(appConfig.stationName), "Station-Name-123");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_PAYTM_LOG_COUNT) != NULL)
@@ -773,29 +806,32 @@ void loadAppConfig()
 
     if (json_object_object_get(jObject, CONFIG_KEY_ABT_HOST_NAME) != NULL)
     {
-        strcpy(appConfig.abtHostName, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_ABT_HOST_NAME)));
+        safe_strcpy(appConfig.abtHostName, sizeof(appConfig.abtHostName),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_ABT_HOST_NAME)));
     }
     else
     {
-        strcpy(appConfig.abtHostName, "dev-abt-etpass.datamatics.com");
+        safe_strcpy(appConfig.abtHostName, sizeof(appConfig.abtHostName), "dev-abt-etpass.datamatics.com");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_ABT_HOST_IP) != NULL)
     {
-        strcpy(appConfig.abtIP, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_ABT_HOST_IP)));
+        safe_strcpy(appConfig.abtIP, sizeof(appConfig.abtIP),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_ABT_HOST_IP)));
     }
     else
     {
-        strcpy(appConfig.abtIP, "10.0.0.20");
+        safe_strcpy(appConfig.abtIP, sizeof(appConfig.abtIP), "10.0.0.20");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_ABT_TAP_URL) != NULL)
     {
-        strcpy(appConfig.abtTapUrl, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_ABT_TAP_URL)));
+        safe_strcpy(appConfig.abtTapUrl, sizeof(appConfig.abtTapUrl),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_ABT_TAP_URL)));
     }
     else
     {
-        strcpy(appConfig.abtTapUrl, "/api/taps_receiver");
+        safe_strcpy(appConfig.abtTapUrl, sizeof(appConfig.abtTapUrl), "/api/taps_receiver");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_ABT_HOST_WAIT_TIME) != NULL)
@@ -818,11 +854,12 @@ void loadAppConfig()
 
     if (json_object_object_get(jObject, CONFIG_KEY_ABT_CLEANUP_TIME) != NULL)
     {
-        strcpy(appConfig.abtCleanupTimeHHMM, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_ABT_CLEANUP_TIME)));
+        safe_strcpy(appConfig.abtCleanupTimeHHMM, sizeof(appConfig.abtCleanupTimeHHMM),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_ABT_CLEANUP_TIME)));
     }
     else
     {
-        strcpy(appConfig.abtCleanupTimeHHMM, "22:00");
+        safe_strcpy(appConfig.abtCleanupTimeHHMM, sizeof(appConfig.abtCleanupTimeHHMM), "22:00");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_ABT_HOST_PUSH_BATCH_COUNT) != NULL)
@@ -847,11 +884,12 @@ void loadAppConfig()
 
     if (json_object_object_get(jObject, CONFIG_KEY_AIRTEL_HOST_IP) != NULL)
     {
-        strcpy(appConfig.airtelHostIP, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_HOST_IP)));
+        safe_strcpy(appConfig.airtelHostIP, sizeof(appConfig.airtelHostIP),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_HOST_IP)));
     }
     else
     {
-        strcpy(appConfig.airtelHostIP, "182.79.196.24");
+        safe_strcpy(appConfig.airtelHostIP, sizeof(appConfig.airtelHostIP), "182.79.196.24");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_AIRTEL_HOST_PORT) != NULL)
@@ -865,101 +903,119 @@ void loadAppConfig()
 
     if (json_object_object_get(jObject, CONFIG_KEY_AIRTEL_HTTPS_HOST_NAME) != NULL)
     {
-        strcpy(appConfig.airtelHttpsHostName, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_HTTPS_HOST_NAME)));
+        safe_strcpy(appConfig.airtelHttpsHostName, sizeof(appConfig.airtelHttpsHostName),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_HTTPS_HOST_NAME)));
     }
     else
     {
-        strcpy(appConfig.airtelHttpsHostName, "apbsit.airtelbank.com");
+        safe_strcpy(appConfig.airtelHttpsHostName, sizeof(appConfig.airtelHttpsHostName), "apbsit.airtelbank.com");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_ARITEL_OFFLINE_URL) != NULL)
     {
-        strcpy(appConfig.airtelOfflineUrl, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_ARITEL_OFFLINE_URL)));
+        safe_strcpy(appConfig.airtelOfflineUrl, sizeof(appConfig.airtelOfflineUrl),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_ARITEL_OFFLINE_URL)));
     }
     else
     {
-        strcpy(appConfig.airtelOfflineUrl, "/payments-sit/transit/acq/transactions/batch-offline-sale");
+        safe_strcpy(appConfig.airtelOfflineUrl, sizeof(appConfig.airtelOfflineUrl),
+                    "/payments-sit/transit/acq/transactions/batch-offline-sale");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_AIRTEL_BALANCE_UPDATE_URL) != NULL)
     {
-        strcpy(appConfig.airtelBalanceUpdateUrl, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_BALANCE_UPDATE_URL)));
+        safe_strcpy(appConfig.airtelBalanceUpdateUrl, sizeof(appConfig.airtelBalanceUpdateUrl),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_BALANCE_UPDATE_URL)));
     }
     else
     {
-        strcpy(appConfig.airtelBalanceUpdateUrl, "/payments-sit/transit/acq/transactions/balance-update");
+        safe_strcpy(appConfig.airtelBalanceUpdateUrl, sizeof(appConfig.airtelBalanceUpdateUrl),
+                    "/payments-sit/transit/acq/transactions/balance-update");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_AIRTEL_HEALTH_CHECK_URL) != NULL)
     {
-        strcpy(appConfig.airtelHealthCheckUrl, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_HEALTH_CHECK_URL)));
+        safe_strcpy(appConfig.airtelHealthCheckUrl, sizeof(appConfig.airtelHealthCheckUrl),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_HEALTH_CHECK_URL)));
     }
     else
     {
-        strcpy(appConfig.airtelHealthCheckUrl, "/payments-sit/transit/acq/terminals/health");
+        safe_strcpy(appConfig.airtelHealthCheckUrl, sizeof(appConfig.airtelHealthCheckUrl),
+                    "/payments-sit/transit/acq/terminals/health");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_AIRTEL_VERIFY_TERMINAL_URL) != NULL)
     {
-        strcpy(appConfig.airtelVerifyTerminalUrl, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_VERIFY_TERMINAL_URL)));
+        safe_strcpy(appConfig.airtelVerifyTerminalUrl, sizeof(appConfig.airtelVerifyTerminalUrl),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_VERIFY_TERMINAL_URL)));
     }
     else
     {
-        strcpy(appConfig.airtelVerifyTerminalUrl, "/payments-sit/transit/acq/terminals/verify");
+        safe_strcpy(appConfig.airtelVerifyTerminalUrl, sizeof(appConfig.airtelVerifyTerminalUrl),
+                    "/payments-sit/transit/acq/terminals/verify");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_AIRTEL_REVERSAL_URL) != NULL)
     {
-        strcpy(appConfig.airtelReversalUrl, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_REVERSAL_URL)));
+        safe_strcpy(appConfig.airtelReversalUrl, sizeof(appConfig.airtelReversalUrl),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_REVERSAL_URL)));
     }
     else
     {
-        strcpy(appConfig.airtelReversalUrl, "/payments-sit/transit/acq/transactions/acknowledgement");
+        safe_strcpy(appConfig.airtelReversalUrl, sizeof(appConfig.airtelReversalUrl),
+                    "/payments-sit/transit/acq/transactions/acknowledgement");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_AIRTEL_MONEY_ADD_URL) != NULL)
     {
-        strcpy(appConfig.airtelMoneyAddUrl, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_MONEY_ADD_URL)));
+        safe_strcpy(appConfig.airtelMoneyAddUrl, sizeof(appConfig.airtelMoneyAddUrl),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_MONEY_ADD_URL)));
     }
     else
     {
-        strcpy(appConfig.airtelMoneyAddUrl, "/payments-sit/transit/acq/transactions/money-add");
+        safe_strcpy(appConfig.airtelMoneyAddUrl, sizeof(appConfig.airtelMoneyAddUrl),
+                    "/payments-sit/transit/acq/transactions/money-add");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_AIRTEL_SERVICE_CREATION_URL) != NULL)
     {
-        strcpy(appConfig.airtelServiceCreationUrl, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_SERVICE_CREATION_URL)));
+        safe_strcpy(appConfig.airtelServiceCreationUrl, sizeof(appConfig.airtelServiceCreationUrl),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_SERVICE_CREATION_URL)));
     }
     else
     {
-        strcpy(appConfig.airtelServiceCreationUrl, "/payments-sit/transit/acq/transactions/service-creation");
+        safe_strcpy(appConfig.airtelServiceCreationUrl, sizeof(appConfig.airtelServiceCreationUrl),
+                    "/payments-sit/transit/acq/transactions/service-creation");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_AIRTEL_SIGN_SALT) != NULL)
     {
-        strcpy(appConfig.airtelSignSalt, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_SIGN_SALT)));
+        safe_strcpy(appConfig.airtelSignSalt, sizeof(appConfig.airtelSignSalt),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_AIRTEL_SIGN_SALT)));
     }
     else
     {
-        strcpy(appConfig.airtelSignSalt, "secretSalt128");
+        safe_strcpy(appConfig.airtelSignSalt, sizeof(appConfig.airtelSignSalt), "secretSalt128");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_LATITUDE) != NULL)
     {
-        strcpy(appConfig.latitude, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_LATITUDE)));
+        safe_strcpy(appConfig.latitude, sizeof(appConfig.latitude),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_LATITUDE)));
     }
     else
     {
-        strcpy(appConfig.latitude, "37");
+        safe_strcpy(appConfig.latitude, sizeof(appConfig.latitude), "37");
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_LONGITUDE) != NULL)
     {
-        strcpy(appConfig.longitude, (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_LONGITUDE)));
+        safe_strcpy(appConfig.longitude, sizeof(appConfig.longitude),
+                    (char *)json_object_get_string(json_object_object_get(jObject, CONFIG_KEY_LONGITUDE)));
     }
     else
     {
-        strcpy(appConfig.longitude, "69");
+        safe_strcpy(appConfig.longitude, sizeof(appConfig.longitude), "69");
     }
 
     readAndUpdateKeys(jObject);
@@ -1157,6 +1213,7 @@ void saveConfig()
         json_object *jKeyData = json_object_new_object();
 
         json_object_object_add(jKeyData, CONFIG_KEY_KEY_LABEL, json_object_new_string(keyData->label));
+        json_object_object_add(jKeyData, CONFIG_KEY_KEY_MKLABEL, json_object_new_string(keyData->mkLabel));
         json_object_object_add(jKeyData, CONFIG_KEY_KEY_SLOT, json_object_new_int(keyData->slot));
         json_object_object_add(jKeyData, CONFIG_KEY_KEY_MKVERSION, json_object_new_int(keyData->mkVersion));
         json_object_object_add(jKeyData, CONFIG_KEY_KEY_AST_ID, json_object_new_string(keyData->astId));
@@ -1245,7 +1302,8 @@ int parseConfigAndUpdate(const char *data)
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_KLD_IP) != NULL)
         {
-            strcpy(appConfig.kldIP, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_KLD_IP)));
+            safe_strcpy(appConfig.kldIP, sizeof(appConfig.kldIP),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_KLD_IP)));
             logData("Updated KLD IP : %s", appConfig.kldIP);
         }
 
@@ -1265,14 +1323,16 @@ int parseConfigAndUpdate(const char *data)
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_PURCHASE_LIMIT) != NULL)
         {
-            strcpy(appConfig.purchaseLimit, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_PURCHASE_LIMIT)));
+            safe_strcpy(appConfig.purchaseLimit, sizeof(appConfig.purchaseLimit),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_PURCHASE_LIMIT)));
             logData("Updated Purchase Limit : %s", appConfig.purchaseLimit);
             appConfig.purchaseLimitAmount = strtol(appConfig.purchaseLimit, NULL, 10);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_MONEY_ADD_LIMIT) != NULL)
         {
-            strcpy(appConfig.moneyAddLimit, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_MONEY_ADD_LIMIT)));
+            safe_strcpy(appConfig.moneyAddLimit, sizeof(appConfig.moneyAddLimit),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_MONEY_ADD_LIMIT)));
             logData("Updated Money Add Limit : %s", appConfig.moneyAddLimit);
             appConfig.moneyAddLimitAmount = strtol(appConfig.moneyAddLimit, NULL, 10);
         }
@@ -1326,31 +1386,36 @@ int parseConfigAndUpdate(const char *data)
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_DEVICE_CODE) != NULL)
         {
-            strcpy(appConfig.deviceCode, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_DEVICE_CODE)));
+            safe_strcpy(appConfig.deviceCode, sizeof(appConfig.deviceCode),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_DEVICE_CODE)));
             logData("Updated Device Code : %s", appConfig.deviceCode);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_EQUIPMENT_TYPE) != NULL)
         {
-            strcpy(appConfig.equipmentType, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_EQUIPMENT_TYPE)));
+            safe_strcpy(appConfig.equipmentType, sizeof(appConfig.equipmentType),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_EQUIPMENT_TYPE)));
             logData("Updated equipment type : %s", appConfig.equipmentType);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_EQUIPMENT_CODE) != NULL)
         {
-            strcpy(appConfig.equipmentCode, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_EQUIPMENT_CODE)));
+            safe_strcpy(appConfig.equipmentCode, sizeof(appConfig.equipmentCode),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_EQUIPMENT_CODE)));
             logData("Updated Equipment Code : %s", appConfig.equipmentCode);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_STATION_ID) != NULL)
         {
-            strcpy(appConfig.stationId, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_STATION_ID)));
+            safe_strcpy(appConfig.stationId, sizeof(appConfig.stationId),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_STATION_ID)));
             logData("Updated Station Id : %s", appConfig.stationId);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_STATION_NAME) != NULL)
         {
-            strcpy(appConfig.stationName, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_STATION_NAME)));
+            safe_strcpy(appConfig.stationName, sizeof(appConfig.stationName),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_STATION_NAME)));
             logData("Updated Station Name : %s", appConfig.stationName);
         }
 
@@ -1460,19 +1525,22 @@ int parseConfigAndUpdate(const char *data)
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_ABT_HOST_IP) != NULL)
         {
-            strcpy(appConfig.abtIP, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_ABT_HOST_IP)));
+            safe_strcpy(appConfig.abtIP, sizeof(appConfig.abtIP),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_ABT_HOST_IP)));
             logData("Updated abtIP : %s", appConfig.abtIP);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_ABT_HOST_NAME) != NULL)
         {
-            strcpy(appConfig.abtHostName, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_ABT_HOST_NAME)));
+            safe_strcpy(appConfig.abtHostName, sizeof(appConfig.abtHostName),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_ABT_HOST_NAME)));
             logData("Updated abtHostName : %s", appConfig.abtHostName);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_ABT_TAP_URL) != NULL)
         {
-            strcpy(appConfig.abtTapUrl, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_ABT_TAP_URL)));
+            safe_strcpy(appConfig.abtTapUrl, sizeof(appConfig.abtTapUrl),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_ABT_TAP_URL)));
             logData("Updated abtTapUrl : %s", appConfig.abtTapUrl);
         }
 
@@ -1492,7 +1560,8 @@ int parseConfigAndUpdate(const char *data)
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_ABT_CLEANUP_TIME) != NULL)
         {
-            strcpy(appConfig.abtCleanupTimeHHMM, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_ABT_CLEANUP_TIME)));
+            safe_strcpy(appConfig.abtCleanupTimeHHMM, sizeof(appConfig.abtCleanupTimeHHMM),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_ABT_CLEANUP_TIME)));
             logData("Updated abtCleanupTimeHHMM : %s", appConfig.abtCleanupTimeHHMM);
         }
 
@@ -1515,7 +1584,8 @@ int parseConfigAndUpdate(const char *data)
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_HOST_IP) != NULL)
         {
-            strcpy(appConfig.airtelHostIP, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_HOST_IP)));
+            safe_strcpy(appConfig.airtelHostIP, sizeof(appConfig.airtelHostIP),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_HOST_IP)));
             logData("Updated airtelHostIP : %s", appConfig.airtelHostIP);
         }
 
@@ -1528,67 +1598,78 @@ int parseConfigAndUpdate(const char *data)
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_HTTPS_HOST_NAME) != NULL)
         {
-            strcpy(appConfig.airtelHttpsHostName, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_HTTPS_HOST_NAME)));
+            safe_strcpy(appConfig.airtelHttpsHostName, sizeof(appConfig.airtelHttpsHostName),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_HTTPS_HOST_NAME)));
             logData("Updated airtelHttpsHostName : %s", appConfig.airtelHttpsHostName);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_ARITEL_OFFLINE_URL) != NULL)
         {
-            strcpy(appConfig.airtelOfflineUrl, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_ARITEL_OFFLINE_URL)));
+            safe_strcpy(appConfig.airtelOfflineUrl, sizeof(appConfig.airtelOfflineUrl),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_ARITEL_OFFLINE_URL)));
             logData("Updated airtelOfflineUrl : %s", appConfig.airtelOfflineUrl);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_BALANCE_UPDATE_URL) != NULL)
         {
-            strcpy(appConfig.airtelBalanceUpdateUrl, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_BALANCE_UPDATE_URL)));
+            safe_strcpy(appConfig.airtelBalanceUpdateUrl, sizeof(appConfig.airtelBalanceUpdateUrl),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_BALANCE_UPDATE_URL)));
             logData("Updated airtelBalanceUpdateUrl : %s", appConfig.airtelBalanceUpdateUrl);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_HEALTH_CHECK_URL) != NULL)
         {
-            strcpy(appConfig.airtelHealthCheckUrl, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_HEALTH_CHECK_URL)));
+            safe_strcpy(appConfig.airtelHealthCheckUrl, sizeof(appConfig.airtelHealthCheckUrl),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_HEALTH_CHECK_URL)));
             logData("Updated airtelHealthCheckUrl : %s", appConfig.airtelHealthCheckUrl);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_VERIFY_TERMINAL_URL) != NULL)
         {
-            strcpy(appConfig.airtelVerifyTerminalUrl, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_VERIFY_TERMINAL_URL)));
+            safe_strcpy(appConfig.airtelVerifyTerminalUrl, sizeof(appConfig.airtelVerifyTerminalUrl),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_VERIFY_TERMINAL_URL)));
             logData("Updated airtelVerifyTerminalUrl : %s", appConfig.airtelVerifyTerminalUrl);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_BALANCE_UPDATE_URL) != NULL)
         {
-            strcpy(appConfig.airtelReversalUrl, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_REVERSAL_URL)));
+            safe_strcpy(appConfig.airtelReversalUrl, sizeof(appConfig.airtelReversalUrl),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_REVERSAL_URL)));
             logData("Updated airtelReversalUrl : %s", appConfig.airtelReversalUrl);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_MONEY_ADD_URL) != NULL)
         {
-            strcpy(appConfig.airtelMoneyAddUrl, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_MONEY_ADD_URL)));
+            safe_strcpy(appConfig.airtelMoneyAddUrl, sizeof(appConfig.airtelMoneyAddUrl),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_MONEY_ADD_URL)));
             logData("Updated airtelMoneyAddUrl : %s", appConfig.airtelMoneyAddUrl);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_SERVICE_CREATION_URL) != NULL)
         {
-            strcpy(appConfig.airtelServiceCreationUrl, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_SERVICE_CREATION_URL)));
+            safe_strcpy(appConfig.airtelServiceCreationUrl, sizeof(appConfig.airtelServiceCreationUrl),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_SERVICE_CREATION_URL)));
             logData("Updated airtelServiceCreationUrl : %s", appConfig.airtelServiceCreationUrl);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_SIGN_SALT) != NULL)
         {
-            strcpy(appConfig.airtelSignSalt, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_SIGN_SALT)));
+            safe_strcpy(appConfig.airtelSignSalt, sizeof(appConfig.airtelSignSalt),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_SIGN_SALT)));
             logData("Updated airtelSignSalt : %s", appConfig.airtelSignSalt);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_LATITUDE) != NULL)
         {
-            strcpy(appConfig.latitude, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_LATITUDE)));
+            safe_strcpy(appConfig.latitude, sizeof(appConfig.latitude),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_LATITUDE)));
             logData("Updated latitude : %s", appConfig.latitude);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_LONGITUDE) != NULL)
         {
-            strcpy(appConfig.longitude, (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_LONGITUDE)));
+            safe_strcpy(appConfig.longitude, sizeof(appConfig.longitude),
+                        (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_LONGITUDE)));
             logData("Updated longitude : %s", appConfig.latitude);
         }
     }
@@ -1612,91 +1693,106 @@ int parseConfigAndUpdate(const char *data)
 
         if (json_object_object_get(jPsp, CONFIG_KEY_IP) != NULL)
         {
-            strcpy(appConfig.hostIP, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_IP)));
+            safe_strcpy(appConfig.hostIP, sizeof(appConfig.hostIP),
+                        (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_IP)));
             logData("Updated Host IP : %s", appConfig.hostIP);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_NII) != NULL)
         {
-            strcpy(appConfig.nii, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_NII)));
+            safe_strcpy(appConfig.nii, sizeof(appConfig.nii),
+                        (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_NII)));
             logData("Updated NII : %s", appConfig.nii);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_TPDU) != NULL)
         {
-            strcpy(appConfig.tpdu, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_TPDU)));
+            safe_strcpy(appConfig.tpdu, sizeof(appConfig.tpdu),
+                        (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_TPDU)));
             logData("Updated TPDU : %s", appConfig.tpdu);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_HTTPS_HOST_NAME) != NULL)
         {
-            strcpy(appConfig.httpsHostName, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_HTTPS_HOST_NAME)));
+            safe_strcpy(appConfig.httpsHostName, sizeof(appConfig.httpsHostName),
+                        (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_HTTPS_HOST_NAME)));
             logData("Updated Https Host Name : %s", appConfig.httpsHostName);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_OFFLINE_URL) != NULL)
         {
-            strcpy(appConfig.offlineUrl, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_OFFLINE_URL)));
+            safe_strcpy(appConfig.offlineUrl, sizeof(appConfig.offlineUrl),
+                        (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_OFFLINE_URL)));
             logData("Updated Offline Url : %s", appConfig.offlineUrl);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_SERVRICE_CREATION_URL) != NULL)
         {
-            strcpy(appConfig.serviceCreationUrl, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_SERVRICE_CREATION_URL)));
+            safe_strcpy(appConfig.serviceCreationUrl, sizeof(appConfig.serviceCreationUrl),
+                        (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_SERVRICE_CREATION_URL)));
             logData("Updated Service Creation Url : %s", appConfig.serviceCreationUrl);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_MONEY_LOAD_URL) != NULL)
         {
-            strcpy(appConfig.moneyLoadUrl, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_MONEY_LOAD_URL)));
+            safe_strcpy(appConfig.moneyLoadUrl, sizeof(appConfig.moneyLoadUrl),
+                        (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_MONEY_LOAD_URL)));
             logData("Updated Money Load Url : %s", appConfig.moneyLoadUrl);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_BALANCE_UPDATE_URL) != NULL)
         {
-            strcpy(appConfig.balanceUpdateUrl, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_BALANCE_UPDATE_URL)));
+            safe_strcpy(appConfig.balanceUpdateUrl, sizeof(appConfig.balanceUpdateUrl),
+                        (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_BALANCE_UPDATE_URL)));
             logData("Updated Balance Update Url : %s", appConfig.balanceUpdateUrl);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_VERIFY_TERMINAL_URL) != NULL)
         {
-            strcpy(appConfig.verifyTerminalUrl, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_VERIFY_TERMINAL_URL)));
+            safe_strcpy(appConfig.verifyTerminalUrl, sizeof(appConfig.verifyTerminalUrl),
+                        (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_VERIFY_TERMINAL_URL)));
             logData("Updated Verify Terminal Url : %s", appConfig.verifyTerminalUrl);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_REVERSAL_URL) != NULL)
         {
-            strcpy(appConfig.reversalUrl, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_REVERSAL_URL)));
+            safe_strcpy(appConfig.reversalUrl, sizeof(appConfig.reversalUrl),
+                        (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_REVERSAL_URL)));
             logData("Updated Reversal Url : %s", appConfig.reversalUrl);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_TERMINALID) != NULL)
         {
-            strcpy(appConfig.terminalId, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_TERMINALID)));
+            safe_strcpy(appConfig.terminalId, sizeof(appConfig.terminalId),
+                        (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_TERMINALID)));
             logData("Updated Terminal Id : %s", appConfig.terminalId);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_MERCHANT_ID) != NULL)
         {
-            strcpy(appConfig.merchantId, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_MERCHANT_ID)));
+            safe_strcpy(appConfig.merchantId, sizeof(appConfig.merchantId),
+                        (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_MERCHANT_ID)));
             logData("Updated Merchant Id : %s", appConfig.merchantId);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_CLIENT_ID) != NULL)
         {
-            strcpy(appConfig.clientId, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_CLIENT_ID)));
+            safe_strcpy(appConfig.clientId, sizeof(appConfig.clientId),
+                        (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_CLIENT_ID)));
             logData("Updated Client Id : %s", appConfig.clientId);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_CLIENT_NAME) != NULL)
         {
-            strcpy(appConfig.clientName, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_CLIENT_NAME)));
+            safe_strcpy(appConfig.clientName, sizeof(appConfig.clientName),
+                        (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_CLIENT_NAME)));
             logData("Updated Client Name : %s", appConfig.clientName);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_HOST_VERSION) != NULL)
         {
-            strcpy(appConfig.hostVersion, (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_HOST_VERSION)));
+            safe_strcpy(appConfig.hostVersion, sizeof(appConfig.hostVersion),
+                        (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_HOST_VERSION)));
             logData("Updated Host Version : %s", appConfig.hostVersion);
         }
 
@@ -1765,7 +1861,13 @@ void readAndUpdateKeys(json_object *jConfig)
             keyValue = json_object_array_get_idx(keys, i);
 
             const char *label = json_object_get_string(json_object_object_get(keyValue, CONFIG_KEY_KEY_LABEL));
-            strcpy(appConfig.keyDataList[i]->label, label);
+            safe_strcpy(appConfig.keyDataList[i]->label, sizeof(appConfig.keyDataList[i]->label), label);
+
+            if (json_object_object_get(keyValue, CONFIG_KEY_KEY_MKLABEL) != NULL)
+            {
+                const char *mkLabel = json_object_get_string(json_object_object_get(keyValue, CONFIG_KEY_KEY_MKLABEL));
+                safe_strcpy(appConfig.keyDataList[i]->mkLabel, sizeof(appConfig.keyDataList[i]->mkLabel), mkLabel);
+            }
 
             int slot = json_object_get_int(json_object_object_get(keyValue, CONFIG_KEY_KEY_SLOT));
             appConfig.keyDataList[i]->slot = slot;
@@ -1774,13 +1876,13 @@ void readAndUpdateKeys(json_object *jConfig)
             appConfig.keyDataList[i]->mkVersion = mkVersion;
 
             const char *astId = json_object_get_string(json_object_object_get(keyValue, CONFIG_KEY_KEY_AST_ID));
-            strcpy(appConfig.keyDataList[i]->astId, astId);
+            safe_strcpy(appConfig.keyDataList[i]->astId, sizeof(appConfig.keyDataList[i]->astId), astId);
 
             const char *pkcsId = json_object_get_string(json_object_object_get(keyValue, CONFIG_KEY_KEY_PKCS_ID));
-            strcpy(appConfig.keyDataList[i]->pkcsId, pkcsId);
+            safe_strcpy(appConfig.keyDataList[i]->pkcsId, sizeof(appConfig.keyDataList[i]->pkcsId), pkcsId);
 
             const char *type = json_object_get_string(json_object_object_get(keyValue, CONFIG_KEY_KEY_TYPE));
-            strcpy(appConfig.keyDataList[i]->type, type);
+            safe_strcpy(appConfig.keyDataList[i]->type, sizeof(appConfig.keyDataList[i]->type), type);
 
             if (json_object_object_get(keyValue, CONFIG_KEY_IS_MAC) != NULL &&
                 strcmp(type, KEY_TYPE_DUKPT_KEY) == 0)
@@ -1796,7 +1898,7 @@ void readAndUpdateKeys(json_object *jConfig)
                 strcmp(type, KEY_TYPE_DUKPT_KEY) == 0)
             {
                 const char *keySet = json_object_get_string(json_object_object_get(keyValue, CONFIG_KEY_KEY_KEY_SET_IDENTIFIER));
-                strcpy(appConfig.keyDataList[i]->keySetIdentifier, keySet);
+                safe_strcpy(appConfig.keyDataList[i]->keySetIdentifier, sizeof(appConfig.keyDataList[i]->keySetIdentifier), keySet);
             }
             else
             {
@@ -1840,7 +1942,7 @@ void readAndUpdateLedConfigs(json_object *jConfig)
         for (int i = 0; i < 13; i++)
         {
             appConfig.ledDataList[i] = malloc(sizeof(LEDDATA));
-            strcpy(appConfig.ledDataList[i]->stateName, stateNames[i]);
+            safe_strcpy(appConfig.ledDataList[i]->stateName, sizeof(appConfig.ledDataList[i]->stateName), stateNames[i]);
 
             // Get the data eg { "waiting_key_injection": ["N", "N", "N", "N", "R"] },
             ledConfig = json_object_array_get_idx(ledList, i);
@@ -1850,23 +1952,23 @@ void readAndUpdateLedConfigs(json_object *jConfig)
 
             ledData = json_object_array_get_idx(ledValues, 0);
             const char *m1 = json_object_get_string(ledData);
-            strcpy(appConfig.ledDataList[i]->midLogo, m1);
+            safe_strcpy(appConfig.ledDataList[i]->midLogo, sizeof(appConfig.ledDataList[i]->midLogo), m1);
 
             ledData = json_object_array_get_idx(ledValues, 1);
             const char *l1 = json_object_get_string(ledData);
-            strcpy(appConfig.ledDataList[i]->led1, l1);
+            safe_strcpy(appConfig.ledDataList[i]->led1, sizeof(appConfig.ledDataList[i]->led1), l1);
 
             ledData = json_object_array_get_idx(ledValues, 2);
             const char *l2 = json_object_get_string(ledData);
-            strcpy(appConfig.ledDataList[i]->led2, l2);
+            safe_strcpy(appConfig.ledDataList[i]->led2, sizeof(appConfig.ledDataList[i]->led2), l2);
 
             ledData = json_object_array_get_idx(ledValues, 3);
             const char *l3 = json_object_get_string(ledData);
-            strcpy(appConfig.ledDataList[i]->led3, l3);
+            safe_strcpy(appConfig.ledDataList[i]->led3, sizeof(appConfig.ledDataList[i]->led3), l3);
 
             ledData = json_object_array_get_idx(ledValues, 4);
             const char *l4 = json_object_get_string(ledData);
-            strcpy(appConfig.ledDataList[i]->led4, l4);
+            safe_strcpy(appConfig.ledDataList[i]->led4, sizeof(appConfig.ledDataList[i]->led4), l4);
         }
     }
 }

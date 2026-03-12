@@ -35,9 +35,9 @@ void handleAbtCompletion(const void *outcome, size_t outcomeLen)
     sendAbtCardPresented(currentTxnData);
     bool gateStatus = checkAndGetGateOpen();
     if (gateStatus)
-        strcpy(currentTxnData.txnStatus, STATUS_SUCCESS);
+        safe_strcpy(currentTxnData.txnStatus, sizeof(currentTxnData.txnStatus), STATUS_SUCCESS);
     else
-        strcpy(currentTxnData.txnStatus, STATUS_FAILURE);
+        safe_strcpy(currentTxnData.txnStatus, sizeof(currentTxnData.txnStatus), STATUS_FAILURE);
     logData("Gate status received : %d", gateStatus);
     currentTxnData.isGateOpen = gateStatus;
     createAbtTransactionData(&currentTxnData);

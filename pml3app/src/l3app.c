@@ -31,8 +31,6 @@
 #include "include/appcodes.h"
 #include "include/keymanager.h"
 #include "include/emvconfig.h"
-#include "JHost/jhost_interface.h"
-#include "JHost/jhostutil.h"
 #include "include/tlvhelper.h"
 #include "include/test.h"
 #include "include/abtdbmanager.h"

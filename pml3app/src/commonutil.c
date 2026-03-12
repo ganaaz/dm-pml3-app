@@ -39,6 +39,69 @@ void signalCallbackBandler(int signum)
     exit(signum);
 }
 
+void safe_strncpy(char *dest, size_t dest_size, const char *src, size_t len)
+{
+    if (dest == NULL || src == NULL || dest_size == 0)
+        return;
+
+    size_t copy_len = len < dest_size - 1 ? len : dest_size - 1;
+
+    memcpy(dest, src, copy_len);
+    dest[copy_len] = '\0';
+}
+
+void safe_strcpy(char *dest, size_t dest_size, const char *src)
+{
+    if (dest == NULL || src == NULL || dest_size == 0)
+        return;
+
+    size_t copy_len = strlen(src);
+
+    if (copy_len >= dest_size)
+        copy_len = dest_size - 1;
+
+    memcpy(dest, src, copy_len);
+    dest[copy_len] = '\0';
+}
+
+void safe_strcat(char *dest, size_t dest_size, const char *src)
+{
+    if (dest == NULL || src == NULL || dest_size == 0)
+        return;
+
+    size_t dest_len = strlen(dest);
+
+    if (dest_len >= dest_size - 1)
+        return; // no space left
+
+    size_t copy_len = strlen(src);
+
+    if (copy_len > dest_size - dest_len - 1)
+        copy_len = dest_size - dest_len - 1;
+
+    memcpy(dest + dest_len, src, copy_len);
+    dest[dest_len + copy_len] = '\0';
+}
+
+void safe_strncat(char *dest, size_t dest_size, const char *src, size_t n)
+{
+    if (dest == NULL || src == NULL || dest_size == 0)
+        return;
+
+    size_t dest_len = strlen(dest);
+
+    if (dest_len >= dest_size - 1)
+        return; // no space left
+
+    size_t copy_len = n;
+
+    if (copy_len > dest_size - dest_len - 1)
+        copy_len = dest_size - dest_len - 1;
+
+    memcpy(dest + dest_len, src, copy_len);
+    dest[dest_len + copy_len] = '\0';
+}
+
 /**
  * To read a file data
  */
@@ -338,7 +401,7 @@ struct transactionData updateTransactionDateTime(struct transactionData trxData)
     char year[5];
     snprintf(year, 5, "%d", 2000 + iYear);
     logData("Current Year : %s", year);
-    strcpy(trxData.year, year);
+    safe_strcpy(trxData.year, sizeof(trxData.year), year);
     strftime(trxData.time, -1, "%H%M%S", ptm);
     logData("Transaction Time : %s", trxData.time);
     strftime(trxData.date, -1, "%m%d", ptm);
@@ -346,7 +409,7 @@ struct transactionData updateTransactionDateTime(struct transactionData trxData)
 
     struct tm *ptmGMT = gmtime(&rawTime);
     strftime(trxData.gmtTime, sizeof(trxData.gmtTime), "%Y-%m-%d %H:%M:%S GMT", ptmGMT);
-    strcat(trxData.gmtTime, "\0");
+    safe_strcat(trxData.gmtTime, sizeof(trxData.gmtTime), "\0");
     logData("Transaction GMT Time : %s", trxData.gmtTime);
 
     strftime(trxData.acqTransactionId, -1, "%d%m%y%H%M%S", ptm);
@@ -354,13 +417,13 @@ struct transactionData updateTransactionDateTime(struct transactionData trxData)
     logData("Length : %d", strlen(trxData.acqTransactionId));
 
     char acqUniqueTxnId[21];
-    strcpy(acqUniqueTxnId, appConfig.deviceCode); // 10 digit
+    safe_strcpy(acqUniqueTxnId, sizeof(acqUniqueTxnId), appConfig.deviceCode); // 10 digit
 
     char dateVal[11];
     strftime(dateVal, -1, "%m%d%H%M%S", ptm);
-    strcat(acqUniqueTxnId, dateVal);
+    safe_strcat(acqUniqueTxnId, sizeof(acqUniqueTxnId), dateVal);
 
-    strcpy(trxData.acqUniqueTransactionId, acqUniqueTxnId);
+    safe_strcpy(trxData.acqUniqueTransactionId, sizeof(trxData.acqUniqueTransactionId), acqUniqueTxnId);
 
     logData("acqUniqueTransactionId : %s", trxData.acqUniqueTransactionId);
     logData("Length : %d", strlen(trxData.acqUniqueTransactionId));
@@ -377,7 +440,7 @@ void removeIccTags(uint8_t buffer[4096], size_t buffer_len)
 {
     char iccData[4096];
     memset(iccData, 0, 4096);
-    strcpy(iccData, "");
+    safe_strcpy(iccData, sizeof(iccData), "");
 
     struct tlv *tlvData = NULL;
     tlv_parse(buffer, buffer_len, &tlvData);
@@ -399,21 +462,21 @@ void removeIccTags(uint8_t buffer[4096], size_t buffer_len)
 
         char temp[5];
         byteToHex(tag, tag_sz, temp);
-        strcat(iccData, temp);
+        safe_strcat(iccData, sizeof(iccData), temp);
         char temp2[5];
         sprintf(temp2, "%02X", value_sz);
-        strcat(iccData, temp2);
+        safe_strcat(iccData, sizeof(iccData), temp2);
         char temp3[256];
         byteToHex(value, value_sz, temp3);
-        strcat(iccData, temp3);
+        safe_strcat(iccData, sizeof(iccData), temp3);
 
         if (tag[0] == 0x5F && tag[1] == 0x25)
         {
-            strcpy(currentTxnData.effectiveDate, temp3);
+            safe_strcpy(currentTxnData.effectiveDate, sizeof(currentTxnData.effectiveDate), temp3);
         }
     }
 
-    strcpy(currentTxnData.iccData, iccData);
+    safe_strcpy(currentTxnData.iccData, sizeof(currentTxnData.iccData), iccData);
     logData("ICC DATA : %s", currentTxnData.iccData);
     currentTxnData.iccDataLen = strlen(iccData);
     tlv_free(tlvData);
@@ -492,33 +555,65 @@ bool isMinimumFirmwareInstalled(void)
 }
 
 /**
- * To generate the narration data
- **/
+ * New hitachi document narration data is of length only 30
+ * To confirm and remove the uniqu trx id data
+ */
 void generateNarrationData(char *stationId, char *acqTrxId,
                            char *acqUniqueTrxId, char amount[13], char *narration)
 {
     // char narration[63];
-    strcpy(narration, "EXT ");
-    strcat(narration, appConfig.stationId);
-    strcat(narration, " GLB DR ");
+    safe_strcpy(narration, 63, "EXT ");
+    safe_strcat(narration, 63, appConfig.stationId);
+    safe_strcat(narration, 63, " GLB DR ");
     char onlyAmount[5];
     memcpy(onlyAmount, &amount[8], 4);
     onlyAmount[4] = '\0';
     logData("Only Amount : %s", onlyAmount);
     logData("Only amount length : %d", strlen(onlyAmount));
-    strcat(narration, onlyAmount);
+    safe_strcat(narration, 63, onlyAmount);
     int len = strlen(narration);
     int max = 30 - len;
     for (int i = 0; i < max; i++)
     {
-        strcat(narration, " ");
+        safe_strcat(narration, 63, " ");
     }
-    strcat(narration, acqTrxId);
-    strcat(narration, acqUniqueTrxId);
+    logData("acqTrxId : %s", acqTrxId);
+    logData("acqUniqueTrxId : %s", acqUniqueTrxId);
+    safe_strcat(narration, 63, acqTrxId);
+    safe_strcat(narration, 63, acqUniqueTrxId);
 
     logData("Narration data generated : %s", narration);
     logData("Narration length : %d", strlen(narration));
 }
+
+/**
+ * To generate the narration data
+ **/
+// void generateNarrationData(char *stationId, char *acqTrxId,
+//                            char *acqUniqueTrxId, char amount[13], char *narration)
+// {
+//     // char narration[63];
+//     safe_strcpy(narration, 63, "EXT ");
+//     safe_strcat(narration, 63, appConfig.stationId);
+//     safe_strcat(narration, 63, " GLB DR ");
+//     char onlyAmount[5];
+//     memcpy(onlyAmount, &amount[8], 4);
+//     onlyAmount[4] = '\0';
+//     logData("Only Amount : %s", onlyAmount);
+//     logData("Only amount length : %d", strlen(onlyAmount));
+//     safe_strcat(narration, 63, onlyAmount);
+//     int len = strlen(narration);
+//     int max = 30 - len;
+//     for (int i = 0; i < max; i++)
+//     {
+//         safe_strcat(narration, 63, " ");
+//     }
+//     safe_strcat(narration, 63, acqTrxId);
+//     safe_strcat(narration, 63, acqUniqueTrxId);
+
+//     logData("Narration data generated : %s", narration);
+//     logData("Narration length : %d", strlen(narration));
+// }
 
 /**
  * Generate a unique UUID
@@ -543,13 +638,13 @@ void generateOrderId()
     logData("Txn counter : %ld", currentTxnData.txnCounter);
     char orderId[29];
 
-    strcpy(orderId, currentTxnData.year);
-    strcat(orderId, currentTxnData.date);
-    strcat(orderId, currentTxnData.time);
-    strcat(orderId, currentTxnData.stan);
-    strcat(orderId, appConfig.terminalId);
+    safe_strcpy(orderId, sizeof(orderId), currentTxnData.year);
+    safe_strcat(orderId, sizeof(orderId), currentTxnData.date);
+    safe_strcat(orderId, sizeof(orderId), currentTxnData.time);
+    safe_strcat(orderId, sizeof(orderId), currentTxnData.stan);
+    safe_strcat(orderId, sizeof(orderId), appConfig.terminalId);
 
-    strcpy(currentTxnData.orderId, orderId);
+    safe_strcpy(currentTxnData.orderId, sizeof(currentTxnData.orderId), orderId);
     logData("Order Id Generated : %s", currentTxnData.orderId);
     logData("Order Id length : %d", strlen(currentTxnData.orderId));
 }
@@ -636,6 +731,8 @@ void printCurrentTxnData(struct transactionData trxData)
     logData("Update Balance : %s", trxData.updatedBalance);
     logData("Host Response : %s", trxData.hostResponseCode);
     logData("Money Add Trx Type : %s", trxData.moneyAddTrxType);
+    logData("Money Add Trx RRN : %s", trxData.moneyAddRRN);
+    logData("Money Add Trx TID : %s", trxData.moneyAddTid);
     logData("Check Date : %s", trxData.checkDate);
     logData("Check Date Result : %d", trxData.checkDateResult);
     logData("Trx Issue Detail : %s", trxData.trxIssueDetail);
@@ -653,28 +750,38 @@ void printCurrentTxnData(struct transactionData trxData)
 const char *maskPan(const char *pan)
 {
     int len = strlen(pan);
+
+    // Step 1: Remove trailing 'F' if present
+    char *cleanPan = NULL;
+    if (len > 0 && pan[len - 1] == 'F')
+    {
+        cleanPan = (char *)malloc(len); // len instead of len+1 because last char removed
+        memcpy(cleanPan, pan, len - 1);
+        cleanPan[len - 1] = '\0';
+        len = len - 1;
+    }
+    else
+    {
+        cleanPan = strdup(pan); // make a copy so we can use uniformly
+    }
+
+    // Step 2: Masking logic
+    if (len < 5)
+        return cleanPan;
+
     char *maskedPan = (char *)malloc(len + 1);
     memset(maskedPan, '*', len);
-
-    if (len < 5)
-        return pan;
-
-    // First 6 characters
-    maskedPan[0] = pan[0];
-    maskedPan[1] = pan[1];
-    maskedPan[2] = pan[2];
-    maskedPan[3] = pan[3];
-    maskedPan[4] = pan[4];
-    maskedPan[5] = pan[5];
-
-    // Last 4 characters
-    maskedPan[len - 1] = pan[len - 1];
-    maskedPan[len - 2] = pan[len - 2];
-    maskedPan[len - 3] = pan[len - 3];
-    maskedPan[len - 4] = pan[len - 4];
-
     maskedPan[len] = '\0';
 
+    // First 6 characters
+    if (len >= 6)
+        memcpy(maskedPan, cleanPan, 6);
+
+    // Last 4 characters
+    if (len >= 10)
+        memcpy(maskedPan + (len - 4), cleanPan + (len - 4), 4);
+
+    free(cleanPan);
     return maskedPan;
 }
 
@@ -742,6 +849,8 @@ void resetTransactionData()
     memset(currentTxnData.updatedBalance, 0, sizeof(currentTxnData.updatedBalance));
     memset(currentTxnData.hostResponseCode, 0, sizeof(currentTxnData.hostResponseCode));
     memset(currentTxnData.moneyAddTrxType, 0, sizeof(currentTxnData.moneyAddTrxType));
+    memset(currentTxnData.moneyAddRRN, 0, sizeof(currentTxnData.moneyAddRRN));
+    memset(currentTxnData.moneyAddTid, 0, sizeof(currentTxnData.moneyAddTid));
     memset(currentTxnData.checkDate, 0, sizeof(currentTxnData.checkDate));
     memset(currentTxnData.trxIssueDetail, 0, sizeof(currentTxnData.trxIssueDetail));
     currentTxnData.checkDateResult = 0;
@@ -780,22 +889,22 @@ void incrementTransactionCounter()
  */
 void formatTransactionTime(struct transactionData trxData, char trxDate[20])
 {
-    strcpy(trxDate, trxData.year);
-    strcat(trxDate, "-");
-    strncat(trxDate, &trxData.date[0], 1);
-    strncat(trxDate, &trxData.date[1], 1);
-    strcat(trxDate, "-");
-    strncat(trxDate, &trxData.date[2], 1);
-    strncat(trxDate, &trxData.date[3], 1);
-    strcat(trxDate, " ");
-    strncat(trxDate, &trxData.time[0], 1);
-    strncat(trxDate, &trxData.time[1], 1);
-    strcat(trxDate, ":");
-    strncat(trxDate, &trxData.time[2], 1);
-    strncat(trxDate, &trxData.time[3], 1);
-    strcat(trxDate, ":");
-    strncat(trxDate, &trxData.time[4], 1);
-    strncat(trxDate, &trxData.time[5], 1);
+    safe_strcpy(trxDate, 20, trxData.year);
+    safe_strcat(trxDate, 20, "-");
+    safe_strncat(trxDate, 20, &trxData.date[0], 1);
+    safe_strncat(trxDate, 20, &trxData.date[1], 1);
+    safe_strcat(trxDate, 20, "-");
+    safe_strncat(trxDate, 20, &trxData.date[2], 1);
+    safe_strncat(trxDate, 20, &trxData.date[3], 1);
+    safe_strcat(trxDate, 20, " ");
+    safe_strncat(trxDate, 20, &trxData.time[0], 1);
+    safe_strncat(trxDate, 20, &trxData.time[1], 1);
+    safe_strcat(trxDate, 20, ":");
+    safe_strncat(trxDate, 20, &trxData.time[2], 1);
+    safe_strncat(trxDate, 20, &trxData.time[3], 1);
+    safe_strcat(trxDate, 20, ":");
+    safe_strncat(trxDate, 20, &trxData.time[4], 1);
+    safe_strncat(trxDate, 20, &trxData.time[5], 1);
 }
 
 /**
@@ -950,10 +1059,9 @@ void generatePanToken(const char *panNumber, const char *track2, char buffer[65]
     // logData("Salt length : %d", strlen(salt));
 
     char data[200];
-    strcpy(data, "");
-    strcat(data, salt);
-    strcat(data, panNumber);
-    strcat(data, "\0");
+    safe_strcpy(data, sizeof(data), "");
+    safe_strcat(data, sizeof(data), salt);
+    safe_strcat(data, sizeof(data), panNumber);
     // logData("Data for Sha %s", data);
     generateSha(data, buffer);
 }
@@ -1095,4 +1203,58 @@ uint8_t *stringToBytes(const char *input)
         bytes[i] = (uint8_t)input[i];
     }
     return bytes;
+}
+
+/**
+ * To write the log mode
+ */
+int writeLogMode(int mode)
+{
+    if (mode < 0 || mode > 2)
+    {
+        return -1;
+    }
+
+    const char *filename = "l3_log_mode";
+
+    // Open file for writing (create if not exists, truncate if exists)
+    FILE *fp = fopen(filename, "w");
+    if (fp == NULL)
+    {
+        return -2; // failed to open file
+    }
+
+    // Write the number
+    fprintf(fp, "%d", mode);
+
+    // Flush and close
+    fflush(fp);
+    fclose(fp);
+
+    return 0; // success
+}
+
+/**
+ * To get the current log mode or return -1 if file not present
+ */
+int getLogMode()
+{
+    const char *filename = "l3_log_mode";
+    FILE *fp = fopen(filename, "r");
+
+    if (fp == NULL)
+    {
+        return -1; // file not present or cannot open
+    }
+
+    int mode = -1;
+    if (fscanf(fp, "%d", &mode) != 1)
+    {
+        // Failed to read an integer
+        fclose(fp);
+        return -1;
+    }
+
+    fclose(fp);
+    return mode;
 }

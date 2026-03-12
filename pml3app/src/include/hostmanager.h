@@ -26,33 +26,6 @@ void verifyAndDoReversal();
 void *startReversalThread();
 
 /**
- * Perform the balance update or service creation with host
- **/
-void performHostUpdate(struct transactionData trxData, long batchCounter,
-                       uint8_t *response, size_t *response_len, enum host_trx_type hostTrxType);
-
-/**
- * Perform the balance update or service creation with airtel host
- **/
-void performAirtelHostUpdate(struct transactionData trxData, long batchCounter,
-                             uint8_t *response, size_t *response_len, enum host_trx_type hostTrxType);
-
-/**
- *  To initiate a verify terminal and get the response
- */
-char *performVerifyTerminal(const char tid[50], const char mid[50]);
-
-/**
- *  To initiate a verify terminal and get the response for Airtel
- */
-char *performAirtelVerifyTerminal();
-
-/**
- *  To initiate a health check and get the response for Airtel
- */
-char *performAirtelHealthCheck();
-
-/**
  * Get the  host error as string
  **/
 const char *getHostErrorString(ISO8583_ERROR_CODES errorCode);

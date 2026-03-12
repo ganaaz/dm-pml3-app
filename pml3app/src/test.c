@@ -27,8 +27,6 @@
 #include "include/keymanager.h"
 #include "include/emvconfig.h"
 #include "include/dukpt-util.h"
-#include "JHost/jhostutil.h"
-#include "JHost/jhost_interface.h"
 #include "http-parser/http_parser.h"
 #include "http-parser/http_util.h"
 
@@ -171,27 +169,5 @@ void testHttpParse()
     printf("Status Code : %d\n", parser.status_code);
     printf("Content Length : %d\n", parser.content_length);
     */
-    exit(0);
-}
-
-void testBLJsonParse()
-{
-    // char data[] = "{\"head\":{\"responseTimestamp\":\"2022-11-1412:01:29\",\"buildVersion\":\"PAYTM POS Version 1.1.0.0\"},\"body\":{\"resultStatus\":\"SUCCESS\",\"resultCode\":\"S\",\"resultMsg\":\"Success\",\"resultCodeId\":\"EOS_0000\",\"bankResultMsg\":\"Success\",\"bankResultCode\":\"00\",\"invoiceNumber\":\"000110\",\"amount\":\"0\",\"retrievalReferenceNumber\":\"231812206159\",\"authorizationCode\":\"120100\",\"saleQrCodeMetadata\":null,\"iccData\":\"911098430E3083944000FFFE000000001000\",\"bankTid\":\"5P076542\",\"bankMid\":\"5PT000000000026\",\"acquirementId\":\"20221114111212800110168572203499311\",\"orderId\":\"2022111412001300011014034986\",\"gateway\":\"PEDC\",\"merchantName\":\"TOUCH WOOD LIMITED\",\"issuingBank\":\"ICICI Bank\"}}";
-    // char data[] = "{}";
-    char data[] = "{\"head\":{\"responseTimestamp\":\"2022-11-1014:09:16\",\"buildVersion\":\"PAYTM POS Version 1.1.0.0\"},\"body\":{\"resultStatus\":\"FAIL\",\"resultCode\":\"F\",\"resultMsg\":\"Unable to connect with issuer bank, Please try again\",\"resultCodeId\":\"EOS_0046\",\"bankResultMsg\":\"Unable to connect with issuer bank, Please try again\",\"bankResultCode\":null,\"invoiceNumber\":\"000105\",\"amount\":\"0\",\"retrievalReferenceNumber\":null,\"authorizationCode\":null,\"saleQrCodeMetadata\":null,\"iccData\":null,\"bankTid\":null,\"bankMid\":null,\"acquirementId\":\"20221110111212800110168642803537671\",\"orderId\":\"2022111014074800010514034986\",\"gateway\":null,\"merchantName\":\"TOUCH WOOD LIMITED\",\"issuingBank\":\"ICICI Bank\"}}";
-    HostResponse balanceUpdateResponse = parseHostResponseData(data);
-    logData("authorizationCode : %s", balanceUpdateResponse.authorizationCode);
-    logData("bankResultCode : %s", balanceUpdateResponse.bankResultCode);
-    if (strlen(balanceUpdateResponse.bankResultCode) == 0)
-        logData("Bank result code is null");
-    else
-        logData("Bank result code not null");
-
-    logData("iccData : %s", balanceUpdateResponse.iccData);
-    logData("invoiceNumber : %s", balanceUpdateResponse.invoiceNumber);
-    logData("resultStatus : %s", balanceUpdateResponse.resultStatus);
-    logData("retrievalReferenceNumber : %s", balanceUpdateResponse.retrievalReferenceNumber);
-    logData("status : %d", balanceUpdateResponse.status);
-
     exit(0);
 }

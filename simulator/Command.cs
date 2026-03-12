@@ -39,6 +39,12 @@ namespace SimulatorApp
         [JsonProperty("money_add_type")]
         public string MoneyAddType { get; set; }
 
+        [JsonProperty("money_add_tid")]
+        public string MoneyAddTID { get; set; }
+
+        [JsonProperty("money_add_rrn")]
+        public string MoneyAddRRN { get; set; }
+
         [JsonProperty("money_add_source_txn")]
         public string MoneyAddSourceTxn { get; set; }
 
@@ -47,6 +53,9 @@ namespace SimulatorApp
 
         [JsonProperty("is_service_block")]
         public int IsServiceBlock { get; set; }
+
+        [JsonProperty("isOnline")]
+        public bool IsOnline { get; set; }
 
         [JsonProperty("check_date")]
         public string CheckDate { get; set; }
@@ -104,6 +113,9 @@ namespace SimulatorApp
 
         [JsonProperty("skipRecords")]
         public int SkipRecords { get; set; }
+
+        [JsonProperty("disk_space_path")]
+        public string DiskSpacePath { get; set; }
     }
 
     public class Message

@@ -11,6 +11,7 @@
 typedef struct KEY_DATA
 {
     char label[100];
+    char mkLabel[100];
     int slot;
     int mkVersion;
     char astId[100];
@@ -187,7 +188,9 @@ struct transactionData
     char updatedAmount[13];
     char updatedBalance[13];
     char hostResponseCode[3]; // This is host result code in trx table
-    char moneyAddTrxType[20];
+    char moneyAddTrxType[3];
+    char moneyAddTid[9];
+    char moneyAddRRN[13];
     char sourceTxnId[50];
     char checkDate[11];
     int checkDateResult;
@@ -262,7 +265,9 @@ struct applicationData
     int searchTimeout;
     int writeCardWaitTimeMs;
     char trxType[50];
-    char moneyAddTrxType[20];
+    char moneyAddTrxType[3];
+    char moneyAddTid[9];
+    char moneyAddRRN[13];
     char sourceTxnId[50];
     char createServiceId[10];
     int isServiceBlock;
@@ -317,6 +322,11 @@ void initTransactionTable();
  * Load the app config from the configuration file
  **/
 void loadAppConfig();
+
+/**
+ * Vaccum of trx db
+ */
+void doVaccumTrxDb();
 
 /**
  * load the app data config that has the counters

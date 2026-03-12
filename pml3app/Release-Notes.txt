@@ -1,3 +1,22 @@
+Version : 1.0.1
+Date : 11-Mar-26
+
+Changes
+
+- PCI Security Issues are resolved
+- Field 63 is added with the comments given in the mail for online and offline
+- For Money add simulator is updated to take either 02 or 04 and 04 needs TID and RRN
+- For money add only these two values to be passed and with right length
+- Fetch online data and clear is added
+- Existing fetch api add one more parameter isOnline with True for getting online data
+- Simulator is added with those commands for (Online : Success, Failure, Pending)
+- New Api to get the log mode cmd : "get_log_mode"
+- New api to get the disk space cmd : "get_disk_space" and disk_space_path : "<any valid path>"
+- USB mode is working fine now for offline and online, make sure the write card time is increased compare to the write card time for ethernet
+
+
+=============================================================================================
+
 Version : 1.0.0
 Date : 10-Nov-25
 

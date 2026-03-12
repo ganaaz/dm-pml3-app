@@ -8,6 +8,26 @@
 #include "commandmanager.h"
 
 /**
+ * Safe copy
+ */
+void safe_strncpy(char *dest, size_t dest_size, const char *src, size_t len);
+
+/**
+ * Safe copy
+ */
+void safe_strcpy(char *dest, size_t dest_size, const char *src);
+
+/**
+ * Safe strcat
+ */
+void safe_strcat(char *dest, size_t dest_size, const char *src);
+
+/**
+ * Safe strncat
+ */
+void safe_strncat(char *dest, size_t dest_size, const char *src, size_t n);
+
+/**
  * To handle the signals
  **/
 void signalCallbackBandler(int signum);
@@ -219,5 +239,15 @@ void trimAmount(char amount[13], char trimmedAmount[13]);
  * String to byte array
  */
 uint8_t *stringToBytes(const char *input);
+
+/**
+ * To write the log mode
+ */
+int writeLogMode(int mode);
+
+/**
+ * To get the current log mode or return -1 if file not present
+ */
+int getLogMode();
 
 #endif

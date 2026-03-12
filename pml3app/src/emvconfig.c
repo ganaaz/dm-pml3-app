@@ -34,7 +34,7 @@ struct tlv *parseEmvConfigFile()
     json_object *jObject = json_tokener_parse(buffer);
 
     EMV_CONFIG emvConfig;
-    strcpy(emvConfig.traceEnabled, getString(jObject, "traceEnabled"));
+    safe_strcpy(emvConfig.traceEnabled, sizeof(emvConfig.traceEnabled), getString(jObject, "traceEnabled"));
 
     emvConfig = loadEncrypts(jObject, emvConfig);
     emvConfig.emv = loadKeys(jObject, emvConfig.emv);
@@ -61,7 +61,7 @@ void generateTlv(EMV_CONFIG emvConfig)
     void *data = NULL;
     size_t dataLen = 0;
     serializeTlv(tlvConfig, &data, &dataLen);
-    logHexDataNoSpace("Value: ", data, dataLen);
+    // logHexDataNoSpace("Value: ", data, dataLen);
 }
 
 struct tlv *generatePaymentConfig(EMV_CONFIG emvConfig)
@@ -639,10 +639,10 @@ EMV loadCombinations(json_object *jObject, EMV emv)
         emv.combinations[i] = malloc(sizeof(COMBINATIONS));
         emv.combinations[i]->entryPoint = loadEntryPoint(combObject);
 
-        strcpy(emv.combinations[i]->aid, getString(combObject, "aid"));
-        strcpy(emv.combinations[i]->partial, getString(combObject, "partial"));
-        strcpy(emv.combinations[i]->kernel, getString(combObject, "kernel"));
-        strcpy(emv.combinations[i]->txnType, getString(combObject, "txnType"));
+        safe_strcpy(emv.combinations[i]->aid, sizeof(emv.combinations[i]->aid), getString(combObject, "aid"));
+        safe_strcpy(emv.combinations[i]->partial, sizeof(emv.combinations[i]->partial), getString(combObject, "partial"));
+        safe_strcpy(emv.combinations[i]->kernel, sizeof(emv.combinations[i]->kernel), getString(combObject, "kernel"));
+        safe_strcpy(emv.combinations[i]->txnType, sizeof(emv.combinations[i]->txnType), getString(combObject, "txnType"));
 
         emv.combinations[i]->kernelConfig = loadKernelConfig(combObject);
     }
@@ -655,28 +655,50 @@ KERNEL_CONFIG loadKernelConfig(json_object *combObject)
     KERNEL_CONFIG kernelConfig;
     json_object *kernelConfigObject = json_object_object_get(combObject, "kernelConfig");
 
-    strcpy(kernelConfig.addTermCap, getString(kernelConfigObject, "addTermCap"));
-    strcpy(kernelConfig.addTermCapExt, getString(kernelConfigObject, "addTermCapExt"));
-    strcpy(kernelConfig.appUnblockSupport, getString(kernelConfigObject, "appUnblockSupport"));
-    strcpy(kernelConfig.appVersion, getString(kernelConfigObject, "appVersion"));
-    strcpy(kernelConfig.countryCode, getString(kernelConfigObject, "countryCode"));
-    strcpy(kernelConfig.mcc, getString(kernelConfigObject, "mcc"));
-    strcpy(kernelConfig.serviceDataFormat, getString(kernelConfigObject, "serviceDataFormat"));
-    strcpy(kernelConfig.serviceQualifier, getString(kernelConfigObject, "serviceQualifier"));
-    strcpy(kernelConfig.tacDefault, getString(kernelConfigObject, "tacDefault"));
-    strcpy(kernelConfig.tacDenial, getString(kernelConfigObject, "tacDenial"));
-    strcpy(kernelConfig.tacOnline, getString(kernelConfigObject, "tacOnline"));
-    strcpy(kernelConfig.tdol, getString(kernelConfigObject, "tdol"));
-    strcpy(kernelConfig.termCap, getString(kernelConfigObject, "termCap"));
-    strcpy(kernelConfig.terminalFloorLimit, getString(kernelConfigObject, "terminalFloorLimit"));
-    strcpy(kernelConfig.terminalId, getString(kernelConfigObject, "terminalId"));
-    strcpy(kernelConfig.terminalType, getString(kernelConfigObject, "terminalType"));
-    strcpy(kernelConfig.trmData, getString(kernelConfigObject, "trmData"));
-    strcpy(kernelConfig.tcCategoryCode, getString(kernelConfigObject, "tcCategoryCode"));
-    strcpy(kernelConfig.kernelConfiguration, getString(kernelConfigObject, "kernelConfiguration"));
-    strcpy(kernelConfig.cvmCapCVM, getString(kernelConfigObject, "cvmCapCVM"));
-    strcpy(kernelConfig.cvmCapNoCVM, getString(kernelConfigObject, "cvmCapNoCVM"));
-    strcpy(kernelConfig.secCap, getString(kernelConfigObject, "secCap"));
+    safe_strcpy(kernelConfig.addTermCap, sizeof(kernelConfig.addTermCap),
+                getString(kernelConfigObject, "addTermCap"));
+    safe_strcpy(kernelConfig.addTermCapExt, sizeof(kernelConfig.addTermCapExt),
+                getString(kernelConfigObject, "addTermCapExt"));
+    safe_strcpy(kernelConfig.appUnblockSupport, sizeof(kernelConfig.appUnblockSupport),
+                getString(kernelConfigObject, "appUnblockSupport"));
+    safe_strcpy(kernelConfig.appVersion, sizeof(kernelConfig.appVersion),
+                getString(kernelConfigObject, "appVersion"));
+    safe_strcpy(kernelConfig.countryCode, sizeof(kernelConfig.countryCode),
+                getString(kernelConfigObject, "countryCode"));
+    safe_strcpy(kernelConfig.mcc, sizeof(kernelConfig.mcc),
+                getString(kernelConfigObject, "mcc"));
+    safe_strcpy(kernelConfig.serviceDataFormat, sizeof(kernelConfig.serviceDataFormat),
+                getString(kernelConfigObject, "serviceDataFormat"));
+    safe_strcpy(kernelConfig.serviceQualifier, sizeof(kernelConfig.serviceQualifier),
+                getString(kernelConfigObject, "serviceQualifier"));
+    safe_strcpy(kernelConfig.tacDefault, sizeof(kernelConfig.tacDefault),
+                getString(kernelConfigObject, "tacDefault"));
+    safe_strcpy(kernelConfig.tacDenial, sizeof(kernelConfig.tacDenial),
+                getString(kernelConfigObject, "tacDenial"));
+    safe_strcpy(kernelConfig.tacOnline, sizeof(kernelConfig.tacOnline),
+                getString(kernelConfigObject, "tacOnline"));
+    safe_strcpy(kernelConfig.tdol, sizeof(kernelConfig.tdol),
+                getString(kernelConfigObject, "tdol"));
+    safe_strcpy(kernelConfig.termCap, sizeof(kernelConfig.termCap),
+                getString(kernelConfigObject, "termCap"));
+    safe_strcpy(kernelConfig.terminalFloorLimit, sizeof(kernelConfig.terminalFloorLimit),
+                getString(kernelConfigObject, "terminalFloorLimit"));
+    safe_strcpy(kernelConfig.terminalId, sizeof(kernelConfig.terminalId),
+                getString(kernelConfigObject, "terminalId"));
+    safe_strcpy(kernelConfig.terminalType, sizeof(kernelConfig.terminalType),
+                getString(kernelConfigObject, "terminalType"));
+    safe_strcpy(kernelConfig.trmData, sizeof(kernelConfig.trmData),
+                getString(kernelConfigObject, "trmData"));
+    safe_strcpy(kernelConfig.tcCategoryCode, sizeof(kernelConfig.tcCategoryCode),
+                getString(kernelConfigObject, "tcCategoryCode"));
+    safe_strcpy(kernelConfig.kernelConfiguration, sizeof(kernelConfig.kernelConfiguration),
+                getString(kernelConfigObject, "kernelConfiguration"));
+    safe_strcpy(kernelConfig.cvmCapCVM, sizeof(kernelConfig.cvmCapCVM),
+                getString(kernelConfigObject, "cvmCapCVM"));
+    safe_strcpy(kernelConfig.cvmCapNoCVM, sizeof(kernelConfig.cvmCapNoCVM),
+                getString(kernelConfigObject, "cvmCapNoCVM"));
+    safe_strcpy(kernelConfig.secCap, sizeof(kernelConfig.secCap),
+                getString(kernelConfigObject, "secCap"));
 
     return kernelConfig;
 }
@@ -686,11 +708,16 @@ ENTRYPOINT loadEntryPoint(json_object *combObject)
     ENTRYPOINT entryPoint;
     json_object *entryPointObject = json_object_object_get(combObject, "entryPoint");
 
-    strcpy(entryPoint.clessTxnLimit, getString(entryPointObject, "clessTxnLimit"));
-    strcpy(entryPoint.cvmRequireLimit, getString(entryPointObject, "cvmRequireLimit"));
-    strcpy(entryPoint.termFloorLimit, getString(entryPointObject, "termFloorLimit"));
-    strcpy(entryPoint.zeroAmountAllowed, getString(entryPointObject, "zeroAmountAllowed"));
-    strcpy(entryPoint.zeroAmountOfflineAllowed, getString(entryPointObject, "zeroAmountOfflineAllowed"));
+    safe_strcpy(entryPoint.clessTxnLimit, sizeof(entryPoint.clessTxnLimit),
+                getString(entryPointObject, "clessTxnLimit"));
+    safe_strcpy(entryPoint.cvmRequireLimit, sizeof(entryPoint.cvmRequireLimit),
+                getString(entryPointObject, "cvmRequireLimit"));
+    safe_strcpy(entryPoint.termFloorLimit, sizeof(entryPoint.termFloorLimit),
+                getString(entryPointObject, "termFloorLimit"));
+    safe_strcpy(entryPoint.zeroAmountAllowed, sizeof(entryPoint.zeroAmountAllowed),
+                getString(entryPointObject, "zeroAmountAllowed"));
+    safe_strcpy(entryPoint.zeroAmountOfflineAllowed, sizeof(entryPoint.zeroAmountOfflineAllowed),
+                getString(entryPointObject, "zeroAmountOfflineAllowed"));
 
     return entryPoint;
 }
@@ -701,8 +728,10 @@ ONLINE_TAGS loadOnlineTags(json_object *jObject)
     json_object *onlineTagsObject = json_object_object_get(emvObject, "onlineTags");
 
     ONLINE_TAGS onlineTags;
-    strcpy(onlineTags.kernelId, getString(onlineTagsObject, "kernelId"));
-    strcpy(onlineTags.tags, getString(onlineTagsObject, "tags"));
+    safe_strcpy(onlineTags.kernelId, sizeof(onlineTags.kernelId),
+                getString(onlineTagsObject, "kernelId"));
+    safe_strcpy(onlineTags.tags, sizeof(onlineTags.tags),
+                getString(onlineTagsObject, "tags"));
 
     return onlineTags;
 }
@@ -713,8 +742,10 @@ ONLINE_TAGS loadOnlineTagsMasterCard(json_object *jObject)
     json_object *onlineTagsObject = json_object_object_get(emvObject, "onlineTagsMasterCard");
 
     ONLINE_TAGS onlineTags;
-    strcpy(onlineTags.kernelId, getString(onlineTagsObject, "kernelId"));
-    strcpy(onlineTags.tags, getString(onlineTagsObject, "tags"));
+    safe_strcpy(onlineTags.kernelId, sizeof(onlineTags.kernelId),
+                getString(onlineTagsObject, "kernelId"));
+    safe_strcpy(onlineTags.tags, sizeof(onlineTags.tags),
+                getString(onlineTagsObject, "tags"));
 
     return onlineTags;
 }
@@ -725,8 +756,10 @@ ONLINE_TAGS loadOnlineTagsVisa(json_object *jObject)
     json_object *onlineTagsObject = json_object_object_get(emvObject, "onlineTagsVisa");
 
     ONLINE_TAGS onlineTags;
-    strcpy(onlineTags.kernelId, getString(onlineTagsObject, "kernelId"));
-    strcpy(onlineTags.tags, getString(onlineTagsObject, "tags"));
+    safe_strcpy(onlineTags.kernelId, sizeof(onlineTags.kernelId),
+                getString(onlineTagsObject, "kernelId"));
+    safe_strcpy(onlineTags.tags, sizeof(onlineTags.tags),
+                getString(onlineTagsObject, "tags"));
 
     return onlineTags;
 }
@@ -747,10 +780,10 @@ EMV loadKeys(json_object *jObject, EMV emv)
         keyObject = json_object_array_get_idx(keys, i);
         emv.keyList[i] = malloc(sizeof(KEYS));
 
-        strcpy(emv.keyList[i]->aid, getString(keyObject, "aid"));
-        strcpy(emv.keyList[i]->keyIndex, getString(keyObject, "keyIndex"));
-        strcpy(emv.keyList[i]->modulus, getString(keyObject, "modulus"));
-        strcpy(emv.keyList[i]->exponent, getString(keyObject, "exponent"));
+        safe_strcpy(emv.keyList[i]->aid, sizeof(emv.keyList[i]->aid), getString(keyObject, "aid"));
+        safe_strcpy(emv.keyList[i]->keyIndex, sizeof(emv.keyList[i]->keyIndex), getString(keyObject, "keyIndex"));
+        safe_strcpy(emv.keyList[i]->modulus, sizeof(emv.keyList[i]->modulus), getString(keyObject, "modulus"));
+        safe_strcpy(emv.keyList[i]->exponent, sizeof(emv.keyList[i]->exponent), getString(keyObject, "exponent"));
     }
 
     return emv;
@@ -769,8 +802,10 @@ EMV_CONFIG loadEncrypts(json_object *jObject, EMV_CONFIG emvConfig)
     {
         encyObject = json_object_array_get_idx(encrypts, i);
         emvConfig.encryptList[i] = malloc(sizeof(ENCRYPT));
-        strcpy(emvConfig.encryptList[i]->keyLabel, getString(encyObject, "keyLabel"));
-        strcpy(emvConfig.encryptList[i]->tags, getString(encyObject, "tags"));
+        safe_strcpy(emvConfig.encryptList[i]->keyLabel, sizeof(emvConfig.encryptList[i]->keyLabel),
+                    getString(encyObject, "keyLabel"));
+        safe_strcpy(emvConfig.encryptList[i]->tags, sizeof(emvConfig.encryptList[i]->tags),
+                    getString(encyObject, "tags"));
     }
 
     return emvConfig;

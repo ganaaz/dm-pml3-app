@@ -2,6 +2,7 @@
 #define TLVHELPER_H_
 
 #include <libpay/tlv.h>
+#include <time.h>
 
 /**
  * Build the preprocess TLV for the transaction

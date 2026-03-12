@@ -139,7 +139,7 @@ static const char *generateKeySpec(KEYDATA keyData, const char *dervType)
 
     if (strcmp(dervType, "None") == 0)
     {
-        json_object_object_add(jDerivParams, "mk_label", json_object_new_string(keyData.label));
+        json_object_object_add(jDerivParams, "mk_label", json_object_new_string(keyData.mkLabel));
     }
 
     if (strcmp(dervType, "DUKPT") == 0)
@@ -162,8 +162,7 @@ static const char *generateKeySpec(KEYDATA keyData, const char *dervType)
     int len = strlen(jsonData);
     char *data = malloc(len + 1);
 
-    strncpy(data, jsonData, len);
-    data[len] = '\0';
+    safe_strncpy(data, len + 1, jsonData, len);
     json_object_put(jobj); // Clear JSON memory
 
     return data;

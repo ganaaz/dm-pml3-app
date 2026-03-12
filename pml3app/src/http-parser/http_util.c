@@ -4,57 +4,58 @@
 #include "http_util.h"
 #include "http_parser.h"
 #include "../include/logutil.h"
+#include "../include/commonutil.h"
 
-static int onBody(http_parser* parser, const char *data, size_t length)
+static int onBody(http_parser *parser, const char *data, size_t length)
 {
     logData("Body Received");
     logData("Body length received : %d", length);
-    
-    HttpResponseData *httpResponseData = (struct http_response_data*)parser->data;
+
+    HttpResponseData *httpResponseData = (struct http_response_data *)parser->data;
     httpResponseData->messageLen = length;
     httpResponseData->message = malloc(length + 1);
-    strncpy(httpResponseData->message, data, length);
+    safe_strncpy(httpResponseData->message, length + 1, data, length);
     httpResponseData->message[length] = '\0';
 
     return 0;
 }
 
-static int onStatus(http_parser* parser, const char *data, size_t length)
+static int onStatus(http_parser *parser, const char *data, size_t length)
 {
     logData("Status Received");
     logData("Status length received : %d", length);
-    
-    HttpResponseData *httpResponseData = (struct http_response_data*)parser->data;
+
+    HttpResponseData *httpResponseData = (struct http_response_data *)parser->data;
     int maxLen = 19;
     if (length < maxLen)
     {
         maxLen = length;
     }
 
-    strncpy(httpResponseData->status, data, maxLen);
+    safe_strncpy(httpResponseData->status, sizeof(httpResponseData->status), data, maxLen);
     httpResponseData->status[length] = '\0';
 
     return 0;
 }
 
-static int onHeaderField(http_parser* parser, const char *data, size_t length)
+static int onHeaderField(http_parser *parser, const char *data, size_t length)
 {
-    HttpResponseData *httpResponseData = (struct http_response_data*)parser->data;
+    HttpResponseData *httpResponseData = (struct http_response_data *)parser->data;
     int maxLen = 49;
     if (length < maxLen)
     {
         maxLen = length;
     }
 
-    strncpy(httpResponseData->headerField, data, maxLen);
+    safe_strncpy(httpResponseData->headerField, sizeof(httpResponseData->headerField), data, maxLen);
     httpResponseData->headerField[length] = '\0';
 
     return 0;
 }
 
-static int onHeaderValue(http_parser* parser, const char *data, size_t length)
+static int onHeaderValue(http_parser *parser, const char *data, size_t length)
 {
-    HttpResponseData *httpResponseData = (struct http_response_data*)parser->data;
+    HttpResponseData *httpResponseData = (struct http_response_data *)parser->data;
 
     if (strcmp(httpResponseData->headerField, "Content-Length") == 0)
     {
@@ -63,7 +64,7 @@ static int onHeaderValue(http_parser* parser, const char *data, size_t length)
         {
             maxLen = length;
         }
-        strncpy(httpResponseData->contentLength, data, maxLen);
+        safe_strncpy(httpResponseData->contentLength, sizeof(httpResponseData->contentLength), data, maxLen);
         httpResponseData->contentLength[maxLen] = '\0';
     }
 
@@ -74,7 +75,7 @@ static int onHeaderValue(http_parser* parser, const char *data, size_t length)
         {
             maxLen = length;
         }
-        strncpy(httpResponseData->contentType, data, maxLen);
+        safe_strncpy(httpResponseData->contentType, sizeof(httpResponseData->contentType), data, maxLen);
         httpResponseData->contentType[maxLen] = '\0';
     }
 
@@ -82,25 +83,24 @@ static int onHeaderValue(http_parser* parser, const char *data, size_t length)
 }
 
 static http_parser_settings settings =
-{
-    .on_message_begin = 0,
-    .on_headers_complete = 0,
-    .on_message_complete = 0,
-    .on_header_field = onHeaderField,
-    .on_header_value = onHeaderValue,
-    .on_url = 0,
-    .on_status = onStatus,
-    .on_body = onBody
-};
+    {
+        .on_message_begin = 0,
+        .on_headers_complete = 0,
+        .on_message_complete = 0,
+        .on_header_field = onHeaderField,
+        .on_header_value = onHeaderValue,
+        .on_url = 0,
+        .on_status = onStatus,
+        .on_body = onBody};
 
-HttpResponseData parseHttpResponse(const char* responseMessage)
+HttpResponseData parseHttpResponse(const char *responseMessage)
 {
     HttpResponseData httpResponseData;
     httpResponseData.messageLen = 0;
     httpResponseData.message = malloc(1);
     httpResponseData.message[0] = '\0';
-    strcpy(httpResponseData.contentLength, "");
-    strcpy(httpResponseData.contentType, "");
+    safe_strcpy(httpResponseData.contentLength, sizeof(httpResponseData.contentLength), "");
+    safe_strcpy(httpResponseData.contentType, sizeof(httpResponseData.contentType), "");
     http_parser parser;
     http_parser_init(&parser, HTTP_RESPONSE);
     parser.data = &httpResponseData;

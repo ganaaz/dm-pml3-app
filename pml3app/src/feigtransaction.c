@@ -903,21 +903,31 @@ void callBacktrack2(struct fetpf *client, const void *track2Tlv, size_t track_le
         logData("Plain Track 2 received : %s", plainTrack2);
         logData("Plain text track 2 len : %d", strlen(plainTrack2));
 
-        // char delimiter = 'D';
-        // char *token = strtok(currentTxnData.plainTrack2, &delimiter);
-        // safe_strncpy(currentTxnData.maskPan, sizeof(currentTxnData.maskPan), token, 20);
-        // currentTxnData.maskPan[sizeof(currentTxnData.maskPan) - 1] = '\0';
-        char *token = strtok(currentTxnData.plainTrack2, "D");
-        if (token != NULL)
+        char *delimiter = strchr(currentTxnData.plainTrack2, 'D');
+        size_t len;
+
+        if (delimiter != NULL)
         {
-            safe_strncpy(currentTxnData.maskPan,
-                         sizeof(currentTxnData.maskPan),
-                         token,
-                         20);
+            len = delimiter - currentTxnData.plainTrack2;
+        }
+        else
+        {
+            // If 'D' not found, take full string (bounded)
+            len = strnlen(currentTxnData.plainTrack2, 20);
         }
 
-        safe_strncpy(currentTxnData.plainPan, sizeof(currentTxnData.plainPan), token, 20);
-        currentTxnData.plainPan[sizeof(currentTxnData.plainPan) - 1] = '\0';
+        if (len > 20)
+            len = 20;
+
+        safe_strncpy(currentTxnData.maskPan,
+                     sizeof(currentTxnData.maskPan),
+                     currentTxnData.plainTrack2,
+                     len);
+        safe_strncpy(currentTxnData.plainPan,
+                     sizeof(currentTxnData.plainPan),
+                     currentTxnData.plainTrack2,
+                     len);
+
         // logData("Plain pan : %s", currentTxnData.plainPan);
 
         logData("Its abt transaction so generating transaction id here");

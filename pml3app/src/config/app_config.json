@@ -11,7 +11,7 @@
     "nii": "123",
     "tpdu": "6000050000",
     "hostVersion": "1.0",
-    "hostIP": "10.0.0.20",
+    "hostIP": "192.168.50.20",
     "hostPort": 5804,
     "useISOHost": true,
     "httpsHostName": "nos-staging.paytm.com",

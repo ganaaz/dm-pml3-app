@@ -65,18 +65,6 @@ printf("%08" PRIx32 "\n", device_id);
 //    exit(0);
 
 /*
-static int on_data(http_parser* p, const char *at, size_t length) {
-    printf("On Data, len : %d\n", length);
-    char data[length + 1];
-    strncpy(data, at, length);
-    data[length] = '\0';
-
-    printf("Data : %s\n", data);
-  return 0;
-}
-*/
-
-/*
 static http_parser_settings settings_null =
   {.on_message_begin = 0,
   .on_headers_complete = 0,

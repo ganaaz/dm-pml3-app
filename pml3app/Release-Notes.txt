@@ -1,3 +1,32 @@
+Version : 1.0.4
+Date : 15-Apr-26
+
+Changes
+
+- For money add cash transactions DE 63 will contain the acq ids
+- Tested and verified the missing rrn and other fields
+
+=============================================================================================
+
+Version : 1.0.3
+Date : 01-Apr-26
+
+Changes
+
+- Use Alpha numeric for DE 63 in Balance update and Money add
+
+=============================================================================================
+
+Version : 1.0.2
+Date : 27-Mar-26
+
+Changes
+
+- Pending PCI Security issues fixed
+- DE 63 for Balance update will send now 00023033 as like earlier
+
+=============================================================================================
+
 Version : 1.0.1
 Date : 11-Mar-26
 

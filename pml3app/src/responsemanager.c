@@ -187,21 +187,7 @@ void sendFileToSocket(const char fileName[])
     unsigned char *data = readFile(fileName);
     long int size = findSize(fileName);
     logData("Going to send the data with size : %d", size);
-    /*
-    char *strData = malloc(size * 2 + 1);
-    memset(strData, 0, size + 1);
-    safe_strcpy(strData, "");
-    for (int i = 0; i < size; i++)
-    {
-        char temp[3];
-        sprintf(temp, "%02X", data[i]);
-        strcat(strData, temp);
-    }
-    strData[size * 2] = '\0';
-    printf("String : %s\n", strData);
-    printf("String length : %d\n", strlen(strData));
-    send(DATA_SOCKET_ID, strData, strlen(strData), 0);
-    */
+
     /*
     int parts = size / 1024;
     for(int i = 0; i < parts; i++)

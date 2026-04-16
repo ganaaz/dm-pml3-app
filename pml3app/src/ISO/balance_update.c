@@ -4,6 +4,7 @@
 #include "ISO8583_def.h"
 #include "log.h"
 #include "utils.h"
+#include "../include/commonutil.h"
 #include "../include/logutil.h"
 
 ISO8583_ERROR_CODES construct_transaction_request_object_for_balance_update(ISO8583_TXN_REQ_OBJECT *req_txn_obj, BALANCE_UPDATE_REQUEST *txn_obj)
@@ -101,10 +102,17 @@ ISO8583_ERROR_CODES construct_transaction_request_object_for_balance_update(ISO8
                     break;
 
                 case DE63_RESERVED_PRIVATE_3:
-                    ret = copy_value(req_txn_obj, DE63_RESERVED_PRIVATE_3, "03");
+                {
+                    char raw[] = "03";
+                    char hexValue[5];
+                    string2hexString(raw, hexValue);
+                    ret = copy_value(req_txn_obj, DE63_RESERVED_PRIVATE_3, hexValue);
                     if (ret != TXN_SUCCESS)
+                    {
                         return ret;
+                    }
                     break;
+                }
 
                 default:
                     logData("No Case for Field : %d", length + j);

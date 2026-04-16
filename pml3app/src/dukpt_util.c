@@ -445,16 +445,6 @@ void encryptPanExpDate()
     int paddedPanLen;
     pad0MultipleOf8(currentTxnData.plainPan, paddedPan, &paddedPanLen);
 
-    // Airtel doc ask to make it as 24 so add 0
-    // if (paddedPanLen == 16)
-    // {
-    //     char tempPaddedPan[96];
-    //     strcpy(tempPaddedPan, "00000000");
-    //     strcat(tempPaddedPan, paddedPan);
-    //     strcpy(paddedPan, tempPaddedPan);
-    //     paddedPanLen += 8;
-    // }
-
     // logData("Padded pan data : %s", paddedPan); // TODO : Remove
     // logData("Padded pan length : %d", paddedPanLen);
 
@@ -563,9 +553,9 @@ void encryptPanTrack2ExpDate()
     if (paddedPanLen == 16)
     {
         char tempPaddedPan[96];
-        strcpy(tempPaddedPan, "00000000");
-        strcat(tempPaddedPan, paddedPan);
-        strcpy(paddedPan, tempPaddedPan);
+        safe_strcpy(tempPaddedPan, sizeof(tempPaddedPan), "00000000");
+        safe_strcat(tempPaddedPan, sizeof(tempPaddedPan), paddedPan);
+        safe_strcpy(paddedPan, sizeof(paddedPan), tempPaddedPan);
         paddedPanLen += 8;
     }
 

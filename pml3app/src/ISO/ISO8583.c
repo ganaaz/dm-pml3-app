@@ -109,7 +109,7 @@ ISO8583_FIELD_DEF field_def[] = {
     {DE60_RESERVED_PRIVATE_ADVICE_REASON_CODE, SIMPLE, LLLVAR, ALPHA_NUMERIC_SYMBOL, 6, PAD_LEFT, '0', PAD_FIXED_LENGTH, {DE60_SF_BATCH_NUMBER, DE60_SF_ORIGINAL_AMOUNT, NO_SUB_FIELD}},
     {DE61_RESERVED_PRIVATE_1, SIMPLE, LLLVAR, ALPHA_NUMERIC_SYMBOL, 12, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
     {DE62_RESERVED_PRIVATE_2, SIMPLE, LLLVAR, ALPHA_NUMERIC_SYMBOL, 6, PAD_LEFT, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
-    {DE63_RESERVED_PRIVATE_3, SIMPLE, LLLVAR, ALPHA_NUMERIC_SYMBOL, 999, PAD_NONE, '0', PAD_FIXED_LENGTH, {NO_SUB_FIELD}},
+    {DE63_RESERVED_PRIVATE_3, SIMPLE, LLLVAR, ALPHA_NUMERIC_SYMBOL, 999, PAD_NONE, '0', PAD_NO_METHOD, {NO_SUB_FIELD}},
     {DE64_MAC, SIMPLE, FIXED, HEX, 16, PAD_NONE, '0', PAD_NO_METHOD, {NO_SUB_FIELD}}};
 
 ISO8583_MTI mti_def[] = {
@@ -279,7 +279,7 @@ ISO8583_ERROR_CODES initialize_static_data(ISO8583_STATIC_DATA *data)
     return TXN_SUCCESS;
 }
 
-ISO8583_ERROR_CODES get_field_length(ISO8583_FIELD_LENGTH length_type, char *field_data_hex_str, char **length_hexstr)
+ISO8583_ERROR_CODES get_field_length(bool isDe63, ISO8583_FIELD_LENGTH length_type, char *field_data_hex_str, char **length_hexstr)
 {
     int len = 0;
     switch (length_type)
@@ -319,6 +319,11 @@ ISO8583_ERROR_CODES get_field_length(ISO8583_FIELD_LENGTH length_type, char *fie
         break;
     case LLLVAR:
         len = strlen(field_data_hex_str) / 2;
+        if (isDe63)
+        {
+            len *= 2;
+        }
+
         if (len <= 999)
         {
             padd_left_with_zero_i(len, 4, length_hexstr);
@@ -573,7 +578,13 @@ ISO8583_ERROR_CODES pack_simple_field(ISO8583_TXN_REQ_OBJECT *txn_obj, ISO8583_F
     ret = pad_field_data(f_def.pad_type, f_def.syntax, f_def.pad_method, f_def.pad_char, f_def.max_length, (char *)txn_obj->data[field].field_value.simple_field.value, &padded_value);
     if (ret == TXN_SUCCESS && padded_value != NULL)
     {
-        ret = get_field_length(f_def.length_type, padded_value, &padded_len);
+        // bool isDe63 = false;
+        // if (f_def.field == DE63_RESERVED_PRIVATE_3)
+        // {
+        //     isDe63 = true;
+        // }
+
+        ret = get_field_length(false, f_def.length_type, padded_value, &padded_len);
         if (ret == TXN_SUCCESS)
         {
             if (padded_len != NULL)
@@ -666,7 +677,7 @@ ISO8583_ERROR_CODES pack_complex_field(ISO8583_TXN_REQ_OBJECT *txn_obj, ISO8583_
             }
         }
         current_sub_field_value->sf_value[current_sub_field_value->sf_len] = '\0';
-        ret = get_field_length(sub_f_def.length_type, (char *)current_sub_field_value->sf_value, &padded_len);
+        ret = get_field_length(false, sub_f_def.length_type, (char *)current_sub_field_value->sf_value, &padded_len);
         if (ret == TXN_SUCCESS && padded_len != NULL)
         {
             txn_obj->data[field].field_value.complex_field.comp_len += sprintf((char *)txn_obj->data[field].field_value.complex_field.complex_value + txn_obj->data[field].field_value.complex_field.comp_len, "%s%s", padded_len, current_sub_field_value->sf_value);

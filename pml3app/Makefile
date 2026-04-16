@@ -11,13 +11,13 @@ LIBS = -pthread -ljson-c -lssl -lfepkcs11 -lfetpf -lferkl -lfeclr -luuid -lemvco
 # To be configured as required
 #DEVICE = 192.168.10.210
 #DEVICE = 192.168.29.101
-DEVICE = 10.0.0.40
+DEVICE = 192.168.50.40
 SLOTAPP = app3
 KEYID = 00A3
 #SLOTAPP = app0
 #KEYID = 00A0
 PIN = 648219
-VERSION = "1.0.0"
+VERSION = "1.0.4"
 APPDESC = "Datamatic L3 App - PML3"
 
 # Makefile settings - Can be customized.
@@ -44,7 +44,7 @@ WDELOBJ = $(SRC:$(SRCDIR)/%$(EXT)=$(OBJDIR)\\%.o)
 ########################################################################
 
 $(shell mkdir -p obj/ISO)
-$(shell mkdir -p obj/JHost)
+$(shell mkdir -p obj/JAbtHost)
 $(shell mkdir -p obj/http-parser)
 
 all: cpsql $(APPNAME) signapp update
@@ -63,16 +63,16 @@ signapp:
 	cp /home/ganapathy/$(APPNAME) $(APPNAME)
 
 copyToTerminal:
-	scp ./$(APPNAME) $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)
-	scp ./src/config/app_config.json $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
-	scp ./src/config/emv_config.json $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
-	scp ./src/log4crc $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-	scp ./src/log4crc.info $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-	scp ./src/log4crc.debug $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-	scp ./src/log4crc.error $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-	scp ./l3start.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-	scp ./runl3.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/runl3.sh
-	scp ./autorun.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/autorun.sh
+	sshpass -p '$(SLOTAPP)' scp ./$(APPNAME) $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)
+	sshpass -p '$(SLOTAPP)' scp ./src/config/app_config.json $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
+	sshpass -p '$(SLOTAPP)' scp ./src/config/emv_config.json $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
+	sshpass -p '$(SLOTAPP)' scp ./src/log4crc $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
+	sshpass -p '$(SLOTAPP)' scp ./src/log4crc.info $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
+	sshpass -p '$(SLOTAPP)' scp ./src/log4crc.debug $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
+	sshpass -p '$(SLOTAPP)' scp ./src/log4crc.error $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
+	sshpass -p '$(SLOTAPP)' scp ./l3start.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
+	sshpass -p '$(SLOTAPP)' scp ./runl3.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/runl3.sh
+	sshpass -p '$(SLOTAPP)' scp ./autorun.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/autorun.sh	
 
 update_helper:
 	echo "Generating update package ..."

@@ -20,11 +20,11 @@ namespace Simulator
 {
     class Program
     {
-        private static DateTime releaseDate = new DateTime(2026, 3, 11);
-        private static bool requestUser = false;
-        public static string LocalIPForAirtel = "10.0.0.20";
+        private static DateTime releaseDate = new DateTime(2026, 4, 15);
+        private static bool requestUser = true;
+        public static string LocalIPForAirtel = "192.168.50.20";
         //public static string LocalIPForPayTM = "192.168.29.248";
-        private static string l3Server = "10.0.0.40";
+        private static string l3Server = "192.168.50.40";
         //private static string l3Server = "192.168.29.248";
         private static int port = 9090;
         private static int dataPort = 9091;
@@ -55,7 +55,7 @@ namespace Simulator
         {
             Console.WriteLine("-------------------------------------------");
             Console.WriteLine("Datamatics Transit Gate Application for PML3");
-            Console.WriteLine("Version : 1.0.1");
+            Console.WriteLine("Version : 1.0.4");
             Console.WriteLine($"Release Date : {releaseDate.ToLongDateString()}");
             Console.WriteLine("-------------------------------------------");
 
@@ -1641,7 +1641,8 @@ namespace Simulator
                 Cmd = "fetch_auth",
                 Mode = mode,
                 FetchId = int.Parse(id),
-                MaxRecords = int.Parse(records)
+                MaxRecords = int.Parse(records),
+                IsOnline = isOnline
             };
             var strData = JsonConvert.SerializeObject(command);
             SendDataSocketMessage(strData);

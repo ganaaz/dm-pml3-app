@@ -118,7 +118,7 @@ struct diskSpace
  **/
 struct message
 {
-    char cmd[20];
+    char cmd[30];
     struct searchcard sCard;
     struct writecard wCard;
     struct fetchData fData;

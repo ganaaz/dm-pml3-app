@@ -56,6 +56,7 @@ namespace Simulator
     {
         public string label { get; set; }
         public int slot { get; set; }
+        public string mkLabel { get; set; }
         public int mkVersion { get; set; }
         public string astId { get; set; }
         public string pkcsId { get; set; }

@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
+#include <unistd.h>
 
 #include <feig/sdk.h>
 #include <feig/fetpf.h>
@@ -51,6 +52,7 @@ pthread_t hostOfflineThread;
 pthread_t abtHostThread;
 pthread_t abtHouseKeepingThread;
 pthread_t reversalThread;
+pthread_t mainAppThread;
 
 log4c_category_t *logCategory = NULL;
 struct fetpf *fetpf = NULL;
@@ -62,6 +64,7 @@ extern struct applicationData appData;
 extern struct applicationConfig appConfig;
 extern int IS_SERIAL_CONNECTED;
 extern struct pkcs11 *crypto;
+extern volatile __sig_atomic_t shutdown_requested;
 
 /**
  * Main entry point
@@ -259,23 +262,48 @@ int main(int argc, char **argv)
         changeAppState(APP_STATUS_TID_MID_EMPTY);
     }
 
-    // Create the transaction thread
     pthread_create(&transactionThread, NULL, processTransaction, NULL);
     pthread_create(&hostOfflineThread, NULL, handleHostOfflineTransactions, NULL);
     pthread_create(&reversalThread, NULL, startReversalThread, NULL);
     pthread_create(&abtHostThread, NULL, handleAbtTransactions, NULL);
     pthread_create(&abtHouseKeepingThread, NULL, houseKeepingAbtTransactions, NULL);
-
-    // Create the data socket server for fetch info
     pthread_create(&fetchDataThread, NULL, createAndListenForFetchData, NULL);
-
-    // Create the serial usb server for messages
     pthread_create(&usbMessageThread, NULL, createAndListenForUSB, NULL);
+    pthread_create(&mainAppThread, NULL, createAndListenServer, NULL);
 
-    // Run the main socket
-    createAndListenServer();
+    while (!shutdown_requested)
+    {
+        sleep(1);
+    }
 
-    finalizeTimer();
+    logError("Shutting down the application");
+
+    pthread_join(hostOfflineThread, NULL);
+    logError("hostOfflineThread exited");
+
+    pthread_join(reversalThread, NULL);
+    logError("startReversalThread exited");
+
+    pthread_join(abtHostThread, NULL);
+    logError("abtHostThread exited");
+
+    pthread_join(abtHouseKeepingThread, NULL);
+    logError("abtHouseKeepingThread exited");
+
+    pthread_join(fetchDataThread, NULL);
+    logError("fetchDataThread exited");
+
+    pthread_join(usbMessageThread, NULL);
+    logError("usbMessageThread exited");
+
+    pthread_join(mainAppThread, NULL);
+    logError("server thread exited");
+
+    pthread_join(transactionThread, NULL);
+    logError("transactionThread exited");
+
+    printDiskMemory();
+    logError("Application shut down");
     log4c_fini();
 
     return 0;

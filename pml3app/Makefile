@@ -17,7 +17,7 @@ KEYID = 00A3
 #SLOTAPP = app0
 #KEYID = 00A0
 PIN = 648219
-VERSION = "1.0.4"
+VERSION = "1.0.5"
 APPDESC = "Datamatic L3 App - PML3"
 
 # Makefile settings - Can be customized.

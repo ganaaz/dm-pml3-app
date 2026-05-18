@@ -33,6 +33,11 @@ void safe_strncat(char *dest, size_t dest_size, const char *src, size_t n);
 void signalCallbackBandler(int signum);
 
 /**
+ * To print disk and memory
+ */
+void printDiskMemory();
+
+/**
  * To read a file data
  */
 unsigned char *readFile(const char fileName[]);

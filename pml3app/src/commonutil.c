@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <openssl/hmac.h>
+#include <sys/statvfs.h>
 
 #include <feig/fetrm.h>
 #include <feig/leds.h>
@@ -27,6 +28,8 @@ extern pthread_mutex_t lock;
 extern struct transactionData currentTxnData;
 extern struct serviceMetadata *selectedService;
 
+volatile __sig_atomic_t shutdown_requested = 0;
+
 mode_t allPerm = S_IRWXU | S_IRWXG | S_IRWXO; // 777 permissions
 
 /**
@@ -36,7 +39,82 @@ void signalCallbackBandler(int signum)
 {
     logError("Caught signal %d\n", signum);
     displayLight(LED_ST_APP_EXITING);
-    exit(signum);
+    shutdown_requested = 1;
+    // exit(signum);
+}
+
+void printDiskMemory()
+{
+    // Memory: parse /proc/meminfo
+    FILE *memFile = fopen("/proc/meminfo", "r");
+    if (memFile)
+    {
+        long memTotal = 0, memFree = 0, memAvailable = 0, buffers = 0, cached = 0;
+        char line[1024];
+        while (fgets(line, sizeof(line), memFile))
+        {
+            sscanf(line, "MemTotal: %ld kB", &memTotal);
+            sscanf(line, "MemFree: %ld kB", &memFree);
+            sscanf(line, "MemAvailable: %ld kB", &memAvailable);
+            sscanf(line, "Buffers: %ld kB", &buffers);
+            sscanf(line, "Cached: %ld kB", &cached);
+        }
+        fclose(memFile);
+        long memUsed = memTotal - memFree - buffers - cached;
+        logError("Memory Status - Total: %ld kB | Used: %ld kB | Free: %ld kB | Available: %ld kB",
+                 memTotal, memUsed, memFree, memAvailable);
+    }
+    else
+    {
+        logError("Memory Status - Failed to open /proc/meminfo");
+    }
+
+    // Disk: use statvfs on the root filesystem (or adjust path as needed)
+    struct statvfs diskStat;
+    if (statvfs("/", &diskStat) == 0)
+    {
+        unsigned long long diskTotal = (unsigned long long)diskStat.f_blocks * diskStat.f_frsize;
+        unsigned long long diskFree = (unsigned long long)diskStat.f_bfree * diskStat.f_frsize;
+        unsigned long long diskAvail = (unsigned long long)diskStat.f_bavail * diskStat.f_frsize;
+        unsigned long long diskUsed = diskTotal - diskFree;
+        logError("Disk Status /  - Total: %llu MB | Used: %llu MB | Free: %llu MB | Available: %llu MB",
+                 diskTotal / (1024 * 1024), diskUsed / (1024 * 1024),
+                 diskFree / (1024 * 1024), diskAvail / (1024 * 1024));
+    }
+    else
+    {
+        logError("Disk Status - statvfs() failed");
+    }
+
+    if (statvfs("/home", &diskStat) == 0)
+    {
+        unsigned long long diskTotal = (unsigned long long)diskStat.f_blocks * diskStat.f_frsize;
+        unsigned long long diskFree = (unsigned long long)diskStat.f_bfree * diskStat.f_frsize;
+        unsigned long long diskAvail = (unsigned long long)diskStat.f_bavail * diskStat.f_frsize;
+        unsigned long long diskUsed = diskTotal - diskFree;
+        logError("Disk Status /home  - Total: %llu MB | Used: %llu MB | Free: %llu MB | Available: %llu MB",
+                 diskTotal / (1024 * 1024), diskUsed / (1024 * 1024),
+                 diskFree / (1024 * 1024), diskAvail / (1024 * 1024));
+    }
+    else
+    {
+        logError("Disk Status - statvfs() failed");
+    }
+
+    if (statvfs("/home/app3", &diskStat) == 0)
+    {
+        unsigned long long diskTotal = (unsigned long long)diskStat.f_blocks * diskStat.f_frsize;
+        unsigned long long diskFree = (unsigned long long)diskStat.f_bfree * diskStat.f_frsize;
+        unsigned long long diskAvail = (unsigned long long)diskStat.f_bavail * diskStat.f_frsize;
+        unsigned long long diskUsed = diskTotal - diskFree;
+        logError("Disk Status /home/app3  - Total: %llu MB | Used: %llu MB | Free: %llu MB | Available: %llu MB",
+                 diskTotal / (1024 * 1024), diskUsed / (1024 * 1024),
+                 diskFree / (1024 * 1024), diskAvail / (1024 * 1024));
+    }
+    else
+    {
+        logError("Disk Status - statvfs() failed");
+    }
 }
 
 void safe_strncpy(char *dest, size_t dest_size, const char *src, size_t len)

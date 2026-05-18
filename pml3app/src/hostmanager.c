@@ -24,6 +24,7 @@ extern struct transactionData currentTxnData;
 extern struct applicationData appData;
 extern int activePendingTxnCount;
 extern enum device_status DEVICE_STATUS;
+extern volatile __sig_atomic_t shutdown_requested;
 
 bool isReversalOngoing = false;
 bool isOfflineTrxOngoing = false;
@@ -240,15 +241,28 @@ void *handleHostOfflineTransactions()
     int counter = 1;
     while (1)
     {
-        // sleep(waitTime);
+        if (shutdown_requested)
+        {
+            logError("Shutting down the host pending transaction thread");
+            isOfflineTrxOngoing = false;
+            return NULL;
+        }
+
         logData("Initiating the host pending transaction, counter : %d", counter);
         processHostPendingTransactions();
         logData("Host pending transaction process completed. Now sleeping for %d seconds.", waitTime);
         counter++;
-        sleep(waitTime);
-
-        // if (counter % 200 == 0)
-        //     printf("Count is : %d\n", counter);
+        // Sleep in 1-second intervals so shutdown is detected quickly
+        for (int i = 0; i < waitTime; i++)
+        {
+            if (shutdown_requested)
+            {
+                logError("Shutting down the host pending transaction");
+                isOfflineTrxOngoing = false;
+                return NULL;
+            }
+            sleep(1);
+        }
     }
     isOfflineTrxOngoing = false;
 }
@@ -268,7 +282,16 @@ void *startReversalThread()
         verifyAndDoReversal();
         logData("Reversal process done. Now sleeping for %d seconds.", waitTime);
         counter++;
-        sleep(waitTime);
+
+        for (int i = 0; i < waitTime; i++)
+        {
+            if (shutdown_requested)
+            {
+                logError("Shutting down the reversal thread");
+                return NULL;
+            }
+            sleep(1);
+        }
     }
 }
 

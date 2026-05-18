@@ -51,6 +51,7 @@ extern pthread_attr_t threadAttr;
 extern enum device_status DEVICE_STATUS;
 extern pthread_mutex_t lockFeigTrx;
 extern bool isSecondTap;
+extern volatile __sig_atomic_t shutdown_requested;
 
 struct transactionData currentTxnData;
 bool canRunTransaction = false;
@@ -86,9 +87,15 @@ void *processTransaction(void *arg)
     };
     int index = 1;
 
-    // Infinite loop to run the transaction and wait for card
     while (1)
     {
+        // --- Shutdown check at top of loop ---
+        if (shutdown_requested)
+        {
+            logInfo("Shutdown requested, exiting processTransaction thread");
+            break;
+        }
+
         bool canRun = false;
         enum device_status devStatus;
         pthread_mutex_lock(&lockFeigTrx);
@@ -99,11 +106,13 @@ void *processTransaction(void *arg)
         // If there is no request to run then dont run anything
         if (canRun == false)
         {
+            usleep(50 * 1000); // 50ms — avoid busy spin
             continue;
         }
 
         if (devStatus == STATUS_OFFLINE)
         {
+            usleep(50 * 1000); // 50ms — avoid busy spin
             continue;
         }
 
@@ -131,7 +140,7 @@ void *processTransaction(void *arg)
         struct tlv *tlv_outcome_tmp = NULL;
         struct tlv *tlv = NULL;
 
-        logData("Amount = %llu,%02llu Currency Code : %0llu\n",
+        logData("Amount = %llu,%02llu Currency Code : %0llu",
                 amount_authorized_bin / 100,
                 amount_authorized_bin % 100,
                 appData.currCodeBin);
@@ -151,7 +160,7 @@ void *processTransaction(void *arg)
 
         if (rc != FETPF_RC_OK)
         {
-            logError("fetpf_ep_preprocess failed with rc :  %d", rc);
+            logError("fetpf_ep_preprocess failed with rc:  %d", rc);
             break;
         }
 
@@ -178,6 +187,13 @@ void *processTransaction(void *arg)
         tlv_free(tlv);
         tlv = NULL;
 
+        // --- Shutdown check before blocking SDK call ---
+        if (shutdown_requested)
+        {
+            logInfo("Shutdown requested before card polling, aborting transaction");
+            goto cleanup;
+        }
+
         int timeOut = appData.searchTimeout;
 
         if (appData.searchMode == SEARCH_MODE_LOOP)
@@ -192,6 +208,13 @@ void *processTransaction(void *arg)
         {
             long long start = getCurrentSeconds();
             logTimeWarnData("Before invoking the fetpf_ep_transaction : %lld", start);
+        }
+
+        // --- Shutdown check after blocking SDK call returns ---
+        if (shutdown_requested)
+        {
+            logInfo("Shutdown requested after card polling, aborting transaction");
+            goto cleanup;
         }
 
         rc = fetpf_ep_transaction(fetpf, data, dataLen, outcome, &outcome_len,
@@ -258,11 +281,26 @@ void *processTransaction(void *arg)
 
         pthread_mutex_unlock(&lockFeigTrx);
         isWaitingForFirstEvent = false;
+        continue;
+
+    cleanup:
+        free(data);
+        data = NULL;
+        isWaitingForFirstEvent = false;
+        pthread_mutex_lock(&lockFeigTrx);
+        canRunTransaction = false;
+        changeAppState(APP_STATUS_READY);
+        displayLight(LED_ST_APP_STARTED);
+        pthread_mutex_unlock(&lockFeigTrx);
+        break;
     }
+
+    logError("processTransaction thread exiting, freeing resources");
 
     if (NULL != fetpf)
     {
         fetpf_free(fetpf);
+        fetpf = NULL;
     }
 
     pkcs11_free(&crypto);

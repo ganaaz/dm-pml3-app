@@ -20,8 +20,8 @@
 #include "ISO/utils.h"
 #include "include/abtinittable.h"
 
-#define VERSION "1.0.4"
-#define RELEASE_DATE "15-Apr-2026"
+#define VERSION "1.0.5"
+#define RELEASE_DATE "18-May-2026"
 
 struct applicationConfig appConfig;
 struct applicationData appData;
@@ -1867,6 +1867,10 @@ void readAndUpdateKeys(json_object *jConfig)
             {
                 const char *mkLabel = json_object_get_string(json_object_object_get(keyValue, CONFIG_KEY_KEY_MKLABEL));
                 safe_strcpy(appConfig.keyDataList[i]->mkLabel, sizeof(appConfig.keyDataList[i]->mkLabel), mkLabel);
+            }
+            else
+            {
+                strcpy(appConfig.keyDataList[i]->mkLabel, "");
             }
 
             int slot = json_object_get_int(json_object_object_get(keyValue, CONFIG_KEY_KEY_SLOT));

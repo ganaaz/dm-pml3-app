@@ -20,7 +20,7 @@ namespace Simulator
 {
     class Program
     {
-        private static DateTime releaseDate = new DateTime(2026, 4, 15);
+        private static DateTime releaseDate = new DateTime(2026, 5, 18);
         private static bool requestUser = true;
         public static string LocalIPForAirtel = "192.168.50.20";
         //public static string LocalIPForPayTM = "192.168.29.248";
@@ -43,7 +43,7 @@ namespace Simulator
         private static int searchTimeOut = 20 * 1000; // Milliseconds
         private static bool isSerialConnect;
         private static string serialDataReceived;
-        private static string serialComPort = "/dev/tty.usbmodem17feb0701";
+        private static string serialComPort = "/dev/tty.usbmodem180c539e1";
         private static bool downloadFileMode = false;
         private static string fileLocalLocation = "";
         private static FileStream downloadFileStream = null;
@@ -55,7 +55,7 @@ namespace Simulator
         {
             Console.WriteLine("-------------------------------------------");
             Console.WriteLine("Datamatics Transit Gate Application for PML3");
-            Console.WriteLine("Version : 1.0.4");
+            Console.WriteLine("Version : 1.0.5");
             Console.WriteLine($"Release Date : {releaseDate.ToLongDateString()}");
             Console.WriteLine("-------------------------------------------");
 
@@ -1511,6 +1511,7 @@ namespace Simulator
                         {
                             label = "RUPAY_PRM_ACQ_601201",
                             slot = 4,
+                            mkLabel = "LBL2",
                             mkVersion = 0,
                             astId = "00A",
                             pkcsId = "0016",
@@ -1520,23 +1521,13 @@ namespace Simulator
                         {
                             label = "BDK_00000000011",
                             slot = 4,
+                            mkLabel = "LBL3",
                             mkVersion = 5,
                             astId = "00A",
                             pkcsId = "0005",
                             keySetIdentifier = "0000000001",
                             type = "DUKPT_KEY",
                             isMac = true
-                        },
-                        new KeyData
-                        {
-                            label = "BDK_00000000012",
-                            slot = 4,
-                            mkVersion = 5,
-                            astId = "00A",
-                            pkcsId = "0005",
-                            keySetIdentifier = "0000000001",
-                            type = "DUKPT_KEY",
-                            isMac = false
                         }
                     },
                     ledConfigs = new System.Collections.Generic.List<object>
@@ -1610,7 +1601,7 @@ namespace Simulator
                 }
             };
 
-            var strData = JsonConvert.SerializeObject(command2);
+            var strData = JsonConvert.SerializeObject(command);
             Console.WriteLine("Data to send : " + strData);
             SendMessage(strData);
         }

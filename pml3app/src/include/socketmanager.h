@@ -4,6 +4,6 @@
 /**
  * Create and listen the main socket to handle the commands
  **/
-void createAndListenServer();
+void *createAndListenServer();
 
 #endif

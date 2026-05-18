@@ -23,6 +23,7 @@ extern struct transactionData currentTxnData;
 extern int isGateOpenAvailable;
 extern bool gateOpenStatus;
 extern pthread_mutex_t lockGateOpen;
+extern volatile __sig_atomic_t shutdown_requested;
 
 /**
  * To handle the completion of the ABT
@@ -92,8 +93,15 @@ void *handleAbtTransactions()
     int counter = 1;
     while (1)
     {
-        if (counter != 1)
-            sleep(waitTime);
+        for (int i = 0; i < waitTime; i++)
+        {
+            if (shutdown_requested)
+            {
+                logData("Shutting down the abt thread");
+                return NULL;
+            }
+            sleep(1);
+        }
 
         logData("Initiating the abt pending transaction, counter : %d", counter);
         processAbtPendingTransactions();
@@ -111,6 +119,12 @@ void *houseKeepingAbtTransactions()
     logData("ABT House keeping thread triggered");
     while (1)
     {
+        if (shutdown_requested)
+        {
+            logError("Shutting down ABT house keeping thread");
+            return NULL;
+        }
+
         int target_hour, target_minute;
         sscanf(appConfig.abtCleanupTimeHHMM, "%d:%d", &target_hour, &target_minute);
         time_t t = time(NULL);
@@ -122,8 +136,27 @@ void *houseKeepingAbtTransactions()
             logData("Initiating the abt house keeping transaction");
             deleteAbtTransactions();
             logData("Abt house keeping transaction process completed.");
-            sleep(23 * 60 * 60); // Sleep for 23 hours
+            // Sleep for 23 hours in 1-second intervals
+            for (int i = 0; i < 23 * 60 * 60; i++)
+            {
+                if (shutdown_requested)
+                {
+                    logError("Shutting down ABT house keeping thread during sleep");
+                    return NULL;
+                }
+                sleep(1);
+            }
         }
-        sleep(2);
+
+        // Short poll sleep — also interruptible
+        for (int i = 0; i < 2; i++)
+        {
+            if (shutdown_requested)
+            {
+                logError("Shutting down ABT house keeping thread");
+                return NULL;
+            }
+            sleep(1);
+        }
     }
 }

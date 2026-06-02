@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 #include <pthread.h>
 #include <log4c.h>
 #include <time.h>
@@ -26,7 +28,6 @@
 #include "include/datasocketmanager.h"
 #include "include/serialmanager.h"
 #include "include/logutil.h"
-#include "include/aztimer.h"
 #include "include/hostmanager.h"
 #include "include/commandmanager.h"
 #include "include/appcodes.h"
@@ -57,8 +58,8 @@ pthread_t mainAppThread;
 log4c_category_t *logCategory = NULL;
 struct fetpf *fetpf = NULL;
 int logPriority;
-int activePendingTxnCount = 0;
-enum device_status DEVICE_STATUS;
+_Atomic int activePendingTxnCount = 0;
+_Atomic enum device_status DEVICE_STATUS;
 
 extern struct applicationData appData;
 extern struct applicationConfig appConfig;
@@ -75,15 +76,16 @@ extern volatile __sig_atomic_t shutdown_requested;
  *      - Start the offline host process threaad
  *      - Start the main socket to listen for commands
  **/
-int main(int argc, char **argv)
+int main(void)
 {
     leds_init();
     buzzer_init();
 
-    ERR_load_BIO_strings();
-    SSL_load_error_strings();
-    SSL_library_init();
-    OpenSSL_add_all_algorithms();
+    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS |
+                         OPENSSL_INIT_LOAD_CRYPTO_STRINGS |
+                         OPENSSL_INIT_ADD_ALL_CIPHERS |
+                         OPENSSL_INIT_ADD_ALL_DIGESTS,
+                     NULL);
 
     IS_SERIAL_CONNECTED = -1;
 
@@ -102,7 +104,10 @@ int main(int argc, char **argv)
     logPriority = log4c_category_get_priority(logCategory);
     time_t t;
     time(&t);
-    logInfo("Starting L3 Transit Application (PML3) : %s", ctime(&t));
+    char timeBuf[26];
+    ctime_r(&t, timeBuf);
+    timeBuf[strcspn(timeBuf, "\n")] = '\0';
+    logInfo("Starting L3 Transit Application (PML3) : %s", timeBuf);
     logInfo("Log4c initialized successfully and with priority %d", logPriority);
 
     appConfig.isDebugEnabled = 0;
@@ -111,9 +116,8 @@ int main(int argc, char **argv)
         appConfig.isDebugEnabled = 1;
     }
 
-    signal(SIGINT, signalCallbackBandler);
-    signal(SIGKILL, signalCallbackBandler);
-    signal(SIGTERM, signalCallbackBandler);
+    signal(SIGINT, signalCallbackHandler);
+    signal(SIGTERM, signalCallbackHandler);
 
     if (!isMinimumFirmwareInstalled())
     {
@@ -129,18 +133,24 @@ int main(int argc, char **argv)
     if (pthread_mutex_init(&lockFeigTrx, NULL) != 0)
     {
         logError("Lock Init lockFeigTrx Failed");
+        pthread_mutex_destroy(&lock);
         return EXIT_FAILURE;
     }
 
     if (pthread_mutex_init(&lockRupayService, NULL) != 0)
     {
         logError("Lock Init lockRupayService Failed");
+        pthread_mutex_destroy(&lockFeigTrx);
+        pthread_mutex_destroy(&lock);
         return EXIT_FAILURE;
     }
 
     if (pthread_mutex_init(&lockGateOpen, NULL) != 0)
     {
         logError("Lock Init lockGateOpen Failed");
+        pthread_mutex_destroy(&lockRupayService);
+        pthread_mutex_destroy(&lockFeigTrx);
+        pthread_mutex_destroy(&lock);
         return EXIT_FAILURE;
     }
 
@@ -161,7 +171,16 @@ int main(int argc, char **argv)
     appData.status = APP_STATUS_INITIALIZE;
     checkRecordCount();
 
+    /* bitmask tracking which service threads were successfully created */
+    int started = 0;
+
     activePendingTxnCount = getActivePendingTransactions();
+    if (activePendingTxnCount == -1)
+    {
+        logError("Unable to get the active pending transactions.");
+        goto cleanup;
+    }
+
     int failureTxn = getActivePendingHostErrorCategoryTransactions(HOST_ERROR_CATEGORY_FAILED);
     int timeoutTxn = getActivePendingHostErrorCategoryTransactions(HOST_ERROR_CATEGORY_TIMEOUT);
     int pendingTxn = activePendingTxnCount - (failureTxn + timeoutTxn);
@@ -170,12 +189,6 @@ int main(int argc, char **argv)
     logInfo("Pending with Failure : %d", failureTxn);
     logInfo("Pending with Timeout : %d", timeoutTxn);
     logInfo("Pending with not yet sent : %d", pendingTxn);
-
-    if (activePendingTxnCount == -1)
-    {
-        logError("Unable to get the active pending transactions.");
-        return EXIT_FAILURE;
-    }
 
     if (activePendingTxnCount > appConfig.maxOfflineTransactions)
         DEVICE_STATUS = STATUS_OFFLINE;
@@ -189,15 +202,22 @@ int main(int argc, char **argv)
     if (rc != 0)
     {
         logError("Feig initialization failed.");
-        return EXIT_FAILURE;
+        goto cleanup;
     }
+
+#define TH_KEY_INJECTION (1 << 8)
 
     appData.isKeyInjectionSuccess = false;
     if (appConfig.forceKeyInjection)
     {
         logWarn("Starting key injection process as a thread in background");
         displayLight(LED_ST_WAITING_KEY_INJECTION);
-        pthread_create(&keyInjectionThread, NULL, processKeyInjection, NULL);
+        if (pthread_create(&keyInjectionThread, NULL, processKeyInjection, NULL) != 0)
+        {
+            logError("Failed to create keyInjectionThread: %s", strerror(errno));
+            goto cleanup;
+        }
+        started |= TH_KEY_INJECTION;
     }
     else
     {
@@ -220,11 +240,13 @@ int main(int argc, char **argv)
         {
             changeAppState(APP_STATUS_READY);
             logError("fetpf_ep_configure failed (rc: %d)\n", rc);
-            return EXIT_FAILURE;
+            free(dataConfig);
+            tlv_free(tlvConfig);
+            goto cleanup;
         }
         logInfo("fetpf_ep_configure success");
         free(dataConfig);
-        free(tlvConfig);
+        tlv_free(tlvConfig);
     }
     else
     {
@@ -236,7 +258,7 @@ int main(int argc, char **argv)
         {
             changeAppState(APP_STATUS_READY);
             logError("config failed (rc: %d)\n", rc);
-            return EXIT_FAILURE;
+            goto cleanup;
         }
         logInfo("EMV Config read successfully.");
 
@@ -246,7 +268,8 @@ int main(int argc, char **argv)
         {
             changeAppState(APP_STATUS_READY);
             logError("fetpf_ep_configure failed (rc: %d)\n", rc);
-            return EXIT_FAILURE;
+            free(config);
+            goto cleanup;
         }
         logInfo("fetpf_ep_configure success");
         free(config);
@@ -262,14 +285,70 @@ int main(int argc, char **argv)
         changeAppState(APP_STATUS_TID_MID_EMPTY);
     }
 
-    pthread_create(&transactionThread, NULL, processTransaction, NULL);
-    pthread_create(&hostOfflineThread, NULL, handleHostOfflineTransactions, NULL);
-    pthread_create(&reversalThread, NULL, startReversalThread, NULL);
-    pthread_create(&abtHostThread, NULL, handleAbtTransactions, NULL);
-    pthread_create(&abtHouseKeepingThread, NULL, houseKeepingAbtTransactions, NULL);
-    pthread_create(&fetchDataThread, NULL, createAndListenForFetchData, NULL);
-    pthread_create(&usbMessageThread, NULL, createAndListenForUSB, NULL);
-    pthread_create(&mainAppThread, NULL, createAndListenServer, NULL);
+#define TH_TRANSACTION (1 << 0)
+#define TH_HOST_OFFLINE (1 << 1)
+#define TH_REVERSAL (1 << 2)
+#define TH_ABT_HOST (1 << 3)
+#define TH_ABT_HOUSEKEEP (1 << 4)
+#define TH_FETCH_DATA (1 << 5)
+#define TH_USB_MESSAGE (1 << 6)
+#define TH_MAIN_APP (1 << 7)
+
+    if (pthread_create(&transactionThread, NULL, processTransaction, NULL) != 0)
+    {
+        logError("Failed to create transactionThread: %s", strerror(errno));
+        goto cleanup;
+    }
+    started |= TH_TRANSACTION;
+
+    if (pthread_create(&hostOfflineThread, NULL, handleHostOfflineTransactions, NULL) != 0)
+    {
+        logError("Failed to create hostOfflineThread: %s", strerror(errno));
+        goto cleanup;
+    }
+    started |= TH_HOST_OFFLINE;
+
+    if (pthread_create(&reversalThread, NULL, startReversalThread, NULL) != 0)
+    {
+        logError("Failed to create reversalThread: %s", strerror(errno));
+        goto cleanup;
+    }
+    started |= TH_REVERSAL;
+
+    if (pthread_create(&abtHostThread, NULL, handleAbtTransactions, NULL) != 0)
+    {
+        logError("Failed to create abtHostThread: %s", strerror(errno));
+        goto cleanup;
+    }
+    started |= TH_ABT_HOST;
+
+    if (pthread_create(&abtHouseKeepingThread, NULL, houseKeepingAbtTransactions, NULL) != 0)
+    {
+        logError("Failed to create abtHouseKeepingThread: %s", strerror(errno));
+        goto cleanup;
+    }
+    started |= TH_ABT_HOUSEKEEP;
+
+    if (pthread_create(&fetchDataThread, NULL, createAndListenForFetchData, NULL) != 0)
+    {
+        logError("Failed to create fetchDataThread: %s", strerror(errno));
+        goto cleanup;
+    }
+    started |= TH_FETCH_DATA;
+
+    if (pthread_create(&usbMessageThread, NULL, createAndListenForUSB, NULL) != 0)
+    {
+        logError("Failed to create usbMessageThread: %s", strerror(errno));
+        goto cleanup;
+    }
+    started |= TH_USB_MESSAGE;
+
+    if (pthread_create(&mainAppThread, NULL, createAndListenServer, NULL) != 0)
+    {
+        logError("Failed to create mainAppThread: %s", strerror(errno));
+        goto cleanup;
+    }
+    started |= TH_MAIN_APP;
 
     while (!shutdown_requested)
     {
@@ -278,33 +357,70 @@ int main(int argc, char **argv)
 
     logError("Shutting down the application");
 
-    pthread_join(hostOfflineThread, NULL);
-    logError("hostOfflineThread exited");
-
-    pthread_join(reversalThread, NULL);
-    logError("startReversalThread exited");
-
-    pthread_join(abtHostThread, NULL);
-    logError("abtHostThread exited");
-
-    pthread_join(abtHouseKeepingThread, NULL);
-    logError("abtHouseKeepingThread exited");
-
-    pthread_join(fetchDataThread, NULL);
-    logError("fetchDataThread exited");
-
-    pthread_join(usbMessageThread, NULL);
-    logError("usbMessageThread exited");
-
-    pthread_join(mainAppThread, NULL);
-    logError("server thread exited");
-
-    pthread_join(transactionThread, NULL);
-    logError("transactionThread exited");
+cleanup:
+    if (started & TH_KEY_INJECTION)
+    {
+        pthread_cancel(keyInjectionThread);
+        pthread_join(keyInjectionThread, NULL);
+        logError("keyInjectionThread exited");
+    }
+    if (started & TH_HOST_OFFLINE)
+    {
+        pthread_cancel(hostOfflineThread);
+        pthread_join(hostOfflineThread, NULL);
+        logError("hostOfflineThread exited");
+    }
+    if (started & TH_REVERSAL)
+    {
+        pthread_cancel(reversalThread);
+        pthread_join(reversalThread, NULL);
+        logError("startReversalThread exited");
+    }
+    if (started & TH_ABT_HOST)
+    {
+        pthread_cancel(abtHostThread);
+        pthread_join(abtHostThread, NULL);
+        logError("abtHostThread exited");
+    }
+    if (started & TH_ABT_HOUSEKEEP)
+    {
+        pthread_cancel(abtHouseKeepingThread);
+        pthread_join(abtHouseKeepingThread, NULL);
+        logError("abtHouseKeepingThread exited");
+    }
+    if (started & TH_FETCH_DATA)
+    {
+        pthread_cancel(fetchDataThread);
+        pthread_join(fetchDataThread, NULL);
+        logError("fetchDataThread exited");
+    }
+    if (started & TH_USB_MESSAGE)
+    {
+        pthread_cancel(usbMessageThread);
+        pthread_join(usbMessageThread, NULL);
+        logError("usbMessageThread exited");
+    }
+    if (started & TH_MAIN_APP)
+    {
+        pthread_cancel(mainAppThread);
+        pthread_join(mainAppThread, NULL);
+        logError("server thread exited");
+    }
+    if (started & TH_TRANSACTION)
+    {
+        pthread_cancel(transactionThread);
+        pthread_join(transactionThread, NULL);
+        logError("transactionThread exited");
+    }
 
     printDiskMemory();
     logError("Application shut down");
     log4c_fini();
 
-    return 0;
+    int expectedThreads = TH_TRANSACTION | TH_HOST_OFFLINE | TH_REVERSAL | TH_ABT_HOST |
+                          TH_ABT_HOUSEKEEP | TH_FETCH_DATA | TH_USB_MESSAGE | TH_MAIN_APP;
+    if (appConfig.forceKeyInjection)
+        expectedThreads |= TH_KEY_INJECTION;
+
+    return (started == expectedThreads) ? 0 : EXIT_FAILURE;
 }

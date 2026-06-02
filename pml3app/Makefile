@@ -17,7 +17,7 @@ KEYID = 00A3
 #SLOTAPP = app0
 #KEYID = 00A0
 PIN = 648219
-VERSION = "1.0.5"
+VERSION = "1.0.6"
 APPDESC = "Datamatic L3 App - PML3"
 
 # Makefile settings - Can be customized.
@@ -58,9 +58,9 @@ $(APPNAME): $(OBJ)
 
 # Perform signing
 signapp:
-	cp $(APPNAME) /home/ganapathy/$(APPNAME)
-	fesign --module opensc-pkcs11.so --keyid $(KEYID) --pin $(PIN) --force --no-backup --infile /home/ganapathy/$(APPNAME)
-	cp /home/ganapathy/$(APPNAME) $(APPNAME)
+	cp $(APPNAME) /home/${USER}/$(APPNAME)
+	fesign --module opensc-pkcs11.so --keyid $(KEYID) --pin $(PIN) --force --no-backup --infile /home/${USER}/$(APPNAME)
+	cp /home/${USER}/$(APPNAME) $(APPNAME)
 
 copyToTerminal:
 	sshpass -p '$(SLOTAPP)' scp ./$(APPNAME) $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)
@@ -87,6 +87,7 @@ update_helper:
 	cp ./src/log4crc.info update/app/log4crc.info
 	cp ./src/l3_log_mode update/app/l3_log_mode
 	mkdir -p update/app/config/
+	cp ./src/config/app_config.json update/app/config/app_config.json
 	cp ./src/config/emv_config.json update/app/config/emv_config.json
 	cp kolkata update/app/kolkata
 	cp version update/app/version
@@ -94,14 +95,14 @@ update_helper:
 	cd ../../
 	cp install.in update/install
 	rm -rf update/app/
-	mkdir /home/ganapathy/update
-	cp update/install /home/ganapathy/update
-	cp update/app.tar /home/ganapathy/update
+	mkdir /home/${USER}/update
+	cp update/install /home/${USER}/update
+	cp update/app.tar /home/${USER}/update
 
 update: update_helper
-	create_update -i /home/ganapathy/update/ -o package/ -t $(KEYID) -P $(PIN) -n $(APPDESC) -v $(VERSION)
+	create_update -i /home/${USER}/update/ -o package/ -t $(KEYID) -P $(PIN) -n $(APPDESC) -v $(VERSION)
 	echo "Update package successfully created in package folder"
-	rm -rf /home/ganapathy/update
+	rm -rf /home/${USER}/update
 	rm -rf update
 
 # Creates the dependecy rules

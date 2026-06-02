@@ -28,8 +28,8 @@
 extern sqlite3 *sqlite3Db;
 extern struct applicationConfig appConfig;
 extern struct applicationData appData;
-extern int activePendingTxnCount;
-extern enum device_status DEVICE_STATUS;
+extern _Atomic int activePendingTxnCount;
+extern _Atomic enum device_status DEVICE_STATUS;
 extern struct transactionData currentTxnData;
 
 int activeFetchId = 0;

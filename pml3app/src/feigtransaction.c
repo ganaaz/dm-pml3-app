@@ -48,7 +48,7 @@ extern struct applicationConfig appConfig;
 extern struct pkcs11 *crypto;
 extern struct fetpf *fetpf;
 extern pthread_attr_t threadAttr;
-extern enum device_status DEVICE_STATUS;
+extern _Atomic enum device_status DEVICE_STATUS;
 extern pthread_mutex_t lockFeigTrx;
 extern bool isSecondTap;
 extern volatile __sig_atomic_t shutdown_requested;

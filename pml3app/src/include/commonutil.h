@@ -30,7 +30,7 @@ void safe_strncat(char *dest, size_t dest_size, const char *src, size_t n);
 /**
  * To handle the signals
  **/
-void signalCallbackBandler(int signum);
+void signalCallbackHandler(int signum);
 
 /**
  * To print disk and memory
@@ -98,7 +98,7 @@ struct transactionData updateTransactionDateTime(struct transactionData trxData)
 void printCurrentTxnData(struct transactionData trxData);
 
 /**
- * Generate the mask pan data
+ * Generate the mask pan data. Caller must free() the returned pointer.
  */
 const char *maskPan(const char *pan);
 
@@ -171,7 +171,7 @@ void generatePanToken(const char *panNumber, const char *track2, char buffer[65]
  * Convert the string number to hex number
  * eg 123 to 313233
  **/
-void string2hexString(const char *input, char *output);
+void string2hexString(const char *input, char *output, size_t output_size);
 
 /**
  * Display the light based on the config
@@ -192,12 +192,12 @@ int deleteLogFile(struct message reqMessage);
  * To generate the narration data
  **/
 void generateNarrationData(char *stationId, char *acqTrxId,
-                           char *acqUniqueTrxId, char amount[13], char *narration);
+                           char *acqUniqueTrxId, char amount[13], char *narration, size_t narration_size);
 
 /**
  *
  **/
-void pad0MultipleOf8(const char *input, char *ouput, int *outLen);
+void pad0MultipleOf8(const char *input, char *output, size_t output_size, int *outLen);
 
 /**
  * To remove the ICC Track2 and Pan Tags

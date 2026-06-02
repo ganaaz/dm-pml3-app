@@ -20,7 +20,7 @@ namespace Simulator
 {
     class Program
     {
-        private static DateTime releaseDate = new DateTime(2026, 5, 18);
+        private static DateTime releaseDate = new DateTime(2026, 6, 2);
         private static bool requestUser = true;
         public static string LocalIPForAirtel = "192.168.50.20";
         //public static string LocalIPForPayTM = "192.168.29.248";
@@ -55,7 +55,7 @@ namespace Simulator
         {
             Console.WriteLine("-------------------------------------------");
             Console.WriteLine("Datamatics Transit Gate Application for PML3");
-            Console.WriteLine("Version : 1.0.5");
+            Console.WriteLine("Version : 1.0.6");
             Console.WriteLine($"Release Date : {releaseDate.ToLongDateString()}");
             Console.WriteLine("-------------------------------------------");
 
@@ -1362,7 +1362,7 @@ namespace Simulator
             Console.WriteLine("Enter the file name to download : ");
             var fileName = "/home/app3/logaaa.txt";
 
-            if (requestUser)
+            //if (requestUser)
             {
                 fileName = Console.ReadLine();
             }
@@ -1376,7 +1376,7 @@ namespace Simulator
             Console.WriteLine("Enter the local location to save the file : ");
             var fileSave = "/Users/ganapathy/a.txt";
 
-            if (requestUser)
+            //if (requestUser)
             {
                 fileSave = Console.ReadLine();
             }

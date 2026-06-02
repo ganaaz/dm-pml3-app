@@ -20,15 +20,15 @@
 #include "ISO/utils.h"
 #include "include/abtinittable.h"
 
-#define VERSION "1.0.5"
-#define RELEASE_DATE "18-May-2026"
+#define VERSION "1.0.6"
+#define RELEASE_DATE "02-Jun-2026"
 
 struct applicationConfig appConfig;
 struct applicationData appData;
 bool isSecondTap;
 sqlite3 *sqlite3Db;
 
-extern enum device_status DEVICE_STATUS;
+extern _Atomic enum device_status DEVICE_STATUS;
 
 /**
  * Reset the second tap, so normal txn can be done

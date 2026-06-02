@@ -13,7 +13,14 @@ static int onBody(http_parser *parser, const char *data, size_t length)
 
     HttpResponseData *httpResponseData = (struct http_response_data *)parser->data;
     httpResponseData->messageLen = length;
+    free(httpResponseData->message);
     httpResponseData->message = malloc(length + 1);
+    if (httpResponseData->message == NULL)
+    {
+        logData("ERROR: malloc failed in onBody");
+        httpResponseData->messageLen = 0;
+        return -1;
+    }
     safe_strncpy(httpResponseData->message, length + 1, data, length);
     httpResponseData->message[length] = '\0';
 
@@ -33,7 +40,7 @@ static int onStatus(http_parser *parser, const char *data, size_t length)
     }
 
     safe_strncpy(httpResponseData->status, sizeof(httpResponseData->status), data, maxLen);
-    httpResponseData->status[length] = '\0';
+    httpResponseData->status[maxLen] = '\0';
 
     return 0;
 }
@@ -48,7 +55,7 @@ static int onHeaderField(http_parser *parser, const char *data, size_t length)
     }
 
     safe_strncpy(httpResponseData->headerField, sizeof(httpResponseData->headerField), data, maxLen);
-    httpResponseData->headerField[length] = '\0';
+    httpResponseData->headerField[maxLen] = '\0';
 
     return 0;
 }
@@ -97,8 +104,17 @@ HttpResponseData parseHttpResponse(const char *responseMessage)
 {
     HttpResponseData httpResponseData;
     httpResponseData.messageLen = 0;
-    httpResponseData.message = malloc(1);
-    httpResponseData.message[0] = '\0';
+    httpResponseData.message = NULL;
+    if (responseMessage == NULL)
+    {
+        logData("ERROR: NULL response message");
+        httpResponseData.code = 0;
+        safe_strcpy(httpResponseData.status, sizeof(httpResponseData.status), "");
+        safe_strcpy(httpResponseData.contentLength, sizeof(httpResponseData.contentLength), "");
+        safe_strcpy(httpResponseData.contentType, sizeof(httpResponseData.contentType), "");
+        safe_strcpy(httpResponseData.headerField, sizeof(httpResponseData.headerField), "");
+        return httpResponseData;
+    }
     safe_strcpy(httpResponseData.contentLength, sizeof(httpResponseData.contentLength), "");
     safe_strcpy(httpResponseData.contentType, sizeof(httpResponseData.contentType), "");
     http_parser parser;
@@ -123,4 +139,13 @@ HttpResponseData parseHttpResponse(const char *responseMessage)
     logData("-------------------------------------------------");
 
     return httpResponseData;
+}
+
+void httpResponseData_free(HttpResponseData *d)
+{
+    if (d == NULL)
+        return;
+    free(d->message);
+    d->message = NULL;
+    d->messageLen = 0;
 }

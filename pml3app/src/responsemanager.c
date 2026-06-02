@@ -21,9 +21,9 @@ extern struct applicationConfig appConfig;
 extern int CLIENT_SOCKET;
 extern int DATA_SOCKET_ID;
 extern int SERIAL_PORT;
-extern int activePendingTxnCount;
+extern _Atomic int activePendingTxnCount;
 extern int IS_SERIAL_CONNECTED;
-extern enum device_status DEVICE_STATUS;
+extern _Atomic enum device_status DEVICE_STATUS;
 
 /**
  * Build the status response message
@@ -820,7 +820,7 @@ void sendTransactionProcessedMessage(struct transactionData trxData, const char 
     convertAmount(trxData.amount, amount);
 
     generateNarrationData(appConfig.stationId, trxData.acqTransactionId,
-                          trxData.acqUniqueTransactionId, amount, narration);
+                          trxData.acqUniqueTransactionId, amount, narration, sizeof(narration));
 
     json_object *jobj = json_object_new_object();
     // Root

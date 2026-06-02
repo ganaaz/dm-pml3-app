@@ -105,7 +105,7 @@ ISO8583_ERROR_CODES construct_transaction_request_object_for_balance_update(ISO8
                 {
                     char raw[] = "03";
                     char hexValue[5];
-                    string2hexString(raw, hexValue);
+                    string2hexString(raw, hexValue, sizeof(hexValue));
                     ret = copy_value(req_txn_obj, DE63_RESERVED_PRIVATE_3, hexValue);
                     if (ret != TXN_SUCCESS)
                     {

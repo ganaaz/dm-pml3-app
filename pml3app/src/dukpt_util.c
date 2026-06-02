@@ -443,7 +443,7 @@ void encryptPanExpDate()
     // Do the padding for Pan as per Airtel requirement
     char paddedPan[96]; // cant be more than 96
     int paddedPanLen;
-    pad0MultipleOf8(currentTxnData.plainPan, paddedPan, &paddedPanLen);
+    pad0MultipleOf8(currentTxnData.plainPan, paddedPan, sizeof(paddedPan), &paddedPanLen);
 
     // logData("Padded pan data : %s", paddedPan); // TODO : Remove
     // logData("Padded pan length : %d", paddedPanLen);
@@ -467,7 +467,7 @@ void encryptPanExpDate()
     // Do the padding for expiry as per PayTM requirement
     char paddedExpiry[17]; // cant be more than 16
     int paddedExpLen;
-    pad0MultipleOf8(currentTxnData.plainExpDate, paddedExpiry, &paddedExpLen);
+    pad0MultipleOf8(currentTxnData.plainExpDate, paddedExpiry, sizeof(paddedExpiry), &paddedExpLen);
 
     logData("Padded exp data : %s", paddedExpiry); // TODO : Remove
     logData("Padded exp length : %d", paddedExpLen);
@@ -523,7 +523,7 @@ void encryptPanTrack2ExpDate()
     // Do the padding for data as per PayTM requirement
     char paddedTrack2[96]; // cant be more than 96
     int paddedTrack2Len;
-    pad0MultipleOf8(currentTxnData.plainTrack2, paddedTrack2, &paddedTrack2Len);
+    pad0MultipleOf8(currentTxnData.plainTrack2, paddedTrack2, sizeof(paddedTrack2), &paddedTrack2Len);
 
     // logData("Padded track2 data : %s", paddedTrack2); // TODO : Remove
     // logData("Padded track2 length : %d", paddedTrack2Len);
@@ -547,7 +547,7 @@ void encryptPanTrack2ExpDate()
     // Do the padding for data as per Airtel requirement
     char paddedPan[96]; // cant be more than 96
     int paddedPanLen;
-    pad0MultipleOf8(currentTxnData.plainPan, paddedPan, &paddedPanLen);
+    pad0MultipleOf8(currentTxnData.plainPan, paddedPan, sizeof(paddedPan), &paddedPanLen);
 
     // Airtel doc ask to make it as 24 so add 0
     if (paddedPanLen == 16)
@@ -586,7 +586,7 @@ void encryptPanTrack2ExpDate()
     strncpy(expDateYYMM, currentTxnData.plainExpDate, 4);
     expDateYYMM[5] = '\0';
 
-    pad0MultipleOf8(expDateYYMM, paddedExpiry, &paddedExpLen);
+    pad0MultipleOf8(expDateYYMM, paddedExpiry, sizeof(paddedExpiry), &paddedExpLen);
 
     // logData("Exp date used for padding : %s and len is : %d", expDateYYMM, strlen(expDateYYMM));
     // logData("Padded exp data : %s", paddedExpiry); // TODO : Remove
@@ -642,7 +642,7 @@ void encryptPanExpDatePayTm()
     // Do the padding for Pan as per PayTM requirement
     char paddedPan[96]; // cant be more than 96
     int paddedPanLen;
-    pad0MultipleOf8(currentTxnData.plainPan, paddedPan, &paddedPanLen);
+    pad0MultipleOf8(currentTxnData.plainPan, paddedPan, sizeof(paddedPan), &paddedPanLen);
 
     logData("Padded pan data : %s", paddedPan); // TODO : Remove
     logData("Padded pan length : %d", paddedPanLen);
@@ -662,7 +662,7 @@ void encryptPanExpDatePayTm()
     // Do the padding for expiry as per PayTM requirement
     char paddedExpiry[17]; // cant be more than 16
     int paddedExpLen;
-    pad0MultipleOf8(currentTxnData.plainExpDate, paddedExpiry, &paddedExpLen);
+    pad0MultipleOf8(currentTxnData.plainExpDate, paddedExpiry, sizeof(paddedExpiry), &paddedExpLen);
 
     logData("Padded exp data : %s", paddedExpiry); // TODO : Remove
     logData("Padded exp length : %d", paddedExpLen);
@@ -717,7 +717,7 @@ void encryptPanTrack2ExpDatePayTm()
     // Do the padding for data as per PayTM requirement
     char paddedTrack2[96]; // cant be more than 96
     int paddedTrack2Len;
-    pad0MultipleOf8(currentTxnData.plainTrack2, paddedTrack2, &paddedTrack2Len);
+    pad0MultipleOf8(currentTxnData.plainTrack2, paddedTrack2, sizeof(paddedTrack2), &paddedTrack2Len);
 
     // logData("Padded track2 data : %s", paddedTrack2); // TODO : Remove
     // logData("Padded track2 length : %d", paddedTrack2Len);
@@ -737,7 +737,7 @@ void encryptPanTrack2ExpDatePayTm()
     // Do the padding for data as per PayTM requirement
     char paddedPan[96]; // cant be more than 96
     int paddedPanLen;
-    pad0MultipleOf8(currentTxnData.plainPan, paddedPan, &paddedPanLen);
+    pad0MultipleOf8(currentTxnData.plainPan, paddedPan, sizeof(paddedPan), &paddedPanLen);
 
     // logData("Padded pan data : %s", paddedPan); // TODO : Remove
     // logData("Padded pan length : %d", paddedPanLen);
@@ -762,7 +762,7 @@ void encryptPanTrack2ExpDatePayTm()
     strncpy(expDateYYMM, currentTxnData.plainExpDate, 4);
     expDateYYMM[5] = '\0';
 
-    pad0MultipleOf8(expDateYYMM, paddedExpiry, &paddedExpLen);
+    pad0MultipleOf8(expDateYYMM, paddedExpiry, sizeof(paddedExpiry), &paddedExpLen);
 
     // logData("Exp date used for padding : %s and len is : %d", expDateYYMM, strlen(expDateYYMM));
     // logData("Padded exp data : %s", paddedExpiry); // TODO : Remove

@@ -9,7 +9,6 @@
 #include "include/commonutil.h"
 #include "include/logutil.h"
 #include "include/dboperations.h"
-#include "include/aztimer.h"
 #include "include/appcodes.h"
 #include "http-parser/http_util.h"
 #include "include/responsemanager.h"
@@ -22,8 +21,8 @@
 extern struct applicationConfig appConfig;
 extern struct transactionData currentTxnData;
 extern struct applicationData appData;
-extern int activePendingTxnCount;
-extern enum device_status DEVICE_STATUS;
+extern _Atomic int activePendingTxnCount;
+extern _Atomic enum device_status DEVICE_STATUS;
 extern volatile __sig_atomic_t shutdown_requested;
 
 bool isReversalOngoing = false;
@@ -92,7 +91,7 @@ TransactionTable processHostOfflineTxn(TransactionTable trxData)
     // char narrData[] = "EXT 120 GLB DR 2700           22122317000012345678902312000001";
     char narration[63];
     generateNarrationData(appConfig.stationId, trxData.acqTransactionId, trxData.acqUniqueTransactionId,
-                          trxData.amount, narration);
+                          trxData.amount, narration, sizeof(narration));
     /*
     safe_strcpy(narration, "EXT ");
     safe_strcat(narration, appConfig.stationId);
@@ -114,7 +113,7 @@ TransactionTable processHostOfflineTxn(TransactionTable trxData)
     */
 
     char narrationHex[125];
-    string2hexString(narration, narrationHex);
+    string2hexString(narration, narrationHex, sizeof(narrationHex));
     logData("Narration in hex : %s", narrationHex);
 
     offline_sale_req.DE63_NARRATION_DATA.len = 124;
@@ -941,7 +940,7 @@ void performHostMoneyAdd(struct transactionData trxData, long batchCounter,
     logData("Money add data for DE63 : %s", de63StrData);
 
     char de63Data[125];
-    string2hexString(de63StrData, de63Data);
+    string2hexString(de63StrData, de63Data, sizeof(de63Data));
     logData("Narration in hex : %s", de63Data);
 
     money_add_req.DE63_FUND_TYPE.len = 124;

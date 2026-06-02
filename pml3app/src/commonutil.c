@@ -1,13 +1,18 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <ctype.h>
 #include <inttypes.h>
 #include <uuid/uuid.h>
 #include <libpay/tlv.h>
 #include <pthread.h>
+#include <openssl/evp.h>
 #include <openssl/sha.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <libgen.h>
 #include <sys/stat.h>
 #include <openssl/hmac.h>
 #include <sys/statvfs.h>
@@ -30,12 +35,12 @@ extern struct serviceMetadata *selectedService;
 
 volatile __sig_atomic_t shutdown_requested = 0;
 
-mode_t allPerm = S_IRWXU | S_IRWXG | S_IRWXO; // 777 permissions
+mode_t allPerm = S_IRUSR | S_IWUSR | S_IRGRP; // 0640 — owner rw, group r
 
 /**
  * To handle the signals
  **/
-void signalCallbackBandler(int signum)
+void signalCallbackHandler(int signum)
 {
     logError("Caught signal %d\n", signum);
     displayLight(LED_ST_APP_EXITING);
@@ -185,22 +190,31 @@ void safe_strncat(char *dest, size_t dest_size, const char *src, size_t n)
  */
 unsigned char *readFile(const char fileName[])
 {
-    FILE *file = fopen(fileName, "rb");
     long int size = findSize(fileName);
-    logData("Size of the file : %d", size);
-
-    unsigned char *data = malloc(size);
-    logData("Data allocated of size : %d", size);
-
-    unsigned char k;
-    int counter = 0;
-    while (!feof(file))
+    if (size <= 0)
     {
-        fread(&k, sizeof(unsigned char), 1, file);
-        data[counter] = k;
-        counter++;
+        logError("readFile: invalid file size for %s", fileName);
+        return NULL;
     }
-    logData("Read Done, counter : %d", counter);
+
+    FILE *file = fopen(fileName, "rb");
+    if (!file)
+    {
+        logError("readFile: failed to open %s", fileName);
+        return NULL;
+    }
+
+    unsigned char *data = malloc((size_t)size);
+    if (!data)
+    {
+        fclose(file);
+        logError("readFile: malloc failed for size %ld", size);
+        return NULL;
+    }
+
+    size_t n = fread(data, 1, (size_t)size, file);
+    logData("Read Done, bytes read : %zu", n);
+    fclose(file);
     return data;
 }
 
@@ -278,8 +292,24 @@ void getDeviceId(char *deviceId)
     int rd = fetrm_get_devid(&device_id);
     logData("Device id result : %d", rd);
     logData("Device id : %lu", device_id);
-    sprintf(deviceId, "%08" PRIX32, device_id);
-    // sprintf(deviceId, "%s", "19117381634");
+    snprintf(deviceId, 9, "%08" PRIX32, device_id);
+}
+
+static int copy_file(const char *src, const char *dst)
+{
+    int in = open(src, O_RDONLY);
+    if (in < 0) { logError("copy_file: open src failed: %s", strerror(errno)); return -1; }
+    int out = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0640);
+    if (out < 0) { logError("copy_file: open dst failed: %s", strerror(errno)); close(in); return -1; }
+    char buf[4096];
+    ssize_t n;
+    while ((n = read(in, buf, sizeof(buf))) > 0)
+    {
+        if (write(out, buf, (size_t)n) != n) { logError("copy_file: write failed"); close(in); close(out); return -1; }
+    }
+    close(in);
+    close(out);
+    return (n < 0) ? -1 : 0;
 }
 
 /**
@@ -287,8 +317,8 @@ void getDeviceId(char *deviceId)
  */
 void createAndCopyNetworkInterfaceFile(struct message reqMessage)
 {
-    FILE *networkFile;
-    networkFile = fopen("interfaces", "w+");
+    FILE *networkFile = fopen("interfaces", "w+");
+    if (networkFile == NULL) { logError("createAndCopyNetworkInterfaceFile: fopen failed"); return; }
     bool isValid = false;
     logInfo("Generating ip interface file");
     if (strcmp(reqMessage.ipData.ipMode, IP_MODE_DYNAMIC) == 0)
@@ -312,15 +342,9 @@ void createAndCopyNetworkInterfaceFile(struct message reqMessage)
         fprintf(networkFile, "\n");
         fprintf(networkFile, "auto eth0\n");
         fprintf(networkFile, "iface eth0 inet static\n");
-        fprintf(networkFile, " address ");
-        fprintf(networkFile, reqMessage.ipData.ipAddress);
-        fprintf(networkFile, "\n");
-        fprintf(networkFile, " netmask ");
-        fprintf(networkFile, reqMessage.ipData.netmask);
-        fprintf(networkFile, "\n");
-        fprintf(networkFile, " gateway ");
-        fprintf(networkFile, reqMessage.ipData.gateway);
-        fprintf(networkFile, "\n");
+        fprintf(networkFile, " address %s\n", reqMessage.ipData.ipAddress);
+        fprintf(networkFile, " netmask %s\n", reqMessage.ipData.netmask);
+        fprintf(networkFile, " gateway %s\n", reqMessage.ipData.gateway);
         fprintf(networkFile, "\n");
     }
     fclose(networkFile);
@@ -328,7 +352,7 @@ void createAndCopyNetworkInterfaceFile(struct message reqMessage)
     if (isValid)
     {
         logInfo("Copying the interface file to /root/etc/network/interfaces");
-        system("cp interfaces /root/etc/network/interfaces");
+        copy_file("interfaces", "/root/etc/network/interfaces");
         chmod("/root/etc/network/interfaces", allPerm);
         logInfo("Permission updated to rwx all");
         logInfo("Copy Done");
@@ -347,48 +371,38 @@ void createAndCopyResolvFile(struct message reqMessage)
     if (strlen(reqMessage.ipData.dns) != 0 || strlen(reqMessage.ipData.searchDomain) != 0)
     {
         logInfo("DNS / Search domain data is available, so copying to resolve.conf");
-        FILE *resolveFile;
-        resolveFile = fopen("resolv.conf", "w+");
+        FILE *resolveFile = fopen("resolv.conf", "w+");
+        if (resolveFile == NULL) { logError("createAndCopyResolvFile: fopen failed"); return; }
         if (strlen(reqMessage.ipData.searchDomain) != 0)
         {
-            fprintf(resolveFile, "search ");
-            fprintf(resolveFile, reqMessage.ipData.searchDomain);
-            fprintf(resolveFile, "\n");
+            fprintf(resolveFile, "search %s\n", reqMessage.ipData.searchDomain);
         }
 
         if (strlen(reqMessage.ipData.dns) != 0)
         {
-            fprintf(resolveFile, "nameserver ");
-            fprintf(resolveFile, reqMessage.ipData.dns);
-            fprintf(resolveFile, "\n");
+            fprintf(resolveFile, "nameserver %s\n", reqMessage.ipData.dns);
         }
 
         if (strlen(reqMessage.ipData.dns2) != 0)
         {
-            fprintf(resolveFile, "nameserver ");
-            fprintf(resolveFile, reqMessage.ipData.dns2);
-            fprintf(resolveFile, "\n");
+            fprintf(resolveFile, "nameserver %s\n", reqMessage.ipData.dns2);
         }
 
         if (strlen(reqMessage.ipData.dns3) != 0)
         {
-            fprintf(resolveFile, "nameserver ");
-            fprintf(resolveFile, reqMessage.ipData.dns3);
-            fprintf(resolveFile, "\n");
+            fprintf(resolveFile, "nameserver %s\n", reqMessage.ipData.dns3);
         }
 
         if (strlen(reqMessage.ipData.dns4) != 0)
         {
-            fprintf(resolveFile, "nameserver ");
-            fprintf(resolveFile, reqMessage.ipData.dns4);
-            fprintf(resolveFile, "\n");
+            fprintf(resolveFile, "nameserver %s\n", reqMessage.ipData.dns4);
         }
 
         fprintf(resolveFile, "\n");
         fclose(resolveFile);
 
         logInfo("Copying the resolve.conf file to /root/etc/resolv.conf");
-        system("cp resolv.conf /root/etc/resolv.conf");
+        copy_file("resolv.conf", "/root/etc/resolv.conf");
         chmod("/root/etc/resolv.conf", allPerm);
         logInfo("Permission updated to rwx all");
         logInfo("Copy Done");
@@ -480,9 +494,9 @@ struct transactionData updateTransactionDateTime(struct transactionData trxData)
     snprintf(year, 5, "%d", 2000 + iYear);
     logData("Current Year : %s", year);
     safe_strcpy(trxData.year, sizeof(trxData.year), year);
-    strftime(trxData.time, -1, "%H%M%S", ptm);
+    strftime(trxData.time, sizeof(trxData.time), "%H%M%S", ptm);
     logData("Transaction Time : %s", trxData.time);
-    strftime(trxData.date, -1, "%m%d", ptm);
+    strftime(trxData.date, sizeof(trxData.date), "%m%d", ptm);
     logData("Transaction Date : %s", trxData.date);
 
     struct tm *ptmGMT = gmtime(&rawTime);
@@ -490,7 +504,7 @@ struct transactionData updateTransactionDateTime(struct transactionData trxData)
     safe_strcat(trxData.gmtTime, sizeof(trxData.gmtTime), "\0");
     logData("Transaction GMT Time : %s", trxData.gmtTime);
 
-    strftime(trxData.acqTransactionId, -1, "%d%m%y%H%M%S", ptm);
+    strftime(trxData.acqTransactionId, sizeof(trxData.acqTransactionId), "%d%m%y%H%M%S", ptm);
     logData("acqTransactionId : %s", trxData.acqTransactionId);
     logData("Length : %d", strlen(trxData.acqTransactionId));
 
@@ -498,7 +512,7 @@ struct transactionData updateTransactionDateTime(struct transactionData trxData)
     safe_strcpy(acqUniqueTxnId, sizeof(acqUniqueTxnId), appConfig.deviceCode); // 10 digit
 
     char dateVal[11];
-    strftime(dateVal, -1, "%m%d%H%M%S", ptm);
+    strftime(dateVal, sizeof(dateVal), "%m%d%H%M%S", ptm);
     safe_strcat(acqUniqueTxnId, sizeof(acqUniqueTxnId), dateVal);
 
     safe_strcpy(trxData.acqUniqueTransactionId, sizeof(trxData.acqUniqueTransactionId), acqUniqueTxnId);
@@ -529,12 +543,15 @@ void removeIccTags(uint8_t buffer[4096], size_t buffer_len)
         uint8_t tag[TLV_MAX_TAG_LENGTH];
         size_t tag_sz = sizeof(tag);
         tlv_encode_identifier(tlv_attr, tag, &tag_sz);
-        uint8_t value[256];
-        size_t value_sz = sizeof(value);
+        size_t value_sz = 0;
+        tlv_encode_value(tlv_attr, NULL, &value_sz);
+        uint8_t *value = malloc(value_sz);
+        if (!value) continue;
         tlv_encode_value(tlv_attr, value, &value_sz);
 
         if (tag[0] == 0x57 || tag[0] == 0x5A)
         {
+            free(value);
             continue;
         }
 
@@ -544,7 +561,8 @@ void removeIccTags(uint8_t buffer[4096], size_t buffer_len)
         char temp2[5];
         sprintf(temp2, "%02X", value_sz);
         safe_strcat(iccData, sizeof(iccData), temp2);
-        char temp3[256];
+        char *temp3 = malloc(value_sz * 2 + 1);
+        if (!temp3) { free(value); continue; }
         byteToHex(value, value_sz, temp3);
         safe_strcat(iccData, sizeof(iccData), temp3);
 
@@ -552,13 +570,14 @@ void removeIccTags(uint8_t buffer[4096], size_t buffer_len)
         {
             safe_strcpy(currentTxnData.effectiveDate, sizeof(currentTxnData.effectiveDate), temp3);
         }
+        free(temp3);
+        free(value);
     }
 
     safe_strcpy(currentTxnData.iccData, sizeof(currentTxnData.iccData), iccData);
     logData("ICC DATA : %s", currentTxnData.iccData);
     currentTxnData.iccDataLen = strlen(iccData);
     tlv_free(tlvData);
-    tlv_free(tlv_attr);
 }
 
 /**
@@ -575,23 +594,12 @@ int hexToByte(const char *hexData, unsigned char *output)
     size_t finalLen = len / 2;
     for (size_t inIdx = 0, outIdx = 0; outIdx < finalLen; inIdx += 2, outIdx++)
     {
-        if ((hexData[inIdx] - 48) <= 9 && (hexData[inIdx + 1] - 48) <= 9)
-        {
-            goto convert;
-        }
-        else
-        {
-            if ((hexData[inIdx] - 65) <= 5 && (hexData[inIdx + 1] - 65) <= 5)
-            {
-                goto convert;
-            }
-            else
-            {
-                return -1;
-            }
-        }
-    convert:
-        output[outIdx] = (hexData[inIdx] % 32 + 9) % 25 * 16 + (hexData[inIdx + 1] % 32 + 9) % 25;
+        char hi = (char)toupper((unsigned char)hexData[inIdx]);
+        char lo = (char)toupper((unsigned char)hexData[inIdx + 1]);
+        bool hiOk = (hi >= '0' && hi <= '9') || (hi >= 'A' && hi <= 'F');
+        bool loOk = (lo >= '0' && lo <= '9') || (lo >= 'A' && lo <= 'F');
+        if (!hiOk || !loOk) return -1;
+        output[outIdx] = (unsigned char)((hi % 32 + 9) % 25 * 16 + (lo % 32 + 9) % 25);
     }
 
     return 0;
@@ -637,28 +645,27 @@ bool isMinimumFirmwareInstalled(void)
  * To confirm and remove the uniqu trx id data
  */
 void generateNarrationData(char *stationId, char *acqTrxId,
-                           char *acqUniqueTrxId, char amount[13], char *narration)
+                           char *acqUniqueTrxId, char amount[13], char *narration, size_t narration_size)
 {
-    // char narration[63];
-    safe_strcpy(narration, 63, "EXT ");
-    safe_strcat(narration, 63, appConfig.stationId);
-    safe_strcat(narration, 63, " GLB DR ");
+    safe_strcpy(narration, narration_size, "EXT ");
+    safe_strcat(narration, narration_size, appConfig.stationId);
+    safe_strcat(narration, narration_size, " GLB DR ");
     char onlyAmount[5];
     memcpy(onlyAmount, &amount[8], 4);
     onlyAmount[4] = '\0';
     logData("Only Amount : %s", onlyAmount);
     logData("Only amount length : %d", strlen(onlyAmount));
-    safe_strcat(narration, 63, onlyAmount);
+    safe_strcat(narration, narration_size, onlyAmount);
     int len = strlen(narration);
     int max = 30 - len;
     for (int i = 0; i < max; i++)
     {
-        safe_strcat(narration, 63, " ");
+        safe_strcat(narration, narration_size, " ");
     }
     logData("acqTrxId : %s", acqTrxId);
     logData("acqUniqueTrxId : %s", acqUniqueTrxId);
-    safe_strcat(narration, 63, acqTrxId);
-    safe_strcat(narration, 63, acqUniqueTrxId);
+    safe_strcat(narration, narration_size, acqTrxId);
+    safe_strcat(narration, narration_size, acqUniqueTrxId);
 
     logData("Narration data generated : %s", narration);
     logData("Narration length : %d", strlen(narration));
@@ -732,34 +739,24 @@ void generateOrderId()
  */
 int deleteLogFile(struct message reqMessage)
 {
-    // check whether the file name is valid
-    char *payTmfound = strstr(reqMessage.delFileData.fileName, "paytm.log");
+    char nameBuf[256];
+    strncpy(nameBuf, reqMessage.delFileData.fileName, sizeof(nameBuf) - 1);
+    nameBuf[sizeof(nameBuf) - 1] = '\0';
+    char *name = basename(nameBuf);
 
-    if (payTmfound != NULL)
+    if (strstr(name, "paytm.log") != NULL)
     {
-        logData("Paytm File name is valid : %s", reqMessage.delFileData.fileName);
-        if (remove(reqMessage.delFileData.fileName) == 0)
-        {
-            return 0;
-        }
-        else
-        {
-            return -1;
-        }
+        logData("Paytm File name is valid : %s", name);
+        if (remove(name) == 0) return 0;
+        return -1;
     }
 
-    char *found = strstr(reqMessage.delFileData.fileName, "l3app.log");
-
-    if (found == NULL)
+    if (strstr(name, "l3app.log") == NULL)
     {
         return -2;
     }
-    logData("Log File name is valid : %s", reqMessage.delFileData.fileName);
-    if (remove(reqMessage.delFileData.fileName) == 0)
-    {
-        return 0;
-    }
-
+    logData("Log File name is valid : %s", name);
+    if (remove(name) == 0) return 0;
     return -1;
 }
 
@@ -1090,21 +1087,21 @@ void beepInThread()
     pthread_t beepThread;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, 1);
-    pthread_create(&beepThread, NULL, makeBeep, NULL);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    pthread_create(&beepThread, &attr, makeBeep, NULL);
     pthread_attr_destroy(&attr);
-    pthread_detach(beepThread);
 }
 
 void generateSha(char *string, char outputBuffer[65])
 {
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, string, strlen(string));
-    SHA256_Final(hash, &sha256);
-    int i = 0;
-    for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
+    unsigned char hash[EVP_MAX_MD_SIZE];
+    unsigned int hashLen = 0;
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(ctx, EVP_sha256(), NULL);
+    EVP_DigestUpdate(ctx, string, strlen(string));
+    EVP_DigestFinal_ex(ctx, hash, &hashLen);
+    EVP_MD_CTX_free(ctx);
+    for (unsigned int i = 0; i < hashLen; i++)
     {
         sprintf(outputBuffer + (i * 2), "%02x", hash[i]);
     }
@@ -1119,6 +1116,11 @@ void generatePanToken(const char *panNumber, const char *track2, char buffer[65]
 
     // Identify the service code
     const char *found = strchr(track2, 'D');
+    if (found == NULL)
+    {
+        logError("generatePanToken: no 'D' separator in track2");
+        return;
+    }
     int index = (int)(found - track2) + 5;
     int k = 0;
     for (int i = index; i < index + 3; i++)
@@ -1144,19 +1146,18 @@ void generatePanToken(const char *panNumber, const char *track2, char buffer[65]
     generateSha(data, buffer);
 }
 
-void string2hexString(const char *input, char *output)
+void string2hexString(const char *input, char *output, size_t output_size)
 {
-    int loop = 0;
-    int i = 0;
+    size_t loop = 0;
+    size_t i = 0;
 
-    while (input[loop] != '\0')
+    while (input[loop] != '\0' && i + 3 <= output_size)
     {
-        sprintf((char *)(output + i), "%02X", input[loop]);
+        snprintf((char *)(output + i), 3, "%02X", (unsigned char)input[loop]);
         loop += 1;
         i += 2;
     }
-    // insert NULL at the end of the output string
-    output[i++] = '\0';
+    output[i] = '\0';
 }
 
 /**
@@ -1164,30 +1165,29 @@ void string2hexString(const char *input, char *output)
  * Logic
  * - Check the length of input if not even add 0
  **/
-void pad0MultipleOf8(const char *input, char *output, int *outLen)
+void pad0MultipleOf8(const char *input, char *output, size_t output_size, int *outLen)
 {
     logData("Input data : %s", input);
     int inputLen = strlen(input);
     logData("Input len : %d", inputLen);
 
-    int evenAdd = 0;
-    if (inputLen % 2 != 0)
-    {
-        evenAdd = 1;
-    }
+    int evenAdd = (inputLen % 2 != 0) ? 1 : 0;
     logData("Now even add : %d", evenAdd);
 
     int bLen = (inputLen + evenAdd) / 2;
     logData("Byte length : %d", bLen);
 
-    int bal = 0;
-    if (bLen % 8 != 0)
-    {
-        bal = (8 - (bLen % 8)) * 2;
-    }
+    int bal = (bLen % 8 != 0) ? (8 - (bLen % 8)) * 2 : 0;
     logData("Balance padding as per 8 byte len : %d", bal);
     *outLen = bal + evenAdd + inputLen;
-    // output = malloc(*outLen + 1);
+
+    if ((size_t)(*outLen + 1) > output_size)
+    {
+        logError("pad0MultipleOf8: output buffer too small (%zu needed, %zu provided)", (size_t)(*outLen + 1), output_size);
+        output[0] = '\0';
+        return;
+    }
+
     int idx = 0;
     for (int i = 0; i < (bal + evenAdd); i++)
         output[idx++] = '0';
@@ -1211,7 +1211,7 @@ void populateCurrentTime(char timeData[20])
     timer = time(NULL);
     tm_info = localtime(&timer);
 
-    strftime(timeData, 26, "%Y-%m-%dT%H:%M:%S", tm_info);
+    strftime(timeData, 20, "%Y-%m-%dT%H:%M:%S", tm_info);
 }
 
 /**
@@ -1222,9 +1222,6 @@ void calculate_hmac_sha256(const char *key, const char *data, char *hmac_hex)
     unsigned char hmac_result[EVP_MAX_MD_SIZE]; // Raw HMAC output
     unsigned int hmac_length = 0;
 
-    // Compute HMAC using SHA-256
-    printf("Data for compute : %s", data);
-    printf("Salt : %s", key);
     HMAC(EVP_sha256(), key, strlen(key), (unsigned char *)data, strlen(data), hmac_result, &hmac_length);
 
     // Convert binary HMAC to hexadecimal

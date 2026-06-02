@@ -12,6 +12,9 @@
 #include "include/rupayservice.h"
 #include "include/commonutil.h"
 
+#define MAX_TLV_VALUE_SIZE 65536
+#define MAX_REQUEST_LEN 65536
+
 extern struct applicationConfig appConfig;
 extern struct transactionData currentTxnData;
 
@@ -27,6 +30,7 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
     struct tlv *tlv_reply = NULL;
     uint8_t *reply_data = NULL;
     struct tlv *tlv_reply_data = NULL;
+    struct tlv *tlv_request_data = NULL;
     struct tlv *tlv_attr = NULL;
 
     logHexData("Rupay request data", request, request_len);
@@ -34,6 +38,13 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
 
     if (request && request_len > 0)
     {
+        if (request_len > MAX_REQUEST_LEN)
+        {
+            logData("request_len %zu exceeds MAX_REQUEST_LEN\n", request_len);
+            rc = EMVCO_RC_FAIL;
+            goto done;
+        }
+
         int tlv_rc = tlv_parse(request, request_len, &tlv_req);
         if (tlv_rc != TLV_RC_OK)
         {
@@ -92,6 +103,12 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
                 logData("Service Signal before Gen AC");
                 size_t value_sz = 0;
                 tlv_rc = tlv_encode_value(tlv_attr, NULL, &value_sz);
+                if (value_sz == 0 || value_sz > MAX_TLV_VALUE_SIZE)
+                {
+                    rc = EMVCO_RC_FAIL;
+                    goto done;
+                }
+
                 if (tlv_rc != TLV_RC_OK)
                 {
                     logData("tlv_encode_value() failed with %d\n", tlv_rc);
@@ -105,28 +122,38 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
                     goto done;
                 }
 
-                uint8_t value[value_sz];
+                uint8_t *value = malloc(value_sz);
+                if (!value)
+                {
+                    rc = EMVCO_RC_FAIL;
+                    goto done;
+                }
                 tlv_rc = tlv_encode_value(tlv_attr, value, &value_sz);
                 if (tlv_rc != TLV_RC_OK)
                 {
                     logData("tlv_encode_value() failed with %d\n", tlv_rc);
                     rc = EMVCO_RC_FAIL;
+                    free(value);
                     goto done;
                 }
 
-                struct tlv *tlv_request_data = NULL;
                 tlv_rc = tlv_parse(value, value_sz, &tlv_request_data);
                 if (tlv_rc != TLV_RC_OK)
                 {
                     logData("tlv_parse() failed with %d\n", tlv_rc);
                     rc = EMVCO_RC_FAIL;
+                    free(value);
                     goto done;
                 }
+                free(value);
 
                 rc = c13_service_signal_req_gac_handling(client, tlv_request_data, &tlv_reply_data);
 
                 if (tlv_request_data)
+                {
                     tlv_free(tlv_request_data);
+                    tlv_request_data = NULL;
+                }
             }
             else
             {
@@ -137,6 +164,7 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
 
             if (reply_len)
             {
+                size_t max_reply = *reply_len;
                 // logData("Reply available size: %d\n", *reply_len);
                 if (tlv_reply_data)
                 {
@@ -170,6 +198,14 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
                     }
 
                     tlv_reply = tlv_new(FEIG_C13_ID_DATA_EXCHANGE_RESPONSE, reply_data_sz, reply_data);
+                    size_t tlv_reply_sz = 0;
+                    tlv_rc = tlv_encode(tlv_reply, NULL, &tlv_reply_sz);
+                    if (tlv_rc != TLV_RC_OK || tlv_reply_sz > max_reply)
+                    {
+                        logData("[%d]: reply buffer too small: need %zu, have %zu\n", __LINE__, tlv_reply_sz, max_reply);
+                        rc = EMVCO_RC_FAIL;
+                        goto done;
+                    }
                     tlv_rc = tlv_encode(tlv_reply, reply, reply_len);
                     if (tlv_rc != TLV_RC_OK)
                     {
@@ -198,12 +234,28 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
                     }
                 }
             }
+
+            if (reply_data)
+            {
+                free(reply_data);
+                reply_data = NULL;
+            }
+            if (tlv_reply)
+            {
+                tlv_free(tlv_reply);
+                tlv_reply = NULL;
+            }
+            if (tlv_reply_data)
+            {
+                tlv_free(tlv_reply_data);
+                tlv_reply_data = NULL;
+            }
         }
     }
 
 done:
-    if (tlv_attr)
-        tlv_free(tlv_attr);
+    if (tlv_request_data)
+        tlv_free(tlv_request_data);
 
     if (tlv_reply_data)
         tlv_free(tlv_reply_data);

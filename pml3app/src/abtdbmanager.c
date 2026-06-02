@@ -594,7 +594,7 @@ void processAbtPendingTransactions()
                         updateAbtHostRetry(abtTrxTable.transactionId);
                     }
                 }
-                free(httpResponseData.message);
+                httpResponseData_free(&httpResponseData);
             }
             else
             {

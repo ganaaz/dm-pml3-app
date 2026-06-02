@@ -14,7 +14,7 @@
 
 #define PORT 9091
 
-int DATA_SOCKET_ID;
+int DATA_SOCKET_ID = -1;
 
 extern struct applicationConfig appConfig;
 extern volatile __sig_atomic_t shutdown_requested;
@@ -26,10 +26,10 @@ extern volatile __sig_atomic_t shutdown_requested;
 void *createAndListenForFetchData()
 {
     struct sockaddr_in address;
-    int serverFd, reqstatus;
+    int serverFd;
+    ssize_t reqstatus;
     int opt = 1;
-    int addrlen = sizeof(address);
-    socklen_t optlen = sizeof(opt);
+    socklen_t addrlen = sizeof(address);
     char buffer[1024] = {0};
 
     logInfo("Creating data socket and going to wait for client");
@@ -42,7 +42,14 @@ void *createAndListenForFetchData()
 
     if (setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
     {
-        logError("Error in setsockopt");
+        logError("Error setsockopt SO_REUSEADDR failed.");
+        close(serverFd);
+        return NULL;
+    }
+
+    if (setsockopt(serverFd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)))
+    {
+        logError("Error setsockopt SO_REUSEPORT failed.");
         close(serverFd);
         return NULL;
     }
@@ -50,20 +57,6 @@ void *createAndListenForFetchData()
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
-
-    if (getsockopt(serverFd, SOL_SOCKET, SO_KEEPALIVE, &opt, &optlen) < 0)
-    {
-        logError("Error in getsockopt");
-        close(serverFd);
-        return NULL;
-    }
-
-    if (setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
-    {
-        logError("Error setsockopt failed.");
-        close(serverFd);
-        return NULL;
-    }
 
     if (appConfig.socketTimeout != -1)
     {
@@ -117,13 +110,26 @@ void *createAndListenForFetchData()
             continue; // Timeout — loop back and check shutdown_requested
 
         logInfo("Waiting for the client socket for data ...");
-        if ((DATA_SOCKET_ID = accept(serverFd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0)
+        if ((DATA_SOCKET_ID = accept(serverFd, (struct sockaddr *)&address, &addrlen)) < 0)
         {
             logError("Error in accepting");
             continue;
         }
 
         logInfo("Client connected on fetch data socket: %d", DATA_SOCKET_ID);
+
+        if (appConfig.socketTimeout != -1)
+        {
+            struct timeval tv;
+            tv.tv_sec = appConfig.socketTimeout;
+            tv.tv_usec = 0;
+            setsockopt(DATA_SOCKET_ID, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof tv);
+            logData("Socket timeout is set as %d", appConfig.socketTimeout);
+        }
+        else
+        {
+            logData("Socket timeout is set as -1, so not setting the timeout val");
+        }
 
         // --- Inner read loop ---
         while (1)
@@ -150,7 +156,7 @@ void *createAndListenForFetchData()
                 continue; // Timeout — loop back and check shutdown_requested
 
             logData("Listening for data from client on Fetch Data socket id: %d ...", DATA_SOCKET_ID);
-            reqstatus = read(DATA_SOCKET_ID, buffer, 1024);
+            reqstatus = read(DATA_SOCKET_ID, buffer, sizeof(buffer));
             if (reqstatus <= 0)
             {
                 logError("No data received, closing the data socket");
@@ -158,9 +164,14 @@ void *createAndListenForFetchData()
             }
 
             char *data = (char *)malloc(reqstatus + 1);
+            if (!data)
+            {
+                logError("malloc failed for incoming data buffer");
+                break;
+            }
             memcpy(data, buffer, reqstatus);
             data[reqstatus] = '\0';
-            logData("Raw Data received from client (Len: %d): %s", reqstatus, data);
+            logData("Raw Data received from client (Len: %zd): %s", reqstatus, data);
 
             char *response = handleClientFetchMessage(data);
             free(data);
@@ -171,14 +182,17 @@ void *createAndListenForFetchData()
             }
             else
             {
-                logData("Length of response: %d", strlen(response));
+                logData("Length of response: %zu", strlen(response));
                 if (strlen(response) == 0)
                 {
                     logData("There is no response, nothing to send to client");
                 }
                 else
                 {
-                    send(DATA_SOCKET_ID, response, strlen(response), 0);
+                    if (send(DATA_SOCKET_ID, response, strlen(response), 0) < 0)
+                    {
+                        logError("Error sending response to client");
+                    }
                 }
                 free(response);
             }

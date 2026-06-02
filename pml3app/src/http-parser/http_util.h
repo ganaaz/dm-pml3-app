@@ -14,5 +14,7 @@ typedef struct http_response_data
 } HttpResponseData;
 
 HttpResponseData parseHttpResponse(const char* responseMessage);
+// Caller must invoke this to release the heap-allocated message field.
+void httpResponseData_free(HttpResponseData *d);
 
 #endif

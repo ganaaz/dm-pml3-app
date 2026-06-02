@@ -38,9 +38,9 @@ extern struct applicationConfig appConfig;
 extern struct applicationData appData;
 extern struct transactionData currentTxnData;
 extern long long startTrxTime;
-extern int activePendingTxnCount;
+extern _Atomic int activePendingTxnCount;
 extern long long trxEndTime;
-extern enum device_status DEVICE_STATUS;
+extern _Atomic enum device_status DEVICE_STATUS;
 
 /**
  * Get the updated balance

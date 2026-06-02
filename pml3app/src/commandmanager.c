@@ -34,7 +34,7 @@ extern struct pkcs11 *crypto;
 extern int activeFetchId;
 extern bool canRunTransaction;
 extern int IS_SERIAL_CONNECTED;
-extern enum device_status DEVICE_STATUS;
+extern _Atomic enum device_status DEVICE_STATUS;
 
 int isWriteCardCommand = 0;
 int isServiceDataAvailable = 0;

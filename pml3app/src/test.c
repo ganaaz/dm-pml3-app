@@ -20,7 +20,6 @@
 #include "include/socketmanager.h"
 #include "include/datasocketmanager.h"
 #include "include/logutil.h"
-#include "include/aztimer.h"
 #include "include/hostmanager.h"
 #include "include/commandmanager.h"
 #include "include/appcodes.h"
@@ -145,7 +144,7 @@ void testHttpParse()
         else
             httpResponseData = parseHttpResponse(message);
 
-        free(httpResponseData.message);
+        httpResponseData_free(&httpResponseData);
     }
 
     /*

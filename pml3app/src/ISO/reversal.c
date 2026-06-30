@@ -6,6 +6,9 @@
 #include "utils.h"
 #include "../include/logutil.h"
 
+extern char currentTrxType[100];
+extern char lastPanDigit[10];
+
 ISO8583_ERROR_CODES construct_transaction_request_object_for_reversal(ISO8583_TXN_REQ_OBJECT *req_txn_obj, REVERSAL_REQUEST *txn_obj, int txn)
 {
     ISO8583_ERROR_CODES ret = TXN_FAILED;
@@ -131,7 +134,7 @@ ISO8583_ERROR_CODES construct_transaction_request_object_for_reversal(ISO8583_TX
                     break;
 
                 default:
-                    logData("No Case for Field : %d", length + j);
+                    logDataEx(currentTrxType, lastPanDigit, "No Case for Field : %d", length + j);
                     break;
                 }
             }
@@ -144,7 +147,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_reversal(REVERSAL_
 {
     if (resp_txn_obj->data[1].field_value.simple_field.value == NULL)
     {
-        logData("BITMAP is not present in the Response");
+        logDataEx(currentTrxType, lastPanDigit, "BITMAP is not present in the Response");
         return TXN_PARSE_VALIDATION_FAILED;
     }
 
@@ -174,7 +177,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_reversal(REVERSAL_
                             memcpy(resp_obj->DE04_TXN_AMOUNT, value, len + NULL_BYTE_LEN);
                         }
                         else
-                            logData("Failed to copy the field %d into reversal response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into reversal response buffer", length + j);
                         break;
 
                     case DE11_STAN:
@@ -185,7 +188,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_reversal(REVERSAL_
                             memcpy(resp_obj->DE11_STAN, value, len + NULL_BYTE_LEN);
                         }
                         else
-                            logData("Failed to copy the field %d into reversal response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into reversal response buffer", length + j);
                         break;
 
                     case DE12_TRANSACTION_TIME_LOCAL:
@@ -196,7 +199,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_reversal(REVERSAL_
                             memcpy(resp_obj->DE12_TXN_TIME, value, len + NULL_BYTE_LEN);
                         }
                         else
-                            logData("Failed to copy the field %d into reversal response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into reversal response buffer", length + j);
                         break;
 
                     case DE13_TRANSACTION_DATE_LOCAL:
@@ -207,7 +210,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_reversal(REVERSAL_
                             memcpy(resp_obj->DE13_TXN_DATE, value, len + NULL_BYTE_LEN);
                         }
                         else
-                            logData("Failed to copy the field %d into reversal response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into reversal response buffer", length + j);
                         break;
 
                     case DE37_RRN:
@@ -227,7 +230,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_reversal(REVERSAL_
                                 free(rrn);
                         }
                         else
-                            logData("Failed to copy the field %d into reversal response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into reversal response buffer", length + j);
                         break;
 
                     case DE38_AUTHORIZATION_IDENTIFICATION_RESPONSE:
@@ -247,7 +250,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_reversal(REVERSAL_
                                 free(auth_code);
                         }
                         else
-                            logData("Failed to copy the field %d into reversal response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into reversal response buffer", length + j);
                         break;
 
                     case DE39_RESPONSE_CODE:
@@ -267,17 +270,17 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_reversal(REVERSAL_
                                 free(resp_code);
                         }
                         else
-                            logData("Failed to copy the field %d into reversal response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into reversal response buffer", length + j);
                         break;
 
                     default:
-                        // logData("No Case for Field : %d", length + j);
+                        // logDataEx(currentTrxType, lastPanDigit, "No Case for Field : %d", length + j);
                         break;
                     }
                 }
                 else
                 {
-                    logData("Field %d is not in the response", length + j);
+                    logDataEx(currentTrxType, lastPanDigit, "Field %d is not in the response", length + j);
                 }
             }
         }
@@ -289,11 +292,11 @@ ISO8583_ERROR_CODES process_reversal_transaction(REVERSAL_REQUEST *txn_obj, REVE
 {
     if (txn_obj == NULL)
     {
-        logData("NULL REVERSAL_REQUEST Object Passed");
+        logDataEx(currentTrxType, lastPanDigit, "NULL REVERSAL_REQUEST Object Passed");
         return TXN_FAILED;
     }
 
-    logData("TXN Code : %d", txn);
+    logDataEx(currentTrxType, lastPanDigit, "TXN Code : %d", txn);
 
     ISO8583_ERROR_CODES ret = TXN_SUCCESS;
     ISO8583_TXN_REQ_OBJECT *req_txn_obj = get_transaction_object();
@@ -306,7 +309,7 @@ ISO8583_ERROR_CODES process_reversal_transaction(REVERSAL_REQUEST *txn_obj, REVE
         {
             clear_transaction_object(req_txn_obj);
         }
-        logData("Failed to construct the Transaction Object for Reversal");
+        logDataEx(currentTrxType, lastPanDigit, "Failed to construct the Transaction Object for Reversal");
         return ret;
     }
 
@@ -318,7 +321,7 @@ ISO8583_ERROR_CODES process_reversal_transaction(REVERSAL_REQUEST *txn_obj, REVE
         {
             clear_transaction_object(req_txn_obj);
         }
-        logData("Failed to Process Transaction for Reversal");
+        logDataEx(currentTrxType, lastPanDigit, "Failed to Process Transaction for Reversal");
         return ret != TXN_SUCCESS ? ret : TXN_FAILED;
     }
 
@@ -330,7 +333,7 @@ ISO8583_ERROR_CODES process_reversal_transaction(REVERSAL_REQUEST *txn_obj, REVE
         if (resp_txn_obj)
             clear_transaction_object(resp_txn_obj);
 
-        logData("Failed to construct the REVERSAL_RESPONSE Object for Reversal");
+        logDataEx(currentTrxType, lastPanDigit, "Failed to construct the REVERSAL_RESPONSE Object for Reversal");
         return ret;
     }
 

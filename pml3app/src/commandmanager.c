@@ -35,6 +35,7 @@ extern int activeFetchId;
 extern bool canRunTransaction;
 extern int IS_SERIAL_CONNECTED;
 extern _Atomic enum device_status DEVICE_STATUS;
+extern char currentTrxType[100];
 
 int isWriteCardCommand = 0;
 int isServiceDataAvailable = 0;
@@ -51,15 +52,15 @@ int ix = 1;
  */
 char *handleClientFetchMessage(const char *data)
 {
-    logData("Handling Client message for fetch data");
+    logDataEx("L3-App", "Command", "Handling Client message for fetch data");
     struct message reqMessage = parseMessage(data);
-    logData("Command : %s", reqMessage.cmd);
-    logData("Current Status : %s", getStatusString(appData.status));
+    logDataEx("L3-App", "Command", "Command : %s", reqMessage.cmd);
+    logDataEx("L3-App", "Command", "Current Status : %s", getStatusString(appData.status));
 
     if (strcmp(reqMessage.cmd, COMMAND_FETCH_AUTH) == 0)
     {
         activeFetchId = reqMessage.fData.fetchid;
-        logData("Starting to process fetch auth  : %d\n", ix++);
+        logDataEx("L3-App", "Command", "Starting to process fetch auth  : %d\n", ix++);
         if (strcmp(reqMessage.fData.mode, STATUS_SUCCESS) == 0)
         {
             return fetchHostData(reqMessage.fData.maxrecords, FETCH_MODE_SUCCESS,
@@ -75,7 +76,7 @@ char *handleClientFetchMessage(const char *data)
 
     if (strcmp(reqMessage.cmd, COMMAND_ABT_FETCH) == 0)
     {
-        logData("Going to fetch abt data");
+        logDataEx("L3-App", "Command", "Going to fetch abt data");
         return fetchAbtData(reqMessage.abtFetch);
     }
 
@@ -103,10 +104,10 @@ char *handleClientFetchMessage(const char *data)
 
     if (strcmp(reqMessage.cmd, COMMAND_DOWNLOAD_FILE) == 0)
     {
-        logData("Download file received with file name : %s", reqMessage.dData.fileName);
+        logDataEx("L3-App", "Command", "Download file received with file name : %s", reqMessage.dData.fileName);
         if (access(reqMessage.dData.fileName, F_OK) != 0)
         {
-            logData("Requested file not found or no access");
+            logDataEx("L3-App", "Command", "Requested file not found or no access");
             return buildResponseMessage(STATUS_ERROR, ERR_FILE_NOT_FOUND);
         }
 
@@ -173,7 +174,7 @@ char *handleClientFetchMessage(const char *data)
     {
         char utc[17];
         safe_strncpy(utc, 17, reqMessage.tData.time, 14);
-        logData("Received time for changing : %s and len : %d", utc, strlen(utc));
+        logDataEx("L3-App", "Command", "Received time for changing : %s and len : %d", utc, strlen(utc));
         utc[14] = '0';
         utc[15] = '0';
         utc[16] = '\0';
@@ -184,7 +185,7 @@ char *handleClientFetchMessage(const char *data)
             return buildSetTimeResponse(STATUS_ERROR);
     }
 
-    logWarn("Going to return default error response");
+    logWarnEx("CommandManager", "", "Going to return default error response");
     return buildResponseMessage(STATUS_ERROR, ERR_GENERIC);
 }
 
@@ -201,33 +202,33 @@ char *handleClientMessage(const char *data)
 
     struct message reqMessage = parseMessage(data);
 
-    logData("Handling client message in normal socket");
-    logData("Command : %s", reqMessage.cmd);
-    logData("Current Status : %s", getStatusString(appData.status));
+    logDataEx("L3-App", "Command", "Handling client message in normal socket");
+    logDataEx("L3-App", "Command", "Command : %s", reqMessage.cmd);
+    logDataEx("L3-App", "Command", "Current Status : %s", getStatusString(appData.status));
 
     if (strcmp(reqMessage.cmd, COMMAND_CHANGE_LOG_MODE) == 0)
     {
-        logData("Changing log mode to : %s", reqMessage.logData.logMode);
+        logDataEx("L3-App", "Command", "Changing log mode to : %s", reqMessage.logData.logMode);
         int r = 0;
 
         if (strcmp(reqMessage.logData.logMode, LOG_MODE_DEBUG) == 0)
         {
             // r = system("cp log4crc.debug log4crc");
             r = writeLogMode(0);
-            logInfo("Result of write logmode : %d", r);
+            logInfoEx("Command", "", "Result of write logmode : %d", r);
         }
 
         if (strcmp(reqMessage.logData.logMode, LOG_MODE_INFO) == 0)
         {
             r = writeLogMode(1);
-            logInfo("Result of write logmode : %d", r);
+            logInfoEx("Command", "", "Result of write logmode : %d", r);
         }
 
         if (strcmp(reqMessage.logData.logMode, LOG_MODE_ERROR) == 0)
         {
             // r = system("cp log4crc.error log4crc");
             r = writeLogMode(2);
-            logInfo("Result of write logmode : %d", r);
+            logInfoEx("Command", "", "Result of write logmode : %d", r);
         }
 
         if (r != 0)
@@ -281,11 +282,11 @@ char *handleClientMessage(const char *data)
     {
         if (appData.status != APP_STATUS_READY)
         {
-            logData("Cannot recalculate mac as the status is not ready");
+            logDataEx("L3-App", "Command", "Cannot recalculate mac as the status is not ready");
             return buildCommandResponseMessage(COMMAND_RECALC_MAC, STATUS_ERROR, ERR_GENERIC);
         }
 
-        logData("Initiating recalculate mac");
+        logDataEx("L3-App", "Command", "Initiating recalculate mac");
         performMacRecalculation();
         return buildCommandResponseMessage(COMMAND_RECALC_MAC, STATUS_SUCCESS, 0);
     }
@@ -364,7 +365,7 @@ char *handleClientMessage(const char *data)
         if (appData.isKeyInjectionSuccess == false)
             return buildResponseMessage(STATUS_KEYS_NOT_LOADED, 0);
 
-        logData("It is in stopping state, wait");
+        logDataEx("L3-App", "Command", "It is in stopping state, wait");
         return buildResponseMessage(STATUS_STOPPING, ERR_DEVICE_IN_STOPPING);
     }
 
@@ -409,7 +410,7 @@ char *handleClientMessage(const char *data)
 
     if (appData.status == APP_STATUS_TID_MID_EMPTY)
     {
-        logData("TID or MID is empty");
+        logDataEx("L3-App", "Command", "TID or MID is empty");
         return buildResponseMessage(STATUS_TID_MID_EMPTY, ERR_ALREADY_SEARCHING);
     }
 
@@ -419,7 +420,7 @@ char *handleClientMessage(const char *data)
         if (appData.isKeyInjectionSuccess == false)
             return buildResponseMessage(STATUS_KEYS_NOT_LOADED, 0);
 
-        logData("Already searching for card");
+        logDataEx("L3-App", "Command", "Already searching for card");
         return buildResponseMessage(STATUS_ERROR, ERR_ALREADY_SEARCHING);
     }
 
@@ -430,7 +431,7 @@ char *handleClientMessage(const char *data)
         if (appData.isKeyInjectionSuccess == false)
             return buildResponseMessage(STATUS_KEYS_NOT_LOADED, 0);
 
-        logData("Transaction ongoing");
+        logDataEx("L3-App", "Command", "Transaction ongoing");
         return buildResponseMessage(STATUS_ERROR, ERR_ONGOING_TRANSACTION);
     }
 
@@ -480,26 +481,26 @@ char *handleClientMessage(const char *data)
 
         if (appData.status != APP_STATUS_CARD_PRESENTED)
         {
-            logData("There is no card presented, so nothing to write");
+            logDataEx("L3-App", "Command", "There is no card presented, so nothing to write");
             return buildResponseMessage(STATUS_ERROR, ERR_CARD_NOT_PRESENTED);
         }
         safe_strcpy(writeCardAmount, sizeof(writeCardAmount), reqMessage.wCard.amount);
         toUpper(reqMessage.wCard.serviceData);
 
-        logData("Service data available : %d", isServiceDataAvailable);
-        logData("Service data value : %s", reqMessage.wCard.serviceData);
+        logDataEx("L3-App", "Command", "Service data available : %d", isServiceDataAvailable);
+        logDataEx("L3-App", "Command", "Service data value : %s", reqMessage.wCard.serviceData);
 
         if (isServiceDataAvailable == 1)
         {
             safe_strcpy(writeCardServiceData, sizeof(writeCardServiceData), reqMessage.wCard.serviceData);
-            logData("Service data available : %s", writeCardServiceData);
+            logDataEx("L3-App", "Command", "Service data available : %s", writeCardServiceData);
         }
         else
         {
-            logData("No Service data available");
+            logDataEx("L3-App", "Command", "No Service data available");
         }
 
-        logInfo("Write card message received with amount %s, will be processed by transaction.", writeCardAmount);
+        logInfoEx("Command", "", "Write card message received with amount %s, will be processed by transaction.", writeCardAmount);
 
         doLock();
         isWriteCardCommand = 1;
@@ -516,16 +517,16 @@ char *handleClientMessage(const char *data)
 
         if (appData.status != APP_STATUS_ABT_CARD_PRSENTED)
         {
-            logData("There is no card presented, so nothing to write");
+            logDataEx("L3-App", "Command", "There is no card presented, so nothing to write");
             return buildResponseMessage(STATUS_ERROR, ERR_CARD_NOT_PRESENTED);
         }
         gateOpenStatus = reqMessage.gateOpenData.status;
 
-        logData("Gate open message is received");
+        logDataEx("L3-App", "Command", "Gate open message is received");
         if (gateOpenStatus)
-            logData("Gate open status is true");
+            logDataEx("L3-App", "Command", "Gate open status is true");
         else
-            logData("Gate open status is false");
+            logDataEx("L3-App", "Command", "Gate open status is false");
 
         doLock();
         isGateOpenAvailable = 1;
@@ -533,7 +534,7 @@ char *handleClientMessage(const char *data)
         return "";
     }
 
-    logWarn("Going to return default error response");
+    logWarnEx("CommandManager", "", "Going to return default error response");
     return buildResponseMessage(STATUS_ERROR, ERR_GENERIC);
 }
 
@@ -544,11 +545,11 @@ void stopCardSearch()
 {
     if (appData.status != APP_STATUS_AWAIT_CARD)
     {
-        logData("Not in awaiting mode, nothing to stop");
+        logDataEx("L3-App", "Command", "Not in awaiting mode, nothing to stop");
         return;
     }
 
-    logInfo("Going to stop the transaction in search thread");
+    logInfoEx("Command", "", "Going to stop the transaction in search thread");
     changeAppState(APP_STATUS_STOPPING_SEARCH);
     doLock();
     canRunTransaction = false;
@@ -570,16 +571,16 @@ char *handleSearchCard(struct message reqMessage)
     memset(appData.moneyAddTrxType, 0, sizeof(appData.moneyAddTrxType));
     memset(appData.sourceTxnId, 0, sizeof(appData.sourceTxnId));
 
-    logData("Going to handle search card");
+    logDataEx("L3-App", "Command", "Going to handle search card");
     if (strcmp(reqMessage.sCard.mode, SEARCH_SINGLE) == 0)
     {
-        logData("Search card mode single requested");
+        logDataEx("L3-App", "Command", "Search card mode single requested");
         appData.searchMode = SEARCH_MODE_SINGLE;
     }
 
     if (strcmp(reqMessage.sCard.mode, SEARCH_LOOP) == 0)
     {
-        logData("Search card mode loop requested");
+        logDataEx("L3-App", "Command", "Search card mode loop requested");
         appData.searchMode = SEARCH_MODE_LOOP;
     }
 
@@ -594,6 +595,8 @@ char *handleSearchCard(struct message reqMessage)
         }
     }
 
+    safe_strcpy(currentTrxType, sizeof(currentTrxType), reqMessage.sCard.trxtype);
+
     /*
     if (strcmp(reqMessage.sCard.trxtype, TRXTYPE_BALANCE_UPDATE) == 0)
     {
@@ -604,7 +607,7 @@ char *handleSearchCard(struct message reqMessage)
         }
     }*/
 
-    logData("TRX TYPE : %s", reqMessage.sCard.trxtype);
+    logDataEx("L3-App", "Command", "TRX TYPE : %s", reqMessage.sCard.trxtype);
     safe_strcpy(appData.trxType, sizeof(appData.trxType), reqMessage.sCard.trxtype);
 
     if (strcmp(reqMessage.sCard.trxtype, TRXTYPE_PURCHASE) == 0)
@@ -617,8 +620,8 @@ char *handleSearchCard(struct message reqMessage)
         {
             appData.amountKnownAtStart = 1;
             appData.amountAuthorizedBin = strtol(reqMessage.sCard.amount, NULL, 10);
-            logData("Purchase Amount at start :  %llu.%02llu",
-                    appData.amountAuthorizedBin / 100, appData.amountAuthorizedBin % 100);
+            logDataEx("L3-App", "Command", "Purchase Amount at start :  %llu.%02llu",
+                      appData.amountAuthorizedBin / 100, appData.amountAuthorizedBin % 100);
         }
 
         if (reqMessage.sCard.isCheckDateAvailable)
@@ -640,8 +643,8 @@ char *handleSearchCard(struct message reqMessage)
         char transactionId[38];
         if (isTherePendingReversal(transactionId) == true)
         {
-            logInfo("There is a pending reversal, trying to send to host");
-            logInfo("Transaction id for reversal : %s", transactionId);
+            logInfoEx("Command", "", "There is a pending reversal, trying to send to host");
+            logInfoEx("Command", "", "Transaction id for reversal : %s", transactionId);
             // performReversal(transactionId, true, "E2");
             return buildResponseMessage(STATUS_REVERSAL_PENDING, 0);
         }
@@ -650,42 +653,42 @@ char *handleSearchCard(struct message reqMessage)
         {
             appData.amountKnownAtStart = 1;
             appData.amountAuthorizedBin = strtol(reqMessage.sCard.amount, NULL, 10);
-            logData("Money Add Amount at start :  %llu.%02llu",
-                    appData.amountAuthorizedBin / 100, appData.amountAuthorizedBin % 100);
+            logDataEx("L3-App", "Command", "Money Add Amount at start :  %llu.%02llu",
+                      appData.amountAuthorizedBin / 100, appData.amountAuthorizedBin % 100);
 
             if (appData.amountAuthorizedBin == 0)
             {
-                logData("Money add, amount is 0");
+                logDataEx("L3-App", "Command", "Money add, amount is 0");
                 return buildResponseMessage(STATUS_ERROR, ERR_MONEY_ADD_AMOUNT_NOT_AVAILABLE);
             }
 
             // if (isValidTrxMode(reqMessage.mData.trxMode) == false)
             // {
-            //     logData("Money add, invalid trx mode");
+            //     logDataEx("L3-App", "Command", "Money add, invalid trx mode");
             //     return buildResponseMessage(STATUS_ERROR, ERR_MONEY_ADD_WRONG_TYPE);
             // }
 
             safe_strcpy(appData.moneyAddTrxType, sizeof(appData.moneyAddTrxType), reqMessage.mData.trxMode);
-            logData("Money add transaction type : %s", appData.moneyAddTrxType);
+            logDataEx("L3-App", "Command", "Money add transaction type : %s", appData.moneyAddTrxType);
 
             safe_strcpy(appData.moneyAddTid, sizeof(appData.moneyAddTid), reqMessage.mData.moneyAddTid);
-            logData("Money add tid : %s", appData.moneyAddTid);
+            logDataEx("L3-App", "Command", "Money add tid : %s", appData.moneyAddTid);
 
             safe_strcpy(appData.moneyAddRRN, sizeof(appData.moneyAddRRN), reqMessage.mData.moneyAddRRn);
-            logData("Money add rrn : %s", appData.moneyAddRRN);
+            logDataEx("L3-App", "Command", "Money add rrn : %s", appData.moneyAddRRN);
 
             // if (strlen(reqMessage.mData.sourceTxnId) == 0)
             // {
-            //     logData("Money add source txn id missing");
+            //     logDataEx("L3-App", "Command", "Money add source txn id missing");
             //     return buildResponseMessage(STATUS_ERROR, ERR_MONEY_MISSING_SOURCE_TXN);
             // }
 
             // safe_strcpy(appData.sourceTxnId, reqMessage.mData.sourceTxnId);
-            // logData("Money add source txn id : %s", appData.sourceTxnId);
+            // logDataEx("L3-App", "Command", "Money add source txn id : %s", appData.sourceTxnId);
         }
         else
         {
-            logData("Money add amount missing");
+            logDataEx("L3-App", "Command", "Money add amount missing");
             return buildResponseMessage(STATUS_ERROR, ERR_MONEY_ADD_AMOUNT_NOT_AVAILABLE);
         }
     }
@@ -697,12 +700,12 @@ char *handleSearchCard(struct message reqMessage)
         char transactionId[38];
         if (isTherePendingReversal(transactionId) == true)
         {
-            logInfo("There is a pending reversal, trying to send to host");
-            logInfo("Transaction id for reversal : %s", transactionId);
+            logInfoEx("Command", "", "There is a pending reversal, trying to send to host");
+            logInfoEx("Command", "", "Transaction id for reversal : %s", transactionId);
             // performReversal(transactionId, true, "E2");
             return buildResponseMessage(STATUS_REVERSAL_PENDING, 0);
         }
-        logInfo("There are no pending reversal, going for balance update");
+        logInfoEx("Command", "", "There are no pending reversal, going for balance update");
     }
 
     memset(appData.createServiceId, 0, sizeof(appData.createServiceId));
@@ -711,8 +714,8 @@ char *handleSearchCard(struct message reqMessage)
         char transactionId[38];
         if (isTherePendingReversal(transactionId) == true)
         {
-            logInfo("There is a pending reversal, trying to send to host");
-            logInfo("Transaction id for reversal : %s", transactionId);
+            logInfoEx("Command", "", "There is a pending reversal, trying to send to host");
+            logInfoEx("Command", "", "Transaction id for reversal : %s", transactionId);
             // performReversal(transactionId, true, "E2");
             return buildResponseMessage(STATUS_REVERSAL_PENDING, 0);
         }
@@ -723,9 +726,9 @@ char *handleSearchCard(struct message reqMessage)
         safe_strcpy(appData.createServiceId, sizeof(appData.createServiceId), reqMessage.sCard.serviceId);
     }
 
-    logData("Transaction Type to be processed : %02x", appData.trxTypeBin);
+    logDataEx("L3-App", "Command", "Transaction Type to be processed : %02x", appData.trxTypeBin);
 
-    logData("Setting the variable for the thread to run the transaction");
+    logDataEx("L3-App", "Command", "Setting the variable for the thread to run the transaction");
     doLock();
     canRunTransaction = true;
     doUnLock();
@@ -749,14 +752,14 @@ bool isValidTrxMode(const char mode[20])
  **/
 struct message parseMessage(const char *data)
 {
-    logData("Going to parse the message : %s", data);
+    logDataEx("L3-App", "Command", "Going to parse the message : %s", data);
     struct message reqMessage;
     json_object *jObject = json_tokener_parse(data);
 
     safe_strcpy(reqMessage.cmd, sizeof(reqMessage.cmd),
                 (char *)json_object_get_string(json_object_object_get(jObject, COMMAND)));
 
-    logData("Command : %s", reqMessage.cmd);
+    logDataEx("L3-App", "Command", "Command : %s", reqMessage.cmd);
 
     if (strcmp(reqMessage.cmd, COMMAND_GET_DISK_SPACE) == 0)
     {
@@ -766,7 +769,7 @@ struct message parseMessage(const char *data)
         }
         else
         {
-            logData("Path is missing, so setting to default /");
+            logDataEx("L3-App", "Command", "Path is missing, so setting to default /");
             safe_strcpy(reqMessage.dSpace.path, sizeof(reqMessage.dSpace.path), "/");
         }
     }
@@ -993,7 +996,7 @@ struct message parseMessage(const char *data)
             }
             else
             {
-                logData("AMOUNT NOT PROVIDED AT START");
+                logDataEx("L3-App", "Command", "AMOUNT NOT PROVIDED AT START");
             }
 
             if (json_object_get_string(json_object_object_get(jObject, SEARCH_CARD_CHECK_DATE)) != NULL)
@@ -1005,7 +1008,7 @@ struct message parseMessage(const char *data)
             else
             {
                 reqMessage.sCard.isCheckDateAvailable = false;
-                logData("Check date not provided");
+                logDataEx("L3-App", "Command", "Check date not provided");
             }
         }
 
@@ -1053,7 +1056,7 @@ struct message parseMessage(const char *data)
 
     if (strcmp(reqMessage.cmd, COMMAND_GATE_OPEN) == 0)
     {
-        logData("Going to read the gate open status");
+        logDataEx("L3-App", "Command", "Going to read the gate open status");
         reqMessage.gateOpenData.status = false;
         if (json_object_object_get(jObject, GATE_OPEN_GATE_STATUS) != NULL)
         {
@@ -1065,26 +1068,26 @@ struct message parseMessage(const char *data)
 
     if (strcmp(reqMessage.cmd, COMMAND_WRITE_CARD) == 0)
     {
-        logData("Going to read the amount");
+        logDataEx("L3-App", "Command", "Going to read the amount");
         memset(reqMessage.wCard.serviceData, 0, 200);
 
         safe_strcpy(reqMessage.wCard.amount, sizeof(reqMessage.wCard.amount),
                     (char *)json_object_get_string(json_object_object_get(jObject, WRITE_CARD_AMOUNT)));
         if (json_object_get_string(json_object_object_get(jObject, WRITE_CARD_SERVICE_DATA)) == NULL)
         {
-            logData("No service data available");
+            logDataEx("L3-App", "Command", "No service data available");
             isServiceDataAvailable = 0;
             reqMessage.wCard.serviceData[0] = '\0';
         }
         else
         {
             isServiceDataAvailable = 1;
-            logData("Service data provided : %s",
-                    (char *)json_object_get_string(json_object_object_get(jObject, WRITE_CARD_SERVICE_DATA)));
+            logDataEx("L3-App", "Command", "Service data provided : %s",
+                      (char *)json_object_get_string(json_object_object_get(jObject, WRITE_CARD_SERVICE_DATA)));
             safe_strcpy(reqMessage.wCard.serviceData, sizeof(reqMessage.wCard.serviceData),
                         (char *)json_object_get_string(json_object_object_get(jObject, WRITE_CARD_SERVICE_DATA)));
         }
-        logData("Data read is : %s", reqMessage.wCard.serviceData);
+        logDataEx("L3-App", "Command", "Data read is : %s", reqMessage.wCard.serviceData);
     }
 
     if (strcmp(reqMessage.cmd, COMMAND_FETCH_AUTH) == 0)
@@ -1127,9 +1130,9 @@ struct message parseMessage(const char *data)
  **/
 int performReboot()
 {
-    logData("Going to reboot the terminal");
+    logDataEx("L3-App", "Command", "Going to reboot the terminal");
     int result = fetrm_reboot();
-    logData("Reboot Result : %d", result);
+    logDataEx("L3-App", "Command", "Reboot Result : %d", result);
     return result;
 }
 
@@ -1140,14 +1143,14 @@ void changeAppState(enum app_status status)
 {
     if (status == appData.status)
     {
-        logData("Current Status : %s ", getStatusString());
-        logData("Both the status are same, so nothing to send");
+        logDataEx("L3-App", "Command", "Current Status : %s ", getStatusString());
+        logDataEx("L3-App", "Command", "Both the status are same, so nothing to send");
         return;
     }
 
-    logData("Current Status : %s ", getStatusString());
+    logDataEx("L3-App", "Command", "Current Status : %s ", getStatusString());
     appData.status = status;
-    logData("Changed Status : %s ", getStatusString());
+    logDataEx("L3-App", "Command", "Changed Status : %s ", getStatusString());
 
     char *response = buildResponseMessage(getStatusString(), 0);
     send(CLIENT_SOCKET, response, strlen(response), 0);
@@ -1156,12 +1159,12 @@ void changeAppState(enum app_status status)
 
     if (IS_SERIAL_CONNECTED == 1)
     {
-        logInfo("Writing status to serial port.");
+        logInfoEx("Command", "", "Writing status to serial port.");
         write(SERIAL_PORT, response, strlen(response));
     }
     else
     {
-        logData("Serial port not connected, not writing anything");
+        logDataEx("L3-App", "Command", "Serial port not connected, not writing anything");
     }
 
     free(response);

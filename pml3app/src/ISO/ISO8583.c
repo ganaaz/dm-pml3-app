@@ -275,7 +275,7 @@ ISO8583_ERROR_CODES initialize_static_data(ISO8583_STATIC_DATA *data)
     static_data.HOST_PORT = data->HOST_PORT;
     static_data.TRANSACTION_TIMOUT = data->TRANSACTION_TIMOUT;
 
-    logData("Static Data initialisation Success");
+    logDataEx("L3-App", "ISO", "Static Data initialisation Success");
     return TXN_SUCCESS;
 }
 
@@ -293,7 +293,7 @@ ISO8583_ERROR_CODES get_field_length(bool isDe63, ISO8583_FIELD_LENGTH length_ty
             padd_left_with_zero_i(len, 2, length_hexstr);
             return TXN_SUCCESS;
         }
-        logData("Invalid Length");
+        logDataEx("L3-App", "ISO", "Invalid Length");
         break;
     case LLVARENC:
         len = strlen(field_data_hex_str);
@@ -302,7 +302,7 @@ ISO8583_ERROR_CODES get_field_length(bool isDe63, ISO8583_FIELD_LENGTH length_ty
             padd_left_with_zero_i(len, 2, length_hexstr);
             return TXN_SUCCESS;
         }
-        logData("Invalid Length");
+        logDataEx("L3-App", "ISO", "Invalid Length");
         break;
     case TRACK_LEN:
         len = strlen(field_data_hex_str);
@@ -315,7 +315,7 @@ ISO8583_ERROR_CODES get_field_length(bool isDe63, ISO8583_FIELD_LENGTH length_ty
             padd_left_with_zero_i(len, 2, length_hexstr);
             return TXN_SUCCESS;
         }
-        logData("Invalid Length");
+        logDataEx("L3-App", "ISO", "Invalid Length");
         break;
     case LLLVAR:
         len = strlen(field_data_hex_str) / 2;
@@ -329,10 +329,10 @@ ISO8583_ERROR_CODES get_field_length(bool isDe63, ISO8583_FIELD_LENGTH length_ty
             padd_left_with_zero_i(len, 4, length_hexstr);
             return TXN_SUCCESS;
         }
-        logData("Invalid Length");
+        logDataEx("L3-App", "ISO", "Invalid Length");
         break;
     case BITMAP:
-        logData("Field Length for BITMAP not implemented");
+        logDataEx("L3-App", "ISO", "Field Length for BITMAP not implemented");
         break;
     case LLLLVAR:
         len = strlen(field_data_hex_str) / 2;
@@ -343,7 +343,7 @@ ISO8583_ERROR_CODES get_field_length(bool isDe63, ISO8583_FIELD_LENGTH length_ty
         }
         break;
     default:
-        logData("Invalid Length type");
+        logDataEx("L3-App", "ISO", "Invalid Length type");
         break;
     }
     return TXN_PACK_FAILED;
@@ -376,14 +376,14 @@ ISO8583_ERROR_CODES pad_field_data(ISO8583_PAD_TYPE pad_type, ISO8583_FIELD_SYNT
             len = (strlen(field_data_hex_str) % 2) ? strlen(field_data_hex_str) + 1 : strlen(field_data_hex_str);
             return padd_left_s(field_data_hex_str, syntax, len, pad_char, outstr) == TXN_SUCCESS ? TXN_SUCCESS : ret;
         default:
-            logData("Invalid PAD Method");
+            logDataEx("L3-App", "ISO", "Invalid PAD Method");
             break;
         }
         break;
     case PAD_NONE:
         if (strlen(field_data_hex_str) % 2)
         {
-            logData("Invalid hex string field Data");
+            logDataEx("L3-App", "ISO", "Invalid hex string field Data");
             break;
         }
         else
@@ -403,15 +403,15 @@ ISO8583_ERROR_CODES pad_field_data(ISO8583_PAD_TYPE pad_type, ISO8583_FIELD_SYNT
             len = (strlen(field_data_hex_str) % 2) ? strlen(field_data_hex_str) + 1 : strlen(field_data_hex_str);
             return padd_right_s(field_data_hex_str, syntax, len, pad_char, outstr) == TXN_SUCCESS ? TXN_SUCCESS : ret;
         default:
-            logData("Invalid PAD Method");
+            logDataEx("L3-App", "ISO", "Invalid PAD Method");
             break;
         }
         break;
     case MIXED_PAD:
-        logData("Mixed PAD Padding Type not implemented");
+        logDataEx("L3-App", "ISO", "Mixed PAD Padding Type not implemented");
         break;
     default:
-        logData("Invalid PAD Type");
+        logDataEx("L3-App", "ISO", "Invalid PAD Type");
         break;
     }
 
@@ -422,13 +422,13 @@ ISO8583_ERROR_CODES copy_value(ISO8583_TXN_REQ_OBJECT *txn_obj, ISO8583_FIELD fi
 {
     if (value == NULL)
     {
-        logData("Value for the Field %d is NULL", field);
+        logDataEx("L3-App", "ISO", "Value for the Field %d is NULL", field);
         return TXN_PACK_VALIDATION_FAILED;
     }
 
     if (strlen(value) > field_def[field].max_length)
     {
-        logData("value size is exceeding maxlength of the field for the Field %d MaxLen: %d and Length : %d", field, field_def[field].max_length, (int)strlen(value));
+        logDataEx("L3-App", "ISO", "value size is exceeding maxlength of the field for the Field %d MaxLen: %d and Length : %d", field, field_def[field].max_length, (int)strlen(value));
         return TXN_PACK_VALIDATION_FAILED;
     }
 
@@ -447,13 +447,13 @@ ISO8583_ERROR_CODES copy_tpdu(ISO8583_TXN_REQ_OBJECT *txn_obj)
 {
     if (txn_obj == NULL)
     {
-        logData("NULL Transaction Object Received");
+        logDataEx("L3-App", "ISO", "NULL Transaction Object Received");
         return TXN_PACK_FAILED;
     }
 
     if (txn_obj->message == NULL)
     {
-        logData("NULL message buffer Received");
+        logDataEx("L3-App", "ISO", "NULL message buffer Received");
         return TXN_PACK_FAILED;
     }
 
@@ -466,19 +466,19 @@ ISO8583_ERROR_CODES copy_mti(ISO8583_TXN_REQ_OBJECT *txn_obj, TRANSACTION txn)
 {
     if (txn_obj == NULL)
     {
-        logData("NULL Transaction Object Received");
+        logDataEx("L3-App", "ISO", "NULL Transaction Object Received");
         return TXN_PACK_FAILED;
     }
 
     if (txn_obj->message == NULL)
     {
-        logData("NULL message buffer Received");
+        logDataEx("L3-App", "ISO", "NULL message buffer Received");
         return TXN_PACK_FAILED;
     }
 
     if (txn >= END_TRANSACTION)
     {
-        logData("Invalid Transaction Received");
+        logDataEx("L3-App", "ISO", "Invalid Transaction Received");
         return TXN_PACK_FAILED;
     }
 
@@ -491,19 +491,19 @@ ISO8583_ERROR_CODES copy_bitmap(ISO8583_TXN_REQ_OBJECT *txn_obj, TRANSACTION txn
 {
     if (txn_obj == NULL)
     {
-        logData("NULL Transaction Object Received");
+        logDataEx("L3-App", "ISO", "NULL Transaction Object Received");
         return TXN_PACK_FAILED;
     }
 
     if (txn_obj->message == NULL)
     {
-        logData("NULL message buffer Received");
+        logDataEx("L3-App", "ISO", "NULL message buffer Received");
         return TXN_PACK_FAILED;
     }
 
     if (txn >= END_TRANSACTION)
     {
-        logData("Invalid Transaction Received");
+        logDataEx("L3-App", "ISO", "Invalid Transaction Received");
         return TXN_PACK_FAILED;
     }
 
@@ -523,7 +523,7 @@ ISO8583_SUB_FIELD_VALUE *get_sub_field_value(ISO8583_COMPLEX_FIELD_VALUE *comple
 {
     if (complex_val->count <= 0 || complex_val->value == NULL)
     {
-        logData("Invalid complex value");
+        logDataEx("L3-App", "ISO", "Invalid complex value");
         return (ISO8583_SUB_FIELD_VALUE *)NULL;
     }
 
@@ -539,7 +539,7 @@ ISO8583_SUB_COMPONENT_VALUE *get_sub_component_value(ISO8583_SUB_FIELD_VALUE *su
 {
     if (sub_field_val->count <= 0 || sub_field_val->value == NULL)
     {
-        logData("Invalid Subfield value");
+        logDataEx("L3-App", "ISO", "Invalid Subfield value");
         return (ISO8583_SUB_COMPONENT_VALUE *)NULL;
     }
 
@@ -556,18 +556,18 @@ ISO8583_ERROR_CODES pack_simple_field(ISO8583_TXN_REQ_OBJECT *txn_obj, ISO8583_F
     ISO8583_ERROR_CODES ret = TXN_PACK_FAILED;
     if (txn_obj == NULL)
     {
-        logData("Invalid Transaction Request object Received for packing Simple field");
+        logDataEx("L3-App", "ISO", "Invalid Transaction Request object Received for packing Simple field");
         return ret;
     }
     if (txn_obj->data[field].type != SIMPLE)
     {
-        logData("Invalid field type for Field : %d and Type : %d", field, txn_obj->data[field].type);
+        logDataEx("L3-App", "ISO", "Invalid field type for Field : %d and Type : %d", field, txn_obj->data[field].type);
         return ret;
     }
 
     if (txn_obj->data[field].field_value.simple_field.value == NULL)
     {
-        logData("NULL Value Received for packing field %d", field);
+        logDataEx("L3-App", "ISO", "NULL Value Received for packing field %d", field);
         return ret;
     }
 
@@ -599,13 +599,13 @@ ISO8583_ERROR_CODES pack_simple_field(ISO8583_TXN_REQ_OBJECT *txn_obj, ISO8583_F
         }
         else
         {
-            logData("Packing Field Length Failed");
+            logDataEx("L3-App", "ISO", "Packing Field Length Failed");
             ret = TXN_PACK_FAILED;
         }
     }
     else
     {
-        logData("Packing Field Data Failed");
+        logDataEx("L3-App", "ISO", "Packing Field Data Failed");
         ret = TXN_PACK_FAILED;
     }
 
@@ -622,19 +622,19 @@ ISO8583_ERROR_CODES pack_complex_field(ISO8583_TXN_REQ_OBJECT *txn_obj, ISO8583_
     ISO8583_ERROR_CODES ret = TXN_PACK_FAILED;
     if (txn_obj == NULL)
     {
-        logData("Invalid Transaction Request object Received for packing Complex field");
+        logDataEx("L3-App", "ISO", "Invalid Transaction Request object Received for packing Complex field");
         return ret;
     }
 
     if (txn_obj->data[field].field_value.complex_field.value == NULL)
     {
-        logData("NULL Sub Field Value Received");
+        logDataEx("L3-App", "ISO", "NULL Sub Field Value Received");
         return ret;
     }
 
     if (txn_obj->data[field].type == COMPLEX)
     {
-        logData("Invalid transaction object or field type");
+        logDataEx("L3-App", "ISO", "Invalid transaction object or field type");
         return ret;
     }
 
@@ -689,7 +689,7 @@ ISO8583_ERROR_CODES pack_complex_field(ISO8583_TXN_REQ_OBJECT *txn_obj, ISO8583_
         }
         else
         {
-            logData("Packing Field Length Failed");
+            logDataEx("L3-App", "ISO", "Packing Field Length Failed");
             ret = TXN_PACK_FAILED;
             break;
         }
@@ -721,9 +721,9 @@ ISO8583_ERROR_CODES pack(ISO8583_TXN_REQ_OBJECT *txn_obj, TRANSACTION txn, unsig
         if (ret != TXN_SUCCESS)
             return ret;
 
-        logData("TXN : %d", txn);
-        logData("Bitmap 1 : %02X", bitmap_def[txn].req_field_1_32);
-        logData("Bitmap 2 : %02X", bitmap_def[txn].req_field_33_64);
+        logDataEx("L3-App", "ISO", "TXN : %d", txn);
+        logDataEx("L3-App", "ISO", "Bitmap 1 : %02X", bitmap_def[txn].req_field_1_32);
+        logDataEx("L3-App", "ISO", "Bitmap 2 : %02X", bitmap_def[txn].req_field_33_64);
 
         for (int i = 0; i < 2; i++)
         {
@@ -744,7 +744,7 @@ ISO8583_ERROR_CODES pack(ISO8583_TXN_REQ_OBJECT *txn_obj, TRANSACTION txn, unsig
 
                     if (ret != TXN_SUCCESS)
                     {
-                        logData("Packing failed for field: %d", j + length);
+                        logDataEx("L3-App", "ISO", "Packing failed for field: %d", j + length);
                         return ret;
                     }
                 }
@@ -755,12 +755,12 @@ ISO8583_ERROR_CODES pack(ISO8583_TXN_REQ_OBJECT *txn_obj, TRANSACTION txn, unsig
         ret = get_total_msg_length((char *)txn_obj->message, &total_msg_length);
         if (ret != TXN_SUCCESS)
         {
-            logData("Calculating Total Message length failed");
+            logDataEx("L3-App", "ISO", "Calculating Total Message length failed");
             ret = TXN_PACK_FAILED;
         }
         char *msg = (char *)malloc(txn_obj->len + LENGTH_OF_MSG_LEN + 1); // TODO Check
         sprintf(msg, "%s%s", total_msg_length, txn_obj->message);
-        logData("Total message : %s", msg);
+        logDataEx("L3-App", "ISO", "Total message : %s", msg);
 
         if (total_msg_length)
             free(total_msg_length);
@@ -776,7 +776,7 @@ ISO8583_ERROR_CODES pack(ISO8583_TXN_REQ_OBJECT *txn_obj, TRANSACTION txn, unsig
             if (msg)
                 free(msg);
             *msg_len = 0;
-            logData("Failed to Pack the final Message");
+            logDataEx("L3-App", "ISO", "Failed to Pack the final Message");
             ret = TXN_PACK_FAILED;
         }
 
@@ -784,7 +784,7 @@ ISO8583_ERROR_CODES pack(ISO8583_TXN_REQ_OBJECT *txn_obj, TRANSACTION txn, unsig
             free(msg);
     }
     else
-        logData("Invalid Transaction for Packing");
+        logDataEx("L3-App", "ISO", "Invalid Transaction for Packing");
 
     return ret;
 }
@@ -794,13 +794,13 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
     ISO8583_ERROR_CODES ret = TXN_PARSE_FAILED;
     if (*buffer == NULL)
     {
-        logData("NULL Buffer received for parsing simple field : %d", field);
+        logDataEx("L3-App", "ISO", "NULL Buffer received for parsing simple field : %d", field);
         return ret;
     }
 
     if (*len <= 0)
     {
-        logData("Invalid Buffer length received for parsing simple field : %d", field);
+        logDataEx("L3-App", "ISO", "Invalid Buffer length received for parsing simple field : %d", field);
         return ret;
     }
 
@@ -826,7 +826,7 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
         *len = *len - 2;
         if (length > get_parser_hex_string_len(field_def[field].syntax, field_def[field].max_length))
         {
-            logData("Invalid length for variable length in Response Message for field %d.", field);
+            logDataEx("L3-App", "ISO", "Invalid length for variable length in Response Message for field %d.", field);
             return ret;
         }
         resp_txn_obj->data[field].field_value.simple_field.value = (unsigned char *)malloc(length + NULL_BYTE_LEN);
@@ -840,12 +840,12 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
     case LLLLVAR:
         length = hexstr_to_decimal(*buffer, 4);
         length = get_parser_hex_string_len(field_def[field].syntax, length);
-        logData("Length : %d", length);
+        logDataEx("L3-App", "ISO", "Length : %d", length);
         *buffer = *buffer + 4;
         *len = *len - 4;
         if (length > get_parser_hex_string_len(field_def[field].syntax, field_def[field].max_length))
         {
-            logData("Invalid length for variable length in Response Message for field %d.", field);
+            logDataEx("L3-App", "ISO", "Invalid length for variable length in Response Message for field %d.", field);
             return ret;
         }
         resp_txn_obj->data[field].field_value.simple_field.value = (unsigned char *)malloc(length + NULL_BYTE_LEN);
@@ -856,7 +856,7 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
         *len = *len - length;
         break;
     default:
-        logData("invalid length type for field %d", field);
+        logDataEx("L3-App", "ISO", "invalid length type for field %d", field);
         break;
     }
 
@@ -867,14 +867,14 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
     case DE03_PROCESSING_CODE:
         // if (strncmp(pro_codes_def[txn].resp_proc_code, (const char *)resp_txn_obj->data[field].field_value.simple_field.value, strlen((const char *)resp_txn_obj->data[field].field_value.simple_field.value)))
         // {
-        //     logData("Processing Code Validation Failed");
+        //     logDataEx("L3-App", "ISO", "Processing Code Validation Failed");
         //     return TXN_PACK_VALIDATION_FAILED;
         // }
         break;
     case DE11_STAN:
         if (strncmp((const char *)txn_obj->data[field].field_value.simple_field.value, (const char *)resp_txn_obj->data[field].field_value.simple_field.value, strlen((const char *)resp_txn_obj->data[field].field_value.simple_field.value)))
         {
-            logData("STAN Validation Failed");
+            logDataEx("L3-App", "ISO", "STAN Validation Failed");
             return TXN_PACK_VALIDATION_FAILED;
         }
         break;
@@ -882,7 +882,7 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
     case DE39_RESPONSE_CODE:
         if (strncmp((const char *)resp_txn_obj->data[field].field_value.simple_field.value, RESPONSE_CODE_SUCCESS, strlen(RESPONSE_CODE_SUCCESS)))
         {
-            logData("RESPONSE_CODE Validation Failed");
+            logDataEx("L3-App", "ISO", "RESPONSE_CODE Validation Failed");
             // return TXN_PACK_VALIDATION_FAILED;
         }
         break;
@@ -890,7 +890,7 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
     case DE41_CARD_ACCEPTOR_TERMINAL_ID:
         if (strncmp((const char *)txn_obj->data[field].field_value.simple_field.value, (const char *)resp_txn_obj->data[field].field_value.simple_field.value, resp_txn_obj->data[field].field_value.simple_field.len))
         {
-            logData("TERMINAL_ID Validation Failed");
+            logDataEx("L3-App", "ISO", "TERMINAL_ID Validation Failed");
             return TXN_PACK_VALIDATION_FAILED;
         }
         break;
@@ -906,13 +906,13 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
 // {
 //     if (*buffer == NULL)
 //     {
-//         logData("NULL Buffer received for parsing Sub field : %d", field);
+//         logDataEx("L3-App", "ISO", "NULL Buffer received for parsing Sub field : %d", field);
 //         return TXN_FAILED;
 //     }
 
 //     if (*len <= 0)
 //     {
-//         logData("Invalid Buffer length received for parsing Sub field : %d", field);
+//         logDataEx("L3-App", "ISO", "Invalid Buffer length received for parsing Sub field : %d", field);
 //         return TXN_FAILED;
 //     }
 //     switch (sub_field_def[field].length_type)
@@ -932,7 +932,7 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
 //         length = ((length & 0xF0) >> 4) * 10 + (length & 0x0F);
 //         if (length > sub_field_def[field].max_length)
 //         {
-//             logData("Invalid length for variable length in Response Message for sub field %d.", field);
+//             logDataEx("L3-App", "ISO", "Invalid length for variable length in Response Message for sub field %d.", field);
 //             return TXN_FAILED;
 //         }
 //         resp_sub_field->value = (unsigned char *)malloc(length);
@@ -949,7 +949,7 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
 //         length = ((length & 0xF000) >> 12) * 1000 + ((length & 0x0F00) >> 8) * 100 + ((length & 0x00F0) >> 4) * 10 + (length & 0x000F);
 //         if (length > sub_field_def[field].max_length)
 //         {
-//             logData("Invalid length for variable length in Response Message for sub field %d.", field);
+//             logDataEx("L3-App", "ISO", "Invalid length for variable length in Response Message for sub field %d.", field);
 //             return TXN_FAILED;
 //         }
 //         resp_sub_field->value = (unsigned char *)malloc(length);
@@ -959,13 +959,13 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
 //         *len = *len - length;
 //         break;
 //     default:
-//         logData("invalid length type for sub field %d", field);
+//         logDataEx("L3-App", "ISO", "invalid length type for sub field %d", field);
 //         break;
 //     }
 
 //     if (req_sub_field_value == NULL)
 //     {
-//         logData("Request Sub Field Value is NULL, Skipping Sub Field validation.");
+//         logDataEx("L3-App", "ISO", "Request Sub Field Value is NULL, Skipping Sub Field validation.");
 //         return TXN_SUCCESS;
 //     }
 //     //Validate Sub Field:
@@ -976,7 +976,7 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
 //     //     bytearray_to_hexstr(resp_txn_obj->data[field].field_value.simple_field.value, resp_txn_obj->data[field].field_value.simple_field.len, &value);
 //     //     if (strncmp(txn_obj->data[DE11_STAN].field_value.simple_field.value, value, strlen(value)))
 //     //     {
-//     //         logData("STAN Validation Failed");
+//     //         logDataEx("L3-App", "ISO", "STAN Validation Failed");
 //     //         return TXN_FAILED;
 //     //     }
 //     //     if (value)
@@ -989,7 +989,7 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
 //     // case DE39_RESPONSE_CODE:
 //     //     if (strncmp(resp_txn_obj->data[field].field_value.simple_field.value, "00", strlen("00")))
 //     //     {
-//     //         logData("RESPONSE_CODE Validation Failed");
+//     //         logDataEx("L3-App", "ISO", "RESPONSE_CODE Validation Failed");
 //     //         return TXN_FAILED;
 //     //     }
 //     //     break;
@@ -997,7 +997,7 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
 //     // case DE41_CARD_ACCEPTOR_TERMINAL_ID:
 //     //     if (strncmp(txn_obj->data[DE11_STAN].field_value.simple_field.value, resp_txn_obj->data[field].field_value.simple_field.value, resp_txn_obj->data[field].field_value.simple_field.len))
 //     //     {
-//     //         logData("TERMINAL_ID Validation Failed");
+//     //         logDataEx("L3-App", "ISO", "TERMINAL_ID Validation Failed");
 //     //         return TXN_FAILED;
 //     //     }
 //     //     break;
@@ -1012,13 +1012,13 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
 // {
 //     if (*buffer == NULL)
 //     {
-//         logData("NULL Buffer received for parsing Complex field : %d", field);
+//         logDataEx("L3-App", "ISO", "NULL Buffer received for parsing Complex field : %d", field);
 //         return TXN_FAILED;
 //     }
 
 //     if (*len <= 0)
 //     {
-//         logData("Invalid Buffer length received for parsing Complex field : %d", field);
+//         logDataEx("L3-App", "ISO", "Invalid Buffer length received for parsing Complex field : %d", field);
 //         return TXN_FAILED;
 //     }
 //     switch (field_def[field].length_type)
@@ -1038,7 +1038,7 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
 //         length = ((length & 0xF0) >> 4) * 10 + (length & 0x0F);
 //         if (length > field_def[field].max_length)
 //         {
-//             logData("Invalid length for variable length in Response Message for field %d.", field);
+//             logDataEx("L3-App", "ISO", "Invalid length for variable length in Response Message for field %d.", field);
 //             return TXN_FAILED;
 //         }
 //         resp_txn_obj->data[field].field_value.complex_field.complex_value = (unsigned char *)malloc(length);
@@ -1055,7 +1055,7 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
 //         length = ((length & 0xF000) >> 12) * 1000 + ((length & 0x0F00) >> 8) * 100 + ((length & 0x00F0) >> 4) * 10 + (length & 0x000F);
 //         if (length > field_def[field].max_length)
 //         {
-//             logData("Invalid length for variable length in Response Message for field %d.", field);
+//             logDataEx("L3-App", "ISO", "Invalid length for variable length in Response Message for field %d.", field);
 //             return TXN_FAILED;
 //         }
 //         resp_txn_obj->data[field].field_value.complex_field.complex_value = (unsigned char *)malloc(length);
@@ -1065,7 +1065,7 @@ ISO8583_ERROR_CODES parse_simple_field(ISO8583_TXN_RESP_OBJECT *resp_txn_obj, IS
 //         *len = *len - length;
 //         break;
 //     default:
-//         logData("invalid length type for field %d", field);
+//         logDataEx("L3-App", "ISO", "invalid length type for field %d", field);
 //         break;
 //     }
 
@@ -1099,7 +1099,7 @@ ISO8583_ERROR_CODES parse(unsigned char *response, int response_len, ISO8583_TXN
     ISO8583_ERROR_CODES ret = TXN_PARSE_FAILED;
     if (response == NULL)
     {
-        logData("NULL Response Buffer Received for parsing");
+        logDataEx("L3-App", "ISO", "NULL Response Buffer Received for parsing");
         return ret;
     }
 
@@ -1109,7 +1109,7 @@ ISO8583_ERROR_CODES parse(unsigned char *response, int response_len, ISO8583_TXN
 
     if (hex_response_len < LENGTH_OF_MSG_LEN)
     {
-        logData("Invalid Response length Received for parsing");
+        logDataEx("L3-App", "ISO", "Invalid Response length Received for parsing");
         if (hex_response)
             free(hex_response);
         return ret;
@@ -1118,7 +1118,7 @@ ISO8583_ERROR_CODES parse(unsigned char *response, int response_len, ISO8583_TXN
     int len = hexstr_to_long(hex_response, LENGTH_OF_MSG_LEN);
     if (len * 2 != hex_response_len - LENGTH_OF_MSG_LEN)
     {
-        logData("Corrupted Response Data Received for parsing");
+        logDataEx("L3-App", "ISO", "Corrupted Response Data Received for parsing");
         if (hex_response)
             free(hex_response);
         return ret;
@@ -1127,7 +1127,7 @@ ISO8583_ERROR_CODES parse(unsigned char *response, int response_len, ISO8583_TXN
     len = strlen(mti_def[txn].resp_mti);
     if (strncmp(hex_response + 14, mti_def[txn].resp_mti, len))
     {
-        logData("Invalid MTI received in the response");
+        logDataEx("L3-App", "ISO", "Invalid MTI received in the response");
         if (hex_response)
             free(hex_response);
         return TXN_PARSE_VALIDATION_FAILED;
@@ -1168,7 +1168,7 @@ ISO8583_ERROR_CODES parse(unsigned char *response, int response_len, ISO8583_TXN
                         int ret = parse_simple_field(resp_obj, field_def[length + j].field, txn_obj, txn, &temp_response, &temp_response_len);
                         if (ret != TXN_SUCCESS)
                         {
-                            logData("Failed to parse field %d", length + j);
+                            logDataEx("L3-App", "ISO", "Failed to parse field %d", length + j);
                             if (resp_obj)
                             {
                                 clear_transaction_object(resp_obj);
@@ -1183,14 +1183,14 @@ ISO8583_ERROR_CODES parse(unsigned char *response, int response_len, ISO8583_TXN
                         // ret = parse_complex_field(resp_obj, field_def[length + j].field, txn_obj, txn, &temp_response, &temp_response_len);
                         // if (ret != TXN_SUCCESS)
                         // {
-                        //     logData("Failed to parse field %d", length + j);
+                        //     logDataEx("L3-App", "ISO", "Failed to parse field %d", length + j);
                         //     if (resp_obj)
                         //     {
                         //         clear_transaction_object(resp_obj);
                         //     }
                         //     return (ISO8583_TXN_RESP_OBJECT *)NULL;
                         // }
-                        logData("Complex Field parsing Not supported");
+                        logDataEx("L3-App", "ISO", "Complex Field parsing Not supported");
                         if (resp_obj)
                         {
                             clear_transaction_object(resp_obj);
@@ -1202,7 +1202,7 @@ ISO8583_ERROR_CODES parse(unsigned char *response, int response_len, ISO8583_TXN
                 }
                 else
                 {
-                    logData("Field %d is not found in the response", length + j);
+                    logDataEx("L3-App", "ISO", "Field %d is not found in the response", length + j);
                 }
             }
         }
@@ -1217,7 +1217,7 @@ ISO8583_ERROR_CODES process_transaction(ISO8583_TXN_REQ_OBJECT *txn_obj, TRANSAC
 {
     if (txn >= END_TRANSACTION)
     {
-        logData("Invalid Transaction Type: %d", txn);
+        logDataEx("L3-App", "ISO", "Invalid Transaction Type: %d", txn);
         return TXN_FAILED;
     }
 
@@ -1229,7 +1229,7 @@ ISO8583_ERROR_CODES process_transaction(ISO8583_TXN_REQ_OBJECT *txn_obj, TRANSAC
     ISO8583_ERROR_CODES ret = pack(txn_obj, txn, &request, &request_len);
     if (ret != TXN_SUCCESS)
     {
-        logData("Failed To pack the message for Transaction : %d", txn);
+        logDataEx("L3-App", "ISO", "Failed To pack the message for Transaction : %d", txn);
         if (request)
             free(request);
         return ret;
@@ -1238,7 +1238,7 @@ ISO8583_ERROR_CODES process_transaction(ISO8583_TXN_REQ_OBJECT *txn_obj, TRANSAC
     ret = process_with_host(static_data.HOST_IP_ADDRESS, static_data.HOST_PORT, static_data.TRANSACTION_TIMOUT, request, request_len, &response, &response_len);
     if (ret != TXN_SUCCESS)
     {
-        logData("Failed To process transaction to host for Transaction : %d", txn);
+        logDataEx("L3-App", "ISO", "Failed To process transaction to host for Transaction : %d", txn);
         if (request)
             free(request);
         if (response)
@@ -1249,7 +1249,7 @@ ISO8583_ERROR_CODES process_transaction(ISO8583_TXN_REQ_OBJECT *txn_obj, TRANSAC
     ret = parse(response, response_len, txn_obj, txn, resp);
     if (ret != TXN_SUCCESS)
     {
-        logData("Failed To parse response for Transaction : %d", txn);
+        logDataEx("L3-App", "ISO", "Failed To parse response for Transaction : %d", txn);
         if (request)
             free(request);
         if (response)

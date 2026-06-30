@@ -32,7 +32,7 @@ int sendAbtHostRequest(const char *body, const char *resourceName, char response
     ctx = SSL_CTX_new(SSLv23_client_method());
     SSL_CTX_set_timeout(ctx, appConfig.hostTxnTimeout);
     ssl = SSL_new(ctx);
-    logData("ABT SSL Is initialized");
+    logDataEx("ABT", "", "ABT SSL Is initialized");
 
     timeout.tv_usec = 0;
     timeout.tv_sec = appConfig.hostTxnTimeout;
@@ -52,32 +52,32 @@ int sendAbtHostRequest(const char *body, const char *resourceName, char response
     addr.sin_port = htons(appConfig.abtPort);
     addr.sin_addr.s_addr = *(long *)(host->h_addr_list[0]);
 
-    logData("ABT Host names are set and going to connect the socket");
+    logDataEx("ABT", "", "ABT Host names are set and going to connect the socket");
 
     if (connect(sd, (struct sockaddr *)&addr, sizeof(addr)) != 0)
     {
-        logError("ABT Connect failed");
+        logErrorEx("ABT", "Host", "ABT Connect failed");
         retStatus = -1;
         goto done;
     }
 
-    logData("ABT Socket Connect succeeded");
+    logDataEx("ABT", "", "ABT Socket Connect succeeded");
 
     SSL_set_fd(ssl, sd);
 
-    logData("Going to perform SSL Connect");
+    logDataEx("ABT", "", "Going to perform SSL Connect");
     if (SSL_connect(ssl) == FAIL)
     {
         retStatus = -1;
         goto done;
     }
 
-    logData("ABT SSL Connect succeeded");
+    logDataEx("ABT", "", "ABT SSL Connect succeeded");
     char message[1024 * 16] = {0}; // Max message request is 16 kb
     generateAbtMessage(body, resourceName, message);
 
-    logData("Raw message to be sent to ABT server : %s", message);
-    logData("Raw message length to be sent to ABT server : %d", strlen(message));
+    logDataEx("ABT", "", "Raw message to be sent to ABT server : %s", message);
+    logDataEx("ABT", "", "Raw message length to be sent to ABT server : %d", strlen(message));
     logHostData("ABT Request");
     logHostData(message);
 
@@ -86,15 +86,15 @@ int sendAbtHostRequest(const char *body, const char *resourceName, char response
 
     int len = 0, count = 0;
     int total = 0;
-    logData("Waiting to read the data");
+    logDataEx("ABT", "", "Waiting to read the data");
     do
     {
         char buffer[1024];
         len = SSL_read(ssl, buffer, 1024);
-        logData("Data read of length : %d", len);
+        logDataEx("ABT", "", "Data read of length : %d", len);
 
         if (len == 0)
-            logData("No data received");
+            logDataEx("ABT", "", "No data received");
 
         for (int i = 0; i < len; ++i)
         {
@@ -102,15 +102,15 @@ int sendAbtHostRequest(const char *body, const char *resourceName, char response
             count++;
         }
         total += len;
-        logData("Now the total length : %d", total);
+        logDataEx("ABT", "", "Now the total length : %d", total);
     } while (len > 0);
 
     // if we receive any data its success or else its -2 (reversal)
     if (count != 0)
         retStatus = 0;
 
-    logData("Total message received length : %d", count);
-    logData("Return status : %d", retStatus);
+    logDataEx("ABT", "", "Total message received length : %d", count);
+    logDataEx("ABT", "", "Return status : %d", retStatus);
     responseMessage[count] = '\0';
 
     logHostData("Response");
@@ -125,7 +125,7 @@ done:
         close(sd);
 
     SSL_CTX_free(ctx);
-    logData("ABT All resources freed");
+    logDataEx("ABT", "", "ABT All resources freed");
     return retStatus;
 }
 

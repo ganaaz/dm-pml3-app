@@ -31,7 +31,7 @@ extern struct pkcs11 *crypto;
 static void log_cb(void *opaque, int pri, const char *msg)
 {
     (void)opaque;
-    logData("%d: %s\n", pri, msg);
+    logDataEx("L3-App", "Key", "%d: %s\n", pri, msg);
 }
 
 /**
@@ -183,15 +183,15 @@ static char *generateMissingKeySpecs(CK_SESSION_HANDLE hSession)
             if (!is_key_present(hSession, CKO_RUPAY_PRM_ACQ, CKK_AES,
                                 appConfig.keyDataList[i]->label))
             {
-                logInfo("Rupay Key : %s is not present and to be injected.",
-                        appConfig.keyDataList[i]->label);
+                logInfoEx("KeyManager", "", "Rupay Key : %s is not present and to be injected.",
+                          appConfig.keyDataList[i]->label);
                 const char *data = generateKeySpec(*appConfig.keyDataList[i], "None");
-                logData("Generated Rupay Key spec : %s", data);
+                logDataEx("L3-App", "Key", "Generated Rupay Key spec : %s", data);
                 json_object_array_add(keyspecs, json_tokener_parse(data));
             }
             else
             {
-                logInfo("Rupay key : %s is already injected.", appConfig.keyDataList[i]->label);
+                logInfoEx("KeyManager", "", "Rupay key : %s is already injected.", appConfig.keyDataList[i]->label);
             }
         }
 
@@ -200,15 +200,15 @@ static char *generateMissingKeySpecs(CK_SESSION_HANDLE hSession)
             if (!is_key_present(hSession, CKO_SECRET_KEY, CKK_GENERIC_SECRET,
                                 appConfig.keyDataList[i]->label))
             {
-                logInfo("Token Key : %s is not present and to be injected.",
-                        appConfig.keyDataList[i]->label);
+                logInfoEx("KeyManager", "", "Token Key : %s is not present and to be injected.",
+                          appConfig.keyDataList[i]->label);
                 const char *data = generateKeySpec(*appConfig.keyDataList[i], "None");
-                logData("Generated Pan token Key spec : %s", data);
+                logDataEx("L3-App", "Key", "Generated Pan token Key spec : %s", data);
                 json_object_array_add(keyspecs, json_tokener_parse(data));
             }
             else
             {
-                logInfo("Token key : %s is already injected.", appConfig.keyDataList[i]->label);
+                logInfoEx("KeyManager", "", "Token key : %s is already injected.", appConfig.keyDataList[i]->label);
             }
         }
 
@@ -217,15 +217,15 @@ static char *generateMissingKeySpecs(CK_SESSION_HANDLE hSession)
             if (!is_key_present(hSession, CKO_DUKPT_IKEY, CKK_DES2,
                                 appConfig.keyDataList[i]->label))
             {
-                logInfo("Dukpt Key : %s is not present and to be injected.",
-                        appConfig.keyDataList[i]->label);
+                logInfoEx("KeyManager", "", "Dukpt Key : %s is not present and to be injected.",
+                          appConfig.keyDataList[i]->label);
                 const char *data = generateKeySpec(*appConfig.keyDataList[i], "DUKPT");
-                logData("Generated Dukpt Key spec : %s", data);
+                logDataEx("L3-App", "Key", "Generated Dukpt Key spec : %s", data);
                 json_object_array_add(keyspecs, json_tokener_parse(data));
             }
             else
             {
-                logInfo("Token key : %s is already injected.", appConfig.keyDataList[i]->label);
+                logInfoEx("KeyManager", "", "Token key : %s is already injected.", appConfig.keyDataList[i]->label);
             }
         }
     }
@@ -333,21 +333,21 @@ int destroyObject(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE hSession, CK_OBJEC
     rv = p11->C_FindObjectsInit(hSession, attrs_key, ARRAY_SIZE(attrs_key));
     if (rv != CKR_OK)
     {
-        logData("%s() C_FindObjectsInit() failed! rv: 0x%08lX", __func__, rv);
+        logDataEx("L3-App", "Key", "%s() C_FindObjectsInit() failed! rv: 0x%08lX", __func__, rv);
         return -1;
     }
 
     rv = p11->C_FindObjects(hSession, &hKey, 1, &ulObjectCount);
     if (rv != CKR_OK)
     {
-        logData("%s() C_FindObjects() failed! rv: 0x%08lX", __func__, rv);
+        logDataEx("L3-App", "Key", "%s() C_FindObjects() failed! rv: 0x%08lX", __func__, rv);
         return -1;
     }
 
     rv = p11->C_FindObjectsFinal(hSession);
     if (rv != CKR_OK)
     {
-        logData("%s() C_FindObjectsFinal() failed! rv: 0x%08lX", __func__, rv);
+        logDataEx("L3-App", "Key", "%s() C_FindObjectsFinal() failed! rv: 0x%08lX", __func__, rv);
         return -1;
     }
 
@@ -356,14 +356,14 @@ int destroyObject(CK_FUNCTION_LIST_PTR p11, CK_SESSION_HANDLE hSession, CK_OBJEC
         rv = p11->C_DestroyObject(hSession, hKey);
         if (rv != CKR_OK)
         {
-            logData("%s() C_DestroyObject() failed! rv: 0x%08lX", __func__, rv);
+            logDataEx("L3-App", "Key", "%s() C_DestroyObject() failed! rv: 0x%08lX", __func__, rv);
             return -1;
         }
         return 0;
     }
     else
     {
-        logData("No key found");
+        logDataEx("L3-App", "Key", "No key found");
         return -1;
     }
 
@@ -380,7 +380,7 @@ void *processKeyInjection()
     while (true)
     {
         i++;
-        logInfo("Trying to inject key : %d", i);
+        logInfoEx("KeyManager", "", "Trying to inject key : %d", i);
         int result = doKeyInjection();
         if (result == EXIT_SUCCESS)
         {
@@ -394,12 +394,12 @@ void *processKeyInjection()
 
         if (i >= appConfig.maxKeyInjectionTry && appConfig.maxKeyInjectionTry != 0)
         {
-            logInfo("Max Key Injection retry reached, exiting loop");
+            logInfoEx("KeyManager", "", "Max Key Injection retry reached, exiting loop");
             break;
         }
     }
 
-    logInfo("Key injection loop completed");
+    logInfoEx("KeyManager", "", "Key injection loop completed");
     return NULL;
 }
 
@@ -432,7 +432,7 @@ int checkKeyPresent(char *label, bool isBdk)
     hSession = crypto->hSession;
     if (hSession == CK_INVALID_HANDLE)
     {
-        logError("Crypto invalid handle.");
+        logErrorEx("L3-App", "KeyManager", "Crypto invalid handle.");
         return EXIT_FAILURE;
     }
 
@@ -440,12 +440,12 @@ int checkKeyPresent(char *label, bool isBdk)
     {
         if (!is_key_present(hSession, CKO_DUKPT_IKEY, CKK_DES2, label))
         {
-            logData("BDK Key requested : %s is NOT present", label);
+            logDataEx("L3-App", "Key", "BDK Key requested : %s is NOT present", label);
             return EXIT_FAILURE;
         }
         else
         {
-            logData("BDK Key requested : %s is present", label);
+            logDataEx("L3-App", "Key", "BDK Key requested : %s is present", label);
             return EXIT_SUCCESS;
         }
     }
@@ -453,12 +453,12 @@ int checkKeyPresent(char *label, bool isBdk)
     {
         if (!is_key_present(hSession, CKO_RUPAY_PRM_ACQ, CKK_AES, label))
         {
-            logData("Rupay Key requested : %s is NOT present", label);
+            logDataEx("L3-App", "Key", "Rupay Key requested : %s is NOT present", label);
             return EXIT_FAILURE;
         }
         else
         {
-            logData("Rupay Key requested : %s is present", label);
+            logDataEx("L3-App", "Key", "Rupay Key requested : %s is present", label);
             return EXIT_SUCCESS;
         }
     }
@@ -477,7 +477,7 @@ int doKeyInjection()
     hSession = crypto->hSession;
     if (hSession == CK_INVALID_HANDLE)
     {
-        logError("Crypto invalid handle.");
+        logErrorEx("L3-App", "KeyManager", "Crypto invalid handle.");
         return EXIT_FAILURE;
     }
 
@@ -485,13 +485,13 @@ int doKeyInjection()
 
     if (keyspecs)
     {
-        logInfo("Going to contact key loading for injecting keys");
+        logInfoEx("KeyManager", "", "Going to contact key loading for injecting keys");
         result = remote_key_loading(hSession, appConfig.kldIP, keyspecs);
         free(keyspecs);
     }
     else
     {
-        logInfo("All keys are already injected, nothing to be done.");
+        logInfoEx("KeyManager", "", "All keys are already injected, nothing to be done.");
         result = EXIT_SUCCESS;
     }
 

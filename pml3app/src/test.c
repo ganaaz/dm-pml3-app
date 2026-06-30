@@ -86,11 +86,11 @@ void hostcheck()
         printf(message);
         printf("\n");
 
-        logData("Testing the paytm connectivity");
+        logDataEx(currentTrxType, lastPanDigit, "Testing the paytm connectivity");
         char responseMessage[1024 * 256];
         sendHostRequest(message, "/eos/offlineSale", responseMessage);
-        logData("Response length from server : %d", strlen(responseMessage));
-        logData("Response Message : %s", responseMessage);
+        logDataEx(currentTrxType, lastPanDigit, "Response length from server : %d", strlen(responseMessage));
+        logDataEx(currentTrxType, lastPanDigit, "Response Message : %s", responseMessage);
         free(message);
         return 0;
         */

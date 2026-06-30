@@ -80,7 +80,7 @@ void createAbtTransactionData(struct transactionData *trxData)
         &statement,
         NULL);
 
-    logData("ABT Transaction Status : %s", trxData->txnStatus);
+    logDataEx("ABT", "", "ABT Transaction Status : %s", trxData->txnStatus);
     char trxBin[3];
     sprintf(trxBin, "%02X", trxData->trxTypeBin);
     char deviceId[10];
@@ -127,23 +127,23 @@ void createAbtTransactionData(struct transactionData *trxData)
         sqlite3_bind_text(statement, 30, "", -1, SQLITE_STATIC);             // Host Reason
         sqlite3_bind_int(statement, 31, 0);                                  // Host Update Days default to 0
 
-        logData("Going to perform the insert of offline transaction date");
+        logDataEx("ABT", "", "Going to perform the insert of offline transaction date");
         int result = sqlite3_step(statement);
         sqlite3_finalize(statement);
-        logData("Insert result : %d", result);
+        logDataEx("ABT", "", "Insert result : %d", result);
 
         if (result == SQLITE_DONE)
         {
-            logInfo("ABT Transaction data inserted successfully : %s", trxData->transactionId);
+            logInfoEx("ABT", "", "ABT Transaction data inserted successfully : %s", trxData->transactionId);
         }
         else
         {
-            logError("ABT Insert data failed !!!");
+            logErrorEx("ABT", "DbInsert", "ABT Insert data failed !!!");
         }
     }
     else
     {
-        logError("Unable to prepare the ABT insert query !!!");
+        logErrorEx("ABT", "DbInsert", "Unable to prepare the ABT insert query !!!");
     }
 }
 
@@ -162,12 +162,12 @@ void deleteAbtTransactions()
     char query[512];
     snprintf(query, 512, queryTemplate, currentDays, appConfig.abtDataRetentionPeriodInDays);
 
-    logInfo("Going to get ABT ok data with query : %s", query);
+    logInfoEx("ABT", "", "Going to get ABT ok data with query : %s", query);
 
     if (sqlite3_prepare_v2(sqlite3AbtDb, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logError("Failed to prepare deleteAbtTransactions query to get transaction id!!! %s",
-                 sqlite3_errmsg(sqlite3AbtDb));
+        logErrorEx("ABT", "DeleteAbtTrx", "Failed to prepare deleteAbtTransactions query to get transaction id!!! %s",
+                   sqlite3_errmsg(sqlite3AbtDb));
         return;
     }
 
@@ -177,12 +177,12 @@ void deleteAbtTransactions()
         sprintf(transactionIdList[count], "%s", sqlite3_column_text(statement, 0));
         count++;
     }
-    logData("Total count of ok received : %d", count);
+    logDataEx("ABT", "", "Total count of ok received : %d", count);
 
-    logData("Printing all transaction ids to delete");
+    logDataEx("ABT", "", "Printing all transaction ids to delete");
     for (int i = 0; i < count; i++)
     {
-        logData("Transaction id : %s", transactionIdList[i]);
+        logDataEx("ABT", "", "Transaction id : %s", transactionIdList[i]);
     }
 
     sqlite3_finalize(statement);
@@ -190,13 +190,13 @@ void deleteAbtTransactions()
     for (int i = 0; i < count; i++)
     {
         const char *deleteQuery = "DELETE FROM AbtTransactions WHERE TransactionId = ?";
-        logData("Going to delete record with Id : %s", transactionIdList[i]);
-        logData("Delete query : %s", deleteQuery);
+        logDataEx("ABT", "", "Going to delete record with Id : %s", transactionIdList[i]);
+        logDataEx("ABT", "", "Delete query : %s", deleteQuery);
 
         sqlite3_stmt *deleteStatement;
         if (sqlite3_prepare_v2(sqlite3AbtDb, deleteQuery, -1, &deleteStatement, NULL) != SQLITE_OK)
         {
-            logError("Failed to prepare delete query for ABT transaction !!!");
+            logErrorEx("ABT", "DeleteAbtTrx", "Failed to prepare delete query for ABT transaction !!!");
             continue;
         }
 
@@ -205,15 +205,15 @@ void deleteAbtTransactions()
         int result = sqlite3_step(deleteStatement);
         if (result != SQLITE_DONE)
         {
-            logError("Failed to delete record : %d", result);
+            logErrorEx("ABT", "DeleteAbtTrx", "Failed to delete record : %d", result);
         }
         else
         {
-            logInfo("Delete success");
+            logInfoEx("ABT", "", "Delete success");
         }
         sqlite3_finalize(statement);
     }
-    logData("All records are deleted");
+    logDataEx("ABT", "", "All records are deleted");
 }
 
 /**
@@ -230,11 +230,11 @@ int getAbtOkFilterDateTransactionsCount()
     sqlite3_stmt *statement;
     int count = 0;
 
-    logInfo("Going to getAbtOkFilterDateTransactionsCount with query : %s", query);
+    logInfoEx("ABT", "", "Going to getAbtOkFilterDateTransactionsCount with query : %s", query);
 
     if (sqlite3_prepare_v2(sqlite3AbtDb, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare getAbtOkFilterDateTransactionsCount query !!! %s", sqlite3_errmsg(sqlite3AbtDb));
+        logWarnEx("ABT", "", "Failed to prepare getAbtOkFilterDateTransactionsCount query !!! %s", sqlite3_errmsg(sqlite3AbtDb));
         return -1;
     }
 
@@ -245,7 +245,7 @@ int getAbtOkFilterDateTransactionsCount()
     }
 
     sqlite3_finalize(statement);
-    logInfo("Total transactions found are : %d", count);
+    logInfoEx("ABT", "", "Total transactions found are : %d", count);
     return count;
 }
 
@@ -260,11 +260,11 @@ int getAbtTransactionStatusCount(char status[50])
     sqlite3_stmt *statement;
     int count = 0;
 
-    logInfo("Going to getAbtTransactionStatusCount with query : %s", query);
+    logInfoEx("ABT", "", "Going to getAbtTransactionStatusCount with query : %s", query);
 
     if (sqlite3_prepare_v2(sqlite3AbtDb, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare getAbtTransactionStatusCount query !!! %s", sqlite3_errmsg(sqlite3AbtDb));
+        logWarnEx("ABT", "", "Failed to prepare getAbtTransactionStatusCount query !!! %s", sqlite3_errmsg(sqlite3AbtDb));
         return -1;
     }
 
@@ -276,7 +276,7 @@ int getAbtTransactionStatusCount(char status[50])
 
     sqlite3_finalize(statement);
 
-    logInfo("Total transactions found are : %d", count);
+    logInfoEx("ABT", "", "Total transactions found are : %d", count);
     return count;
 }
 
@@ -293,7 +293,7 @@ char *fetchAbtData(struct abtFetchData fData)
     char query[256];
     snprintf(query, 256, queryTemplate, fData.mode, max, fData.skipRecords);
 
-    logData("Going to fetchAbtData with query : %s", query);
+    logDataEx("ABT", "", "Going to fetchAbtData with query : %s", query);
 
     json_object *jobj = json_object_new_object();
     json_object *jDataArrayObject = json_object_new_array();
@@ -302,7 +302,7 @@ char *fetchAbtData(struct abtFetchData fData)
 
     if (sqlite3_prepare_v2(sqlite3AbtDb, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logData("Failed to prepare read query !!!, %s", sqlite3_errmsg(sqlite3AbtDb));
+        logDataEx("ABT", "", "Failed to prepare read query !!!, %s", sqlite3_errmsg(sqlite3AbtDb));
         return buildResponseMessage(STATUS_ERROR, ERR_SQL_STATEMENT_PREPARE_FAILED);
     }
 
@@ -316,7 +316,7 @@ char *fetchAbtData(struct abtFetchData fData)
 
     sqlite3_finalize(statement);
 
-    logData("Max Records Requested : %d, and total fetched : %d", fData.maxrecords, fetchedCount);
+    logDataEx("ABT", "", "Max Records Requested : %d, and total fetched : %d", fData.maxrecords, fetchedCount);
 
     // Generate Json
     json_object *jCommand = json_object_new_string(COMMAND_ABT_FETCH);
@@ -394,7 +394,7 @@ json_object *getAbtJsonTxnData(AbtTransactionTable trxData)
 {
     char dateYear[10];
     sprintf(dateYear, "%s%s", trxData.date, trxData.year);
-    logData("ABT Transaction date to be returned in json : %s", dateYear);
+    logDataEx("ABT", "", "ABT Transaction date to be returned in json : %s", dateYear);
 
     json_object *jDataObject = json_object_new_object();
     json_object_object_add(jDataObject, "tuid", json_object_new_string(trxData.transactionId));
@@ -439,11 +439,11 @@ void checkAbtRecordCount()
     sqlite3_stmt *statement;
     int count = 0;
 
-    logInfo("Going to get the abt transaction record count with query : %s", query);
+    logInfoEx("ABT", "", "Going to get the abt transaction record count with query : %s", query);
 
     if (sqlite3_prepare_v2(sqlite3AbtDb, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare checkAbtRecordCount query !!!");
+        logWarnEx("ABT", "", "Failed to prepare checkAbtRecordCount query !!!");
         return;
     }
 
@@ -455,7 +455,7 @@ void checkAbtRecordCount()
 
     sqlite3_finalize(statement);
 
-    logInfo("Total ABT Transaction records available are : %d", count);
+    logInfoEx("ABT", "", "Total ABT Transaction records available are : %d", count);
 }
 
 /**
@@ -463,42 +463,42 @@ void checkAbtRecordCount()
  */
 void printAbtTransactionRow(AbtTransactionTable trxTable)
 {
-    logData("===========================================");
+    logDataEx("ABT", "", "===========================================");
 
-    logData("ID : %d", trxTable.id);
-    logData("Transaction Id : %s", trxTable.transactionId);
-    logData("Trx Counter : %d", trxTable.trxCounter);
-    logData("Stan : %s", trxTable.stan);
-    logData("Batch : %d", trxTable.batch);
-    logData("Amount : %s", trxTable.amount);
-    logData("Time : %s", trxTable.time);
-    logData("Date : %s", trxTable.date);
-    logData("Year : %s", trxTable.year);
-    logData("Mask Pan : %s", trxTable.maskPAN);
-    logData("Token : %s", trxTable.token);
-    logData("ICC Data : %s", trxTable.iccData);
-    logData("ICC Data Len : %d", trxTable.iccDataLen);
-    logData("Order Id : %s", trxTable.orderId);
-    logData("Txn Status : %d", trxTable.txnStatus);
-    logData("TerminalId : %s", trxTable.terminalId);
-    logData("MerchantId : %s", trxTable.merchantId);
-    logData("Host Retry : %d", trxTable.hostRetry);
-    logData("Device Id : %s", trxTable.deviceId);
-    logData("Gate Status : %s", trxTable.gateStatus);
-    logData("TrxTypeCode : %d", trxTable.trxTypeCode);
-    logData("DeviceType : %d", trxTable.deviceType);
-    logData("DeviceCode : %s", trxTable.deviceCode);
-    logData("LocationCode : %d", trxTable.locationCode);
-    logData("Operatorcode : %d", trxTable.operatorCode);
-    logData("TariffVersion : %d", trxTable.tariffVersion);
-    logData("DeviceModeCode : %d", trxTable.deviceModeCode);
-    logData("DeviceDateKey : %d", trxTable.deviceDateKey);
-    logData("DeviceTime : %s", trxTable.txnDeviceTime);
-    logData("HostStatus : %s", trxTable.hostStatus);
-    logData("HostFailReason : %s", trxTable.hostReason);
-    logData("Host Update Day : %d", trxTable.hostUpdateDays);
+    logDataEx("ABT", "", "ID : %d", trxTable.id);
+    logDataEx("ABT", "", "Transaction Id : %s", trxTable.transactionId);
+    logDataEx("ABT", "", "Trx Counter : %d", trxTable.trxCounter);
+    logDataEx("ABT", "", "Stan : %s", trxTable.stan);
+    logDataEx("ABT", "", "Batch : %d", trxTable.batch);
+    logDataEx("ABT", "", "Amount : %s", trxTable.amount);
+    logDataEx("ABT", "", "Time : %s", trxTable.time);
+    logDataEx("ABT", "", "Date : %s", trxTable.date);
+    logDataEx("ABT", "", "Year : %s", trxTable.year);
+    logDataEx("ABT", "", "Mask Pan : %s", trxTable.maskPAN);
+    logDataEx("ABT", "", "Token : %s", trxTable.token);
+    logDataEx("ABT", "", "ICC Data : %s", trxTable.iccData);
+    logDataEx("ABT", "", "ICC Data Len : %d", trxTable.iccDataLen);
+    logDataEx("ABT", "", "Order Id : %s", trxTable.orderId);
+    logDataEx("ABT", "", "Txn Status : %d", trxTable.txnStatus);
+    logDataEx("ABT", "", "TerminalId : %s", trxTable.terminalId);
+    logDataEx("ABT", "", "MerchantId : %s", trxTable.merchantId);
+    logDataEx("ABT", "", "Host Retry : %d", trxTable.hostRetry);
+    logDataEx("ABT", "", "Device Id : %s", trxTable.deviceId);
+    logDataEx("ABT", "", "Gate Status : %s", trxTable.gateStatus);
+    logDataEx("ABT", "", "TrxTypeCode : %d", trxTable.trxTypeCode);
+    logDataEx("ABT", "", "DeviceType : %d", trxTable.deviceType);
+    logDataEx("ABT", "", "DeviceCode : %s", trxTable.deviceCode);
+    logDataEx("ABT", "", "LocationCode : %d", trxTable.locationCode);
+    logDataEx("ABT", "", "Operatorcode : %d", trxTable.operatorCode);
+    logDataEx("ABT", "", "TariffVersion : %d", trxTable.tariffVersion);
+    logDataEx("ABT", "", "DeviceModeCode : %d", trxTable.deviceModeCode);
+    logDataEx("ABT", "", "DeviceDateKey : %d", trxTable.deviceDateKey);
+    logDataEx("ABT", "", "DeviceTime : %s", trxTable.txnDeviceTime);
+    logDataEx("ABT", "", "HostStatus : %s", trxTable.hostStatus);
+    logDataEx("ABT", "", "HostFailReason : %s", trxTable.hostReason);
+    logDataEx("ABT", "", "Host Update Day : %d", trxTable.hostUpdateDays);
 
-    logData("======================================================");
+    logDataEx("ABT", "", "======================================================");
 }
 
 /**
@@ -507,10 +507,10 @@ void printAbtTransactionRow(AbtTransactionTable trxTable)
 void processAbtPendingTransactions()
 {
     int pendingCount = getAbtTransactionStatusCount(STATUS_PENDING);
-    logData("Total pending ABT transactions : %d", pendingCount);
+    logDataEx("ABT", "", "Total pending ABT transactions : %d", pendingCount);
 
     int nokCount = getAbtTransactionStatusCount(STATUS_NOK);
-    logData("Total NOK ABT transactions : %d", nokCount);
+    logDataEx("ABT", "", "Total NOK ABT transactions : %d", nokCount);
 
     const char *query = "SELECT * FROM AbtTransactions WHERE "
                         "HostStatus IN('Pending', 'NOK') "
@@ -519,7 +519,7 @@ void processAbtPendingTransactions()
 
     if (sqlite3_prepare_v2(sqlite3AbtDb, query, -1, &statement, 0) != SQLITE_OK)
     {
-        logWarn("Failed to prepare read query !!!");
+        logWarnEx("ABT", "", "Failed to prepare read query !!!");
         return;
     }
 
@@ -530,7 +530,7 @@ void processAbtPendingTransactions()
     {
         if (index > totalCount)
         {
-            logError("Extra data found on getting abt transactions, ignoring and picked up next.");
+            logErrorEx("ABT", "ProcessAbt", "Extra data found on getting abt transactions, ignoring and picked up next.");
             break;
         }
         AbtTransactionTable trxData = populateAbtTableData(statement);
@@ -539,7 +539,7 @@ void processAbtPendingTransactions()
     }
     sqlite3_finalize(statement);
 
-    logData("Total transactions available : %d", totalCount);
+    logDataEx("ABT", "", "Total transactions available : %d", totalCount);
     for (int i = 0; i < totalCount; i++)
     {
         printAbtTransactionRow(trxDataList[i]);
@@ -547,11 +547,11 @@ void processAbtPendingTransactions()
 
     if (totalCount == 0)
     {
-        logInfo("There are no abt transactions available to send to server");
+        logInfoEx("ABT", "", "There are no abt transactions available to send to server");
     }
     else
     {
-        logData("Total records to be sent to ABT: %d", totalCount);
+        logDataEx("ABT", "", "Total records to be sent to ABT: %d", totalCount);
         for (int index = 0; index < totalCount; index += appConfig.abtHostPushBatchCount)
         {
             int max = appConfig.abtHostPushBatchCount;
@@ -559,16 +559,16 @@ void processAbtPendingTransactions()
             if (pending < max)
                 max = pending;
 
-            logData("Sending to ABT Server from record %d with the count of %d", index, max);
+            logDataEx("ABT", "", "Sending to ABT Server from record %d with the count of %d", index, max);
             char *message = generateAbtTapRequest(trxDataList, index, max);
             char body[1024 * 24] = {0};
             safe_strcpy(body, sizeof(body), message);
             free(message);
             char responseMessage[1024 * 32] = {0};
-            logData("Sending data to ABT for tap request");
+            logDataEx("ABT", "", "Sending data to ABT for tap request");
             int retStatus = sendAbtHostRequest(body, appConfig.abtTapUrl, responseMessage);
-            logData("Ret Status : %d", retStatus);
-            logData("Response length from server : %d", strlen(responseMessage));
+            logDataEx("ABT", "", "Ret Status : %d", retStatus);
+            logDataEx("ABT", "", "Response length from server : %d", strlen(responseMessage));
 
             if (retStatus == 0)
             {
@@ -576,8 +576,8 @@ void processAbtPendingTransactions()
 
                 if ((httpResponseData.code == 200 || httpResponseData.code == 201) && httpResponseData.messageLen != 0)
                 {
-                    logData("Message len : %d", httpResponseData.messageLen);
-                    logData("Message received : %s", httpResponseData.message);
+                    logDataEx("ABT", "", "Message len : %d", httpResponseData.messageLen);
+                    logDataEx("ABT", "", "Message received : %s", httpResponseData.message);
                     // Parse and save to db
                     int responseCount;
                     AbtTapResponse abtTapResponses[20];
@@ -586,7 +586,7 @@ void processAbtPendingTransactions()
                 }
                 else
                 {
-                    logError("Http response error");
+                    logErrorEx("ABT", "ProcessAbt", "Http response error");
                     // Increment the host retry for all those failed
                     for (int i = index; i < (index + max); i++)
                     {
@@ -598,7 +598,7 @@ void processAbtPendingTransactions()
             }
             else
             {
-                logData("Invalid return status");
+                logDataEx("ABT", "", "Invalid return status");
                 // Increment the host retry for all those failed
                 for (int i = index; i < (index + max); i++)
                 {
@@ -626,7 +626,7 @@ void updateAbtHostRetry(const char transactionId[50])
 
     if (sqlite3_prepare_v2(sqlite3AbtDb, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare updateAbtHostRetry query !!!");
+        logWarnEx("ABT", "", "Failed to prepare updateAbtHostRetry query !!!");
         return;
     }
 
@@ -635,10 +635,10 @@ void updateAbtHostRetry(const char transactionId[50])
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarn("Failed to update record : %d", result);
+        logWarnEx("ABT", "", "Failed to update record : %d", result);
         return;
     }
-    logData("updateAbtHostRetry success");
+    logDataEx("ABT", "", "updateAbtHostRetry success");
     sqlite3_finalize(statement);
 }
 
@@ -647,19 +647,19 @@ void updateAbtHostRetry(const char transactionId[50])
  */
 void saveAbtResponseToDb(AbtTapResponse abtResponses[], int count)
 {
-    logData("-------------------------------------------");
+    logDataEx("ABT", "", "-------------------------------------------");
     for (int i = 0; i < count; i++)
     {
-        logData("Processing abt response : %d", i);
+        logDataEx("ABT", "", "Processing abt response : %d", i);
         printAbtResponse(abtResponses[i]);
         int trxCount = getAbtTrxCount(abtResponses[i].tuid);
         if (trxCount == 1)
         {
-            logData("Found 1 item as expected. Going to update");
-            logData("Transaction id : %s", abtResponses[i].tuid);
+            logDataEx("ABT", "", "Found 1 item as expected. Going to update");
+            logDataEx("ABT", "", "Transaction id : %s", abtResponses[i].tuid);
             updateAbtTransactionStatus(abtResponses[i]);
         }
-        logData("-------------------------------------------");
+        logDataEx("ABT", "", "-------------------------------------------");
     }
 }
 
@@ -668,7 +668,7 @@ void saveAbtResponseToDb(AbtTapResponse abtResponses[], int count)
  **/
 void updateAbtTransactionStatus(AbtTapResponse abtTapResponse)
 {
-    logData("Going to update the host status for : %s", abtTapResponse.tuid);
+    logDataEx("ABT", "", "Going to update the host status for : %s", abtTapResponse.tuid);
 
     const char *query = "UPDATE AbtTransactions "
                         "SET HostStatus = ?,  "
@@ -681,7 +681,7 @@ void updateAbtTransactionStatus(AbtTapResponse abtTapResponse)
 
     if (sqlite3_prepare_v2(sqlite3AbtDb, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare updateAbtTransactionStatus query !!!");
+        logWarnEx("ABT", "", "Failed to prepare updateAbtTransactionStatus query !!!");
         return;
     }
 
@@ -695,10 +695,10 @@ void updateAbtTransactionStatus(AbtTapResponse abtTapResponse)
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarn("Failed to update record : %d", result);
+        logWarnEx("ABT", "", "Failed to update record : %d", result);
         return;
     }
-    logData("updateAbtTransactionStatus success");
+    logDataEx("ABT", "", "updateAbtTransactionStatus success");
     sqlite3_finalize(statement);
 }
 
@@ -710,11 +710,11 @@ int getAbtTrxCount(char *transactionId)
     const char *query = "SELECT Count(*) FROM AbtTransactions WHERE "
                         "TransactionId = ? ";
     sqlite3_stmt *statement;
-    logData("Going to get the count for %s", query);
+    logDataEx("ABT", "", "Going to get the count for %s", query);
 
     if (sqlite3_prepare_v2(sqlite3AbtDb, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare getTrxTableDataCount query !!!");
+        logWarnEx("ABT", "", "Failed to prepare getTrxTableDataCount query !!!");
         return 0;
     }
 
@@ -729,8 +729,8 @@ int getAbtTrxCount(char *transactionId)
     }
 
     sqlite3_finalize(statement);
-    logData("Count received : %d", count);
-    logData("Transaction id : %s", transactionId);
+    logDataEx("ABT", "", "Count received : %d", count);
+    logDataEx("ABT", "", "Transaction id : %s", transactionId);
     return count;
 }
 
@@ -739,6 +739,6 @@ int getAbtTrxCount(char *transactionId)
  */
 void printAbtResponse(AbtTapResponse abtResponse)
 {
-    logData("Tuid : %s", abtResponse.tuid);
-    logData("Result : %s", abtResponse.result);
+    logDataEx("ABT", "", "Tuid : %s", abtResponse.tuid);
+    logDataEx("ABT", "", "Result : %s", abtResponse.result);
 }

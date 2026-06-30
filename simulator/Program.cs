@@ -20,7 +20,7 @@ namespace Simulator
 {
     class Program
     {
-        private static DateTime releaseDate = new DateTime(2026, 6, 2);
+        private static DateTime releaseDate = new DateTime(2026, 6, 29);
         private static bool requestUser = true;
         public static string LocalIPForAirtel = "192.168.50.20";
         //public static string LocalIPForPayTM = "192.168.29.248";
@@ -55,7 +55,7 @@ namespace Simulator
         {
             Console.WriteLine("-------------------------------------------");
             Console.WriteLine("Datamatics Transit Gate Application for PML3");
-            Console.WriteLine("Version : 1.0.6");
+            Console.WriteLine("Version : 1.0.7");
             Console.WriteLine($"Release Date : {releaseDate.ToLongDateString()}");
             Console.WriteLine("-------------------------------------------");
 
@@ -2233,31 +2233,29 @@ namespace Simulator
                         int size = 0;
                         try
                         {
-                            int bReceived;
-                            do
+                            // Read 4-byte big-endian size header
+                            var header = new byte[4];
+                            int headerRead = 0;
+                            while (headerRead < 4)
                             {
-                                var buffer = new byte[1024 * 10];
-                                bReceived = dataSocket.Receive(buffer, 1024 * 10, SocketFlags.None);
+                                int n = dataSocket.Receive(header, headerRead, 4 - headerRead, SocketFlags.None);
+                                if (n == 0) break;
+                                headerRead += n;
+                            }
+                            int fileSize = (header[0] << 24) | (header[1] << 16) | (header[2] << 8) | header[3];
+                            Console.WriteLine("File size from header : " + fileSize);
+
+                            // Read exactly fileSize bytes
+                            var buffer = new byte[1024 * 10];
+                            while (size < fileSize)
+                            {
+                                int toRead = Math.Min(buffer.Length, fileSize - size);
+                                int bReceived = dataSocket.Receive(buffer, 0, toRead, SocketFlags.None);
                                 Console.WriteLine("Data Socket, Download Mode : Received : " + bReceived);
-                                if (bReceived >= 4)
-                                {
-                                    if (buffer[bReceived - 1] == 0xFC &&
-                                        buffer[bReceived - 2] == 0xFD &&
-                                        buffer[bReceived - 3] == 0xFE &&
-                                        buffer[bReceived - 4] == 0xFF)
-                                    {
-                                        Console.WriteLine("Terminating data received for file");
-                                        downloadFileStream.Write(buffer, 0, bReceived - 4);
-                                        break;
-                                    }
-                                }
-                                else
-                                {
-                                    Console.WriteLine("Writing to file");
-                                    downloadFileStream.Write(buffer, 0, bReceived);
-                                }
+                                if (bReceived == 0) break;
+                                downloadFileStream.Write(buffer, 0, bReceived);
                                 size += bReceived;
-                            } while (bReceived > 0);
+                            }
 
                             Console.WriteLine("Closing the stream");
                             Console.WriteLine("Total size received : " + size);
@@ -2273,59 +2271,68 @@ namespace Simulator
                     }
 
 
-                    // Single receive
-                    //Console.WriteLine("Data Socket : Waiting for normal receive");
-                    int bytesRec = dataSocket.Receive(bytes);
-                    //Console.WriteLine("Data Socket : Normal Bytes received : " + bytesRec);
-                    if (downloadFileMode)
+                    // Single receive — only runs when not in download mode
+                    if (!downloadFileMode)
                     {
-                        Console.WriteLine("Download file mode, Received : " + bytesRec);
+                        int bytesRec = dataSocket.Receive(bytes);
 
-                        if (bytesRec >= 4)
+                        if (downloadFileMode && bytesRec >= 4)
                         {
-                            if (bytes[bytesRec - 1] == 0xFC &&
-                                bytes[bytesRec - 2] == 0xFD &&
-                                bytes[bytesRec - 3] == 0xFE &&
-                                bytes[bytesRec - 4] == 0xFF)
+                            // Race: downloadFileMode was set while blocked in Receive.
+                            // bytes[0..3] = size header, bytes[4..bytesRec-1] = initial file data.
+                            Console.WriteLine("Download file mode (recovered from race)");
+                            int size = 0;
+                            try
                             {
-                                Console.WriteLine("Terminating data received for file");
-                                downloadFileStream.Write(bytes, 0, bytesRec - 4);
+                                int fileSize = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
+                                Console.WriteLine("File size from header : " + fileSize);
+
+                                if (bytesRec > 4)
+                                {
+                                    downloadFileStream.Write(bytes, 4, bytesRec - 4);
+                                    size = bytesRec - 4;
+                                }
+
+                                var buffer = new byte[1024 * 10];
+                                while (size < fileSize)
+                                {
+                                    int toRead = Math.Min(buffer.Length, fileSize - size);
+                                    int bReceived = dataSocket.Receive(buffer, 0, toRead, SocketFlags.None);
+                                    Console.WriteLine("Data Socket, Download Mode : Received : " + bReceived);
+                                    if (bReceived == 0) break;
+                                    downloadFileStream.Write(buffer, 0, bReceived);
+                                    size += bReceived;
+                                }
+
                                 Console.WriteLine("Closing the stream");
-                                Console.WriteLine("Total size received : " + bytesRec);
+                                Console.WriteLine("Total size received : " + size);
                                 downloadFileStream.Close();
                                 Console.WriteLine("File written to : " + fileLocalLocation);
                                 downloadFileMode = false;
                                 fileLocalLocation = "";
                             }
-                            else
+                            catch (Exception ex)
                             {
-                                Console.WriteLine("Writing to file");
-                                downloadFileStream.Write(bytes, 0, bytesRec);
+                                Console.WriteLine("Error in downloading the file : " + ex);
                             }
                         }
-                        else
+                        else if (!downloadFileMode)
                         {
-                            Console.WriteLine("Writing to file");
-                            downloadFileStream.Write(bytes, 0, bytesRec);
-                        }
-                    }
-                    else
-                    {
-                        //Console.WriteLine("Data Socket String mode");
-                        var result = Encoding.ASCII.GetString(bytes, 0, bytesRec);
-                        result = ParseJson(result);
+                            var result = Encoding.ASCII.GetString(bytes, 0, bytesRec);
+                            result = ParseJson(result);
 
-                        if (!string.IsNullOrWhiteSpace(result))
-                        {
-                            Console.WriteLine("-----------------------------------------");
-                            Console.WriteLine($"Data Socket Message Received :");
-                            Console.WriteLine(result);
-                            Console.WriteLine("-----------------------------------------");
-
-                            SendPurchaseAmount(result);
-                            if (result.Contains("fetch_auth") && fetchAuthLoop)
+                            if (!string.IsNullOrWhiteSpace(result))
                             {
-                                FetchAuth("Success");
+                                Console.WriteLine("-----------------------------------------");
+                                Console.WriteLine($"Data Socket Message Received :");
+                                Console.WriteLine(result);
+                                Console.WriteLine("-----------------------------------------");
+
+                                SendPurchaseAmount(result);
+                                if (result.Contains("fetch_auth") && fetchAuthLoop)
+                                {
+                                    FetchAuth("Success");
+                                }
                             }
                         }
                     }

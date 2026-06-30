@@ -18,7 +18,7 @@ ISO8583_ERROR_CODES clean_socket(int soc_fd, int event_fd)
 {
     if (shutdown(soc_fd, SHUT_RDWR) < 0)
     {
-        logData("Socket shutdown Failed, soc_fd: %d, errno: %d (%s)", soc_fd, errno, strerror(errno));
+        logDataEx("L3-App", "Comms", "Socket shutdown Failed, soc_fd: %d, errno: %d (%s)", soc_fd, errno, strerror(errno));
     }
     close(event_fd);
     close(soc_fd);
@@ -35,7 +35,7 @@ ISO8583_ERROR_CODES connect_to_host(const char *address, int port, int *sock_fd,
     int soc_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (soc_fd < 0)
     {
-        logData("Socket Creation Failed, soc_fd: %d, errno: %d (%s)", soc_fd, errno, strerror(errno));
+        logDataEx("L3-App", "Comms", "Socket Creation Failed, soc_fd: %d, errno: %d (%s)", soc_fd, errno, strerror(errno));
         return TXN_HOST_CONNECTION_FAILED;
     }
 
@@ -44,7 +44,7 @@ ISO8583_ERROR_CODES connect_to_host(const char *address, int port, int *sock_fd,
     event.data.fd = soc_fd;
     if (epoll_ctl(epfd, EPOLL_CTL_ADD, soc_fd, &event) < 0)
     {
-        logData("Add timeout event to socket failed, event_fd %d, soc_fd: %d, errno: %d (%s)", epfd, soc_fd, errno, strerror(errno));
+        logDataEx("L3-App", "Comms", "Add timeout event to socket failed, event_fd %d, soc_fd: %d, errno: %d (%s)", epfd, soc_fd, errno, strerror(errno));
         clean_socket(soc_fd, epfd);
         return TXN_HOST_CONNECTION_FAILED;
     }
@@ -54,7 +54,7 @@ ISO8583_ERROR_CODES connect_to_host(const char *address, int port, int *sock_fd,
     addr.sin_port = htons(port);
     if (inet_pton(AF_INET, address, &addr.sin_addr.s_addr) == 0)
     {
-        logData("Invalid host address: %s", address);
+        logDataEx("L3-App", "Comms", "Invalid host address: %s", address);
         clean_socket(soc_fd, epfd);
         return TXN_HOST_CONNECTION_FAILED;
     }
@@ -63,7 +63,7 @@ ISO8583_ERROR_CODES connect_to_host(const char *address, int port, int *sock_fd,
     {
         if ((errno != EWOULDBLOCK) && (errno != EINPROGRESS))
         {
-            logData("Connect to host failed: soc_fd: %d, errno: %d (%s)", soc_fd, errno, strerror(errno));
+            logDataEx("L3-App", "Comms", "Connect to host failed: soc_fd: %d, errno: %d (%s)", soc_fd, errno, strerror(errno));
             clean_socket(soc_fd, epfd);
             return TXN_HOST_CONNECTION_FAILED;
         }
@@ -71,7 +71,7 @@ ISO8583_ERROR_CODES connect_to_host(const char *address, int port, int *sock_fd,
         if (ready == 0)
         {
             errno = ETIMEDOUT;
-            logData("Unable to connect to host : Timeout, errno: %d (%s)", errno, strerror(errno));
+            logDataEx("L3-App", "Comms", "Unable to connect to host : Timeout, errno: %d (%s)", errno, strerror(errno));
             clean_socket(soc_fd, epfd);
             return TXN_HOST_CONNECTION_TIMEOUT;
         }
@@ -85,14 +85,14 @@ ISO8583_ERROR_CODES connect_to_host(const char *address, int port, int *sock_fd,
                 {
                     if (error != 0)
                     {
-                        logData("Connection Error: error : %d(%s), errno: %d (%s)", error, strerror(error), errno, strerror(errno));
+                        logDataEx("L3-App", "Comms", "Connection Error: error : %d(%s), errno: %d (%s)", error, strerror(error), errno, strerror(errno));
                         clean_socket(soc_fd, epfd);
                         return TXN_HOST_CONNECTION_FAILED;
                     }
                 }
                 else
                 {
-                    logData("Got Socket options : error : %d(%s), errno: %d (%s)", error, strerror(error), errno, strerror(errno));
+                    logDataEx("L3-App", "Comms", "Got Socket options : error : %d(%s), errno: %d (%s)", error, strerror(error), errno, strerror(errno));
                     clean_socket(soc_fd, epfd);
                     return TXN_HOST_CONNECTION_FAILED;
                 }
@@ -108,19 +108,19 @@ ISO8583_ERROR_CODES send_to_host(int soc_fd, const unsigned char *request, int r
 {
     if (soc_fd < 0 || request == NULL || request_len <= 0)
     {
-        logData("Unable to send. invalid arguments");
+        logDataEx("L3-App", "Comms", "Unable to send. invalid arguments");
         return TXN_SEND_TO_HOST_FAILED;
     }
     int bytes_sent = send(soc_fd, request, request_len, 0);
     if (bytes_sent < 0 || bytes_sent != request_len)
     {
-        logData("Send Failed, Bytes Send %d, meg_len %d, errno: %d (%s)", bytes_sent, request_len, errno, strerror(errno));
+        logDataEx("L3-App", "Comms", "Send Failed, Bytes Send %d, meg_len %d, errno: %d (%s)", bytes_sent, request_len, errno, strerror(errno));
         return TXN_SEND_TO_HOST_FAILED;
     }
     {
         char *hex_response = NULL;
         bytearray_to_hexstr(request, request_len, &hex_response);
-        logData("Request Sent : %s", hex_response);
+        logDataEx("L3-App", "Comms", "Request Sent : %s", hex_response);
         free(hex_response);
     }
     return TXN_SUCCESS;
@@ -137,17 +137,17 @@ ISO8583_ERROR_CODES receive_from_host(unsigned char **outbuf, int *outbuf_len, i
 
     if (epoll_ctl(epfd, EPOLL_CTL_MOD, soc_fd, &event) < 0)
     {
-        logData("Add timeout event to socket failed, event_fd %d, soc_fd: %d, errno: %d (%s)", epfd, soc_fd, errno, strerror(errno));
+        logDataEx("L3-App", "Comms", "Add timeout event to socket failed, event_fd %d, soc_fd: %d, errno: %d (%s)", epfd, soc_fd, errno, strerror(errno));
         clean_socket(soc_fd, epfd);
         return TXN_RECEIVE_FROM_HOST_FAILED;
     }
-    logData("Going to wait");
+    logDataEx("L3-App", "Comms", "Going to wait");
     int ready = epoll_wait(epfd, events, 1, timeout_sec * 1000);
-    logData("Wait completed : %d", ready);
+    logDataEx("L3-App", "Comms", "Wait completed : %d", ready);
     if (ready == 0)
     {
         errno = ETIMEDOUT;
-        logData("Unable receive from host :Timeout, errno: %d (%s)", errno, strerror(errno));
+        logDataEx("L3-App", "Comms", "Unable receive from host :Timeout, errno: %d (%s)", errno, strerror(errno));
         clean_socket(soc_fd, epfd);
         return TXN_RECEIVE_FROM_HOST_TIMEOUT;
     }
@@ -161,7 +161,7 @@ ISO8583_ERROR_CODES receive_from_host(unsigned char **outbuf, int *outbuf_len, i
                 int bytes_received = recv(events[i].data.fd, receive_buf, receive_len, 0);
                 if (bytes_received == -1)
                 {
-                    logData("NULL Receive Buffer");
+                    logDataEx("L3-App", "Comms", "NULL Receive Buffer");
                     if (receive_buf)
                         free(receive_buf);
                     clean_socket(soc_fd, epfd);
@@ -170,7 +170,7 @@ ISO8583_ERROR_CODES receive_from_host(unsigned char **outbuf, int *outbuf_len, i
                 {
                     char *hex_response = NULL;
                     bytearray_to_hexstr(receive_buf, bytes_received, &hex_response);
-                    logData("Response Received : %s", hex_response);
+                    logDataEx("L3-App", "Comms", "Response Received : %s", hex_response);
                     free(hex_response);
                 }
                 receive_len = bytes_received;
@@ -180,7 +180,7 @@ ISO8583_ERROR_CODES receive_from_host(unsigned char **outbuf, int *outbuf_len, i
             }
             else
             {
-                logData("NULL Receive Buffer");
+                logDataEx("L3-App", "Comms", "NULL Receive Buffer");
                 if (receive_buf)
                     free(receive_buf);
                 clean_socket(soc_fd, epfd);
@@ -189,7 +189,7 @@ ISO8583_ERROR_CODES receive_from_host(unsigned char **outbuf, int *outbuf_len, i
         }
         else
         {
-            logData("Undesired Event Received. errno: %d (%s)", errno, strerror(errno));
+            logDataEx("L3-App", "Comms", "Undesired Event Received. errno: %d (%s)", errno, strerror(errno));
             clean_socket(soc_fd, epfd);
             return TXN_RECEIVE_FROM_HOST_FAILED;
         }
@@ -197,7 +197,7 @@ ISO8583_ERROR_CODES receive_from_host(unsigned char **outbuf, int *outbuf_len, i
 
     if (close_connection_on_success)
     {
-        logData("Closing The Connection");
+        logDataEx("L3-App", "Comms", "Closing The Connection");
         clean_socket(soc_fd, epfd);
     }
 
@@ -229,10 +229,10 @@ ISO8583_ERROR_CODES process_with_host(const char *address, int port, int timeout
 
     gettimeofday(&t2, NULL);
 
-    logData("Waiting for response\n");
+    logDataEx("L3-App", "Comms", "Waiting for response\n");
 
     ret = receive_from_host(response, response_len, soc_fd, epfd, timeout_sec - (t2.tv_sec - t1.tv_sec), 1);
-    logData("Response : %d\n", ret);
+    logDataEx("L3-App", "Comms", "Response : %d\n", ret);
     if (ret != TXN_SUCCESS)
     {
         return ret;

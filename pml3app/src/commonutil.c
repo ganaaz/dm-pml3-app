@@ -16,6 +16,10 @@
 #include <sys/stat.h>
 #include <openssl/hmac.h>
 #include <sys/statvfs.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <ifaddrs.h>
 
 #include <feig/fetrm.h>
 #include <feig/leds.h>
@@ -42,7 +46,7 @@ mode_t allPerm = S_IRUSR | S_IWUSR | S_IRGRP; // 0640 — owner rw, group r
  **/
 void signalCallbackHandler(int signum)
 {
-    logError("Caught signal %d\n", signum);
+    logErrorEx("L3-App", "Util", "Caught signal %d\n", signum);
     displayLight(LED_ST_APP_EXITING);
     shutdown_requested = 1;
     // exit(signum);
@@ -66,12 +70,12 @@ void printDiskMemory()
         }
         fclose(memFile);
         long memUsed = memTotal - memFree - buffers - cached;
-        logError("Memory Status - Total: %ld kB | Used: %ld kB | Free: %ld kB | Available: %ld kB",
-                 memTotal, memUsed, memFree, memAvailable);
+        logErrorEx("L3-App", "Util", "Memory Status - Total: %ld kB | Used: %ld kB | Free: %ld kB | Available: %ld kB",
+                   memTotal, memUsed, memFree, memAvailable);
     }
     else
     {
-        logError("Memory Status - Failed to open /proc/meminfo");
+        logErrorEx("L3-App", "Util", "Memory Status - Failed to open /proc/meminfo");
     }
 
     // Disk: use statvfs on the root filesystem (or adjust path as needed)
@@ -82,13 +86,13 @@ void printDiskMemory()
         unsigned long long diskFree = (unsigned long long)diskStat.f_bfree * diskStat.f_frsize;
         unsigned long long diskAvail = (unsigned long long)diskStat.f_bavail * diskStat.f_frsize;
         unsigned long long diskUsed = diskTotal - diskFree;
-        logError("Disk Status /  - Total: %llu MB | Used: %llu MB | Free: %llu MB | Available: %llu MB",
-                 diskTotal / (1024 * 1024), diskUsed / (1024 * 1024),
-                 diskFree / (1024 * 1024), diskAvail / (1024 * 1024));
+        logErrorEx("L3-App", "Util", "Disk Status /  - Total: %llu MB | Used: %llu MB | Free: %llu MB | Available: %llu MB",
+                   diskTotal / (1024 * 1024), diskUsed / (1024 * 1024),
+                   diskFree / (1024 * 1024), diskAvail / (1024 * 1024));
     }
     else
     {
-        logError("Disk Status - statvfs() failed");
+        logErrorEx("L3-App", "Util", "Disk Status - statvfs() failed");
     }
 
     if (statvfs("/home", &diskStat) == 0)
@@ -97,13 +101,13 @@ void printDiskMemory()
         unsigned long long diskFree = (unsigned long long)diskStat.f_bfree * diskStat.f_frsize;
         unsigned long long diskAvail = (unsigned long long)diskStat.f_bavail * diskStat.f_frsize;
         unsigned long long diskUsed = diskTotal - diskFree;
-        logError("Disk Status /home  - Total: %llu MB | Used: %llu MB | Free: %llu MB | Available: %llu MB",
-                 diskTotal / (1024 * 1024), diskUsed / (1024 * 1024),
-                 diskFree / (1024 * 1024), diskAvail / (1024 * 1024));
+        logErrorEx("L3-App", "Util", "Disk Status /home  - Total: %llu MB | Used: %llu MB | Free: %llu MB | Available: %llu MB",
+                   diskTotal / (1024 * 1024), diskUsed / (1024 * 1024),
+                   diskFree / (1024 * 1024), diskAvail / (1024 * 1024));
     }
     else
     {
-        logError("Disk Status - statvfs() failed");
+        logErrorEx("L3-App", "Util", "Disk Status - statvfs() failed");
     }
 
     if (statvfs("/home/app3", &diskStat) == 0)
@@ -112,13 +116,13 @@ void printDiskMemory()
         unsigned long long diskFree = (unsigned long long)diskStat.f_bfree * diskStat.f_frsize;
         unsigned long long diskAvail = (unsigned long long)diskStat.f_bavail * diskStat.f_frsize;
         unsigned long long diskUsed = diskTotal - diskFree;
-        logError("Disk Status /home/app3  - Total: %llu MB | Used: %llu MB | Free: %llu MB | Available: %llu MB",
-                 diskTotal / (1024 * 1024), diskUsed / (1024 * 1024),
-                 diskFree / (1024 * 1024), diskAvail / (1024 * 1024));
+        logErrorEx("L3-App", "Util", "Disk Status /home/app3  - Total: %llu MB | Used: %llu MB | Free: %llu MB | Available: %llu MB",
+                   diskTotal / (1024 * 1024), diskUsed / (1024 * 1024),
+                   diskFree / (1024 * 1024), diskAvail / (1024 * 1024));
     }
     else
     {
-        logError("Disk Status - statvfs() failed");
+        logErrorEx("L3-App", "Util", "Disk Status - statvfs() failed");
     }
 }
 
@@ -193,14 +197,14 @@ unsigned char *readFile(const char fileName[])
     long int size = findSize(fileName);
     if (size <= 0)
     {
-        logError("readFile: invalid file size for %s", fileName);
+        logErrorEx("L3-App", "Util", "readFile: invalid file size for %s", fileName);
         return NULL;
     }
 
     FILE *file = fopen(fileName, "rb");
     if (!file)
     {
-        logError("readFile: failed to open %s", fileName);
+        logErrorEx("L3-App", "Util", "readFile: failed to open %s", fileName);
         return NULL;
     }
 
@@ -208,12 +212,12 @@ unsigned char *readFile(const char fileName[])
     if (!data)
     {
         fclose(file);
-        logError("readFile: malloc failed for size %ld", size);
+        logErrorEx("L3-App", "Util", "readFile: malloc failed for size %ld", size);
         return NULL;
     }
 
     size_t n = fread(data, 1, (size_t)size, file);
-    logData("Read Done, bytes read : %zu", n);
+    logDataEx("L3-App", "Util", "Read Done, bytes read : %zu", n);
     fclose(file);
     return data;
 }
@@ -229,7 +233,7 @@ long int findSize(const char fileName[])
     // checking if the file exist or not
     if (fp == NULL)
     {
-        logError("File Not Found!");
+        logErrorEx("L3-App", "Util", "File Not Found!");
         return -1;
     }
 
@@ -283,29 +287,66 @@ void toUpper(char *data)
     }
 }
 
+void getLocalIP(char *ip, size_t ip_size)
+{
+    safe_strcpy(ip, ip_size, "");
+
+    struct ifaddrs *ifas = NULL;
+    if (getifaddrs(&ifas) != 0)
+    {
+        printf("getLocalIP: getifaddrs failed: %s\n", strerror(errno));
+        return;
+    }
+
+    for (struct ifaddrs *ifa = ifas; ifa != NULL; ifa = ifa->ifa_next)
+    {
+        if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET)
+            continue;
+        if (strcmp(ifa->ifa_name, "eth0") != 0)
+            continue;
+        inet_ntop(AF_INET, &((struct sockaddr_in *)ifa->ifa_addr)->sin_addr, ip, ip_size);
+        break;
+    }
+
+    freeifaddrs(ifas);
+}
+
 /**
  * To get the device id
  */
 void getDeviceId(char *deviceId)
 {
     uint32_t device_id;
-    int rd = fetrm_get_devid(&device_id);
-    logData("Device id result : %d", rd);
-    logData("Device id : %lu", device_id);
+    fetrm_get_devid(&device_id);
     snprintf(deviceId, 9, "%08" PRIX32, device_id);
 }
 
 static int copy_file(const char *src, const char *dst)
 {
     int in = open(src, O_RDONLY);
-    if (in < 0) { logError("copy_file: open src failed: %s", strerror(errno)); return -1; }
+    if (in < 0)
+    {
+        logErrorEx("L3-App", "Util", "copy_file: open src failed: %s", strerror(errno));
+        return -1;
+    }
     int out = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0640);
-    if (out < 0) { logError("copy_file: open dst failed: %s", strerror(errno)); close(in); return -1; }
+    if (out < 0)
+    {
+        logErrorEx("L3-App", "Util", "copy_file: open dst failed: %s", strerror(errno));
+        close(in);
+        return -1;
+    }
     char buf[4096];
     ssize_t n;
     while ((n = read(in, buf, sizeof(buf))) > 0)
     {
-        if (write(out, buf, (size_t)n) != n) { logError("copy_file: write failed"); close(in); close(out); return -1; }
+        if (write(out, buf, (size_t)n) != n)
+        {
+            logErrorEx("L3-App", "Util", "copy_file: write failed");
+            close(in);
+            close(out);
+            return -1;
+        }
     }
     close(in);
     close(out);
@@ -318,12 +359,16 @@ static int copy_file(const char *src, const char *dst)
 void createAndCopyNetworkInterfaceFile(struct message reqMessage)
 {
     FILE *networkFile = fopen("interfaces", "w+");
-    if (networkFile == NULL) { logError("createAndCopyNetworkInterfaceFile: fopen failed"); return; }
+    if (networkFile == NULL)
+    {
+        logErrorEx("L3-App", "Util", "createAndCopyNetworkInterfaceFile: fopen failed");
+        return;
+    }
     bool isValid = false;
-    logInfo("Generating ip interface file");
+    logInfoEx("L3-App", "", "Generating ip interface file");
     if (strcmp(reqMessage.ipData.ipMode, IP_MODE_DYNAMIC) == 0)
     {
-        logInfo("Generating file for dynamic ip");
+        logInfoEx("L3-App", "", "Generating file for dynamic ip");
         isValid = true;
         fprintf(networkFile, "auto lo\n");
         fprintf(networkFile, "iface lo inet loopback\n");
@@ -335,7 +380,7 @@ void createAndCopyNetworkInterfaceFile(struct message reqMessage)
     }
     else if (strcmp(reqMessage.ipData.ipMode, IP_MODE_STATIC) == 0)
     {
-        logInfo("Generating file for static ip");
+        logInfoEx("L3-App", "", "Generating file for static ip");
         isValid = true;
         fprintf(networkFile, "auto lo\n");
         fprintf(networkFile, "iface lo inet loopback\n");
@@ -351,15 +396,15 @@ void createAndCopyNetworkInterfaceFile(struct message reqMessage)
 
     if (isValid)
     {
-        logInfo("Copying the interface file to /root/etc/network/interfaces");
+        logInfoEx("L3-App", "", "Copying the interface file to /root/etc/network/interfaces");
         copy_file("interfaces", "/root/etc/network/interfaces");
         chmod("/root/etc/network/interfaces", allPerm);
-        logInfo("Permission updated to rwx all");
-        logInfo("Copy Done");
+        logInfoEx("L3-App", "", "Permission updated to rwx all");
+        logInfoEx("L3-App", "", "Copy Done");
     }
     else
     {
-        logWarn("Invalid ip mode, nothing changed");
+        logWarnEx("L3-App", "", "Invalid ip mode, nothing changed");
     }
 }
 
@@ -370,9 +415,13 @@ void createAndCopyResolvFile(struct message reqMessage)
 {
     if (strlen(reqMessage.ipData.dns) != 0 || strlen(reqMessage.ipData.searchDomain) != 0)
     {
-        logInfo("DNS / Search domain data is available, so copying to resolve.conf");
+        logInfoEx("L3-App", "", "DNS / Search domain data is available, so copying to resolve.conf");
         FILE *resolveFile = fopen("resolv.conf", "w+");
-        if (resolveFile == NULL) { logError("createAndCopyResolvFile: fopen failed"); return; }
+        if (resolveFile == NULL)
+        {
+            logErrorEx("L3-App", "Util", "createAndCopyResolvFile: fopen failed");
+            return;
+        }
         if (strlen(reqMessage.ipData.searchDomain) != 0)
         {
             fprintf(resolveFile, "search %s\n", reqMessage.ipData.searchDomain);
@@ -401,15 +450,15 @@ void createAndCopyResolvFile(struct message reqMessage)
         fprintf(resolveFile, "\n");
         fclose(resolveFile);
 
-        logInfo("Copying the resolve.conf file to /root/etc/resolv.conf");
+        logInfoEx("L3-App", "", "Copying the resolve.conf file to /root/etc/resolv.conf");
         copy_file("resolv.conf", "/root/etc/resolv.conf");
         chmod("/root/etc/resolv.conf", allPerm);
-        logInfo("Permission updated to rwx all");
-        logInfo("Copy Done");
+        logInfoEx("L3-App", "", "Permission updated to rwx all");
+        logInfoEx("L3-App", "", "Copy Done");
     }
     else
     {
-        logWarn("First dns is empty or search domain is empty, nothing changed");
+        logWarnEx("L3-App", "", "First dns is empty or search domain is empty, nothing changed");
     }
 }
 
@@ -489,24 +538,24 @@ struct transactionData updateTransactionDateTime(struct transactionData trxData)
     time_t rawTime = time(NULL);
     struct tm *ptm = localtime(&rawTime);
     int iYear = ptm->tm_year - 100;
-    logData("Year from time struct : %d", iYear);
+    logDataEx("L3-App", "Util", "Year from time struct : %d", iYear);
     char year[5];
     snprintf(year, 5, "%d", 2000 + iYear);
-    logData("Current Year : %s", year);
+    logDataEx("L3-App", "Util", "Current Year : %s", year);
     safe_strcpy(trxData.year, sizeof(trxData.year), year);
     strftime(trxData.time, sizeof(trxData.time), "%H%M%S", ptm);
-    logData("Transaction Time : %s", trxData.time);
+    logDataEx("L3-App", "Util", "Transaction Time : %s", trxData.time);
     strftime(trxData.date, sizeof(trxData.date), "%m%d", ptm);
-    logData("Transaction Date : %s", trxData.date);
+    logDataEx("L3-App", "Util", "Transaction Date : %s", trxData.date);
 
     struct tm *ptmGMT = gmtime(&rawTime);
     strftime(trxData.gmtTime, sizeof(trxData.gmtTime), "%Y-%m-%d %H:%M:%S GMT", ptmGMT);
     safe_strcat(trxData.gmtTime, sizeof(trxData.gmtTime), "\0");
-    logData("Transaction GMT Time : %s", trxData.gmtTime);
+    logDataEx("L3-App", "Util", "Transaction GMT Time : %s", trxData.gmtTime);
 
     strftime(trxData.acqTransactionId, sizeof(trxData.acqTransactionId), "%d%m%y%H%M%S", ptm);
-    logData("acqTransactionId : %s", trxData.acqTransactionId);
-    logData("Length : %d", strlen(trxData.acqTransactionId));
+    logDataEx("L3-App", "Util", "acqTransactionId : %s", trxData.acqTransactionId);
+    logDataEx("L3-App", "Util", "Length : %d", strlen(trxData.acqTransactionId));
 
     char acqUniqueTxnId[21];
     safe_strcpy(acqUniqueTxnId, sizeof(acqUniqueTxnId), appConfig.deviceCode); // 10 digit
@@ -517,8 +566,8 @@ struct transactionData updateTransactionDateTime(struct transactionData trxData)
 
     safe_strcpy(trxData.acqUniqueTransactionId, sizeof(trxData.acqUniqueTransactionId), acqUniqueTxnId);
 
-    logData("acqUniqueTransactionId : %s", trxData.acqUniqueTransactionId);
-    logData("Length : %d", strlen(trxData.acqUniqueTransactionId));
+    logDataEx("L3-App", "Util", "acqUniqueTransactionId : %s", trxData.acqUniqueTransactionId);
+    logDataEx("L3-App", "Util", "Length : %d", strlen(trxData.acqUniqueTransactionId));
 
     return trxData;
 }
@@ -546,7 +595,8 @@ void removeIccTags(uint8_t buffer[4096], size_t buffer_len)
         size_t value_sz = 0;
         tlv_encode_value(tlv_attr, NULL, &value_sz);
         uint8_t *value = malloc(value_sz);
-        if (!value) continue;
+        if (!value)
+            continue;
         tlv_encode_value(tlv_attr, value, &value_sz);
 
         if (tag[0] == 0x57 || tag[0] == 0x5A)
@@ -562,7 +612,11 @@ void removeIccTags(uint8_t buffer[4096], size_t buffer_len)
         sprintf(temp2, "%02X", value_sz);
         safe_strcat(iccData, sizeof(iccData), temp2);
         char *temp3 = malloc(value_sz * 2 + 1);
-        if (!temp3) { free(value); continue; }
+        if (!temp3)
+        {
+            free(value);
+            continue;
+        }
         byteToHex(value, value_sz, temp3);
         safe_strcat(iccData, sizeof(iccData), temp3);
 
@@ -575,7 +629,7 @@ void removeIccTags(uint8_t buffer[4096], size_t buffer_len)
     }
 
     safe_strcpy(currentTxnData.iccData, sizeof(currentTxnData.iccData), iccData);
-    logData("ICC DATA : %s", currentTxnData.iccData);
+    logDataEx("L3-App", "Util", "ICC DATA : %s", currentTxnData.iccData);
     currentTxnData.iccDataLen = strlen(iccData);
     tlv_free(tlvData);
 }
@@ -598,7 +652,8 @@ int hexToByte(const char *hexData, unsigned char *output)
         char lo = (char)toupper((unsigned char)hexData[inIdx + 1]);
         bool hiOk = (hi >= '0' && hi <= '9') || (hi >= 'A' && hi <= 'F');
         bool loOk = (lo >= '0' && lo <= '9') || (lo >= 'A' && lo <= 'F');
-        if (!hiOk || !loOk) return -1;
+        if (!hiOk || !loOk)
+            return -1;
         output[outIdx] = (unsigned char)((hi % 32 + 9) % 25 * 16 + (lo % 32 + 9) % 25);
     }
 
@@ -618,7 +673,7 @@ bool isMinimumFirmwareInstalled(void)
         return false;
     }
 
-    logInfo("Installed firmware: %s", version);
+    logInfoEx("L3-App", "", "Installed firmware: %s", version);
 
     uint8_t major = 0, minor = 0, feature = 0, rev = 0;
     rc = sscanf(version, "%*2s%" SCNx8 ".%" SCNx8 ".%" SCNx8 "-%*2s.%" SCNx8 "", &major, &minor, &feature, &rev);
@@ -653,8 +708,8 @@ void generateNarrationData(char *stationId, char *acqTrxId,
     char onlyAmount[5];
     memcpy(onlyAmount, &amount[8], 4);
     onlyAmount[4] = '\0';
-    logData("Only Amount : %s", onlyAmount);
-    logData("Only amount length : %d", strlen(onlyAmount));
+    logDataEx("L3-App", "Util", "Only Amount : %s", onlyAmount);
+    logDataEx("L3-App", "Util", "Only amount length : %d", strlen(onlyAmount));
     safe_strcat(narration, narration_size, onlyAmount);
     int len = strlen(narration);
     int max = 30 - len;
@@ -662,13 +717,13 @@ void generateNarrationData(char *stationId, char *acqTrxId,
     {
         safe_strcat(narration, narration_size, " ");
     }
-    logData("acqTrxId : %s", acqTrxId);
-    logData("acqUniqueTrxId : %s", acqUniqueTrxId);
+    logDataEx("L3-App", "Util", "acqTrxId : %s", acqTrxId);
+    logDataEx("L3-App", "Util", "acqUniqueTrxId : %s", acqUniqueTrxId);
     safe_strcat(narration, narration_size, acqTrxId);
     safe_strcat(narration, narration_size, acqUniqueTrxId);
 
-    logData("Narration data generated : %s", narration);
-    logData("Narration length : %d", strlen(narration));
+    logDataEx("L3-App", "Util", "Narration data generated : %s", narration);
+    logDataEx("L3-App", "Util", "Narration length : %d", strlen(narration));
 }
 
 /**
@@ -684,8 +739,8 @@ void generateNarrationData(char *stationId, char *acqTrxId,
 //     char onlyAmount[5];
 //     memcpy(onlyAmount, &amount[8], 4);
 //     onlyAmount[4] = '\0';
-//     logData("Only Amount : %s", onlyAmount);
-//     logData("Only amount length : %d", strlen(onlyAmount));
+//     logDataEx("L3-App", "Util", "Only Amount : %s", onlyAmount);
+//     logDataEx("L3-App", "Util", "Only amount length : %d", strlen(onlyAmount));
 //     safe_strcat(narration, 63, onlyAmount);
 //     int len = strlen(narration);
 //     int max = 30 - len;
@@ -696,8 +751,8 @@ void generateNarrationData(char *stationId, char *acqTrxId,
 //     safe_strcat(narration, 63, acqTrxId);
 //     safe_strcat(narration, 63, acqUniqueTrxId);
 
-//     logData("Narration data generated : %s", narration);
-//     logData("Narration length : %d", strlen(narration));
+//     logDataEx("L3-App", "Util", "Narration data generated : %s", narration);
+//     logDataEx("L3-App", "Util", "Narration length : %d", strlen(narration));
 // }
 
 /**
@@ -720,7 +775,7 @@ void generateUUID(char uuidData[UUID_STR_LEN])
 */
 void generateOrderId()
 {
-    logData("Txn counter : %ld", currentTxnData.txnCounter);
+    logDataEx("L3-App", "Util", "Txn counter : %ld", currentTxnData.txnCounter);
     char orderId[29];
 
     safe_strcpy(orderId, sizeof(orderId), currentTxnData.year);
@@ -730,8 +785,8 @@ void generateOrderId()
     safe_strcat(orderId, sizeof(orderId), appConfig.terminalId);
 
     safe_strcpy(currentTxnData.orderId, sizeof(currentTxnData.orderId), orderId);
-    logData("Order Id Generated : %s", currentTxnData.orderId);
-    logData("Order Id length : %d", strlen(currentTxnData.orderId));
+    logDataEx("L3-App", "Util", "Order Id Generated : %s", currentTxnData.orderId);
+    logDataEx("L3-App", "Util", "Order Id length : %d", strlen(currentTxnData.orderId));
 }
 
 /**
@@ -746,8 +801,9 @@ int deleteLogFile(struct message reqMessage)
 
     if (strstr(name, "paytm.log") != NULL)
     {
-        logData("Paytm File name is valid : %s", name);
-        if (remove(name) == 0) return 0;
+        logDataEx("L3-App", "Util", "Paytm File name is valid : %s", name);
+        if (remove(name) == 0)
+            return 0;
         return -1;
     }
 
@@ -755,8 +811,9 @@ int deleteLogFile(struct message reqMessage)
     {
         return -2;
     }
-    logData("Log File name is valid : %s", name);
-    if (remove(name) == 0) return 0;
+    logDataEx("L3-App", "Util", "Log File name is valid : %s", name);
+    if (remove(name) == 0)
+        return 0;
     return -1;
 }
 
@@ -765,58 +822,58 @@ int deleteLogFile(struct message reqMessage)
  **/
 void printCurrentTxnData(struct transactionData trxData)
 {
-    logData("=========================================");
+    logDataEx("L3-App", "Util", "=========================================");
 
-    logData("Current Transaction Data");
-    logData("Unique Id : %s", trxData.transactionId);
-    logData("Transaction Type : %s", trxData.trxType);
-    logData("Transaction Bin : %02X", trxData.trxTypeBin);
-    logData("Processing Code : %s", trxData.processingCode);
-    logData("Counter : %d", trxData.txnCounter);
-    logData("Stan : %s", trxData.stan);
-    logData("Amount String : %s", trxData.sAmount);
-    logData("Time : %s", trxData.time);
-    logData("Date : %s", trxData.date);
-    logData("Year : %s", trxData.year);
-    logData("AID : %s", trxData.aid);
-    logData("Masked PAN : %s", trxData.maskPan);
-    logData("Token : %s", trxData.token);
-    logData("Effective Date : %s", trxData.effectiveDate);
-    logData("Service Id : %s", trxData.serviceId);
-    logData("Service Index : %s", trxData.serviceIndex);
-    logData("Service Data : %s", trxData.serviceData);
-    logData("Service Control : %s", trxData.serviceControl);
-    logData("Service Balance : %s", trxData.serviceBalance);
-    logData("ICC Data : %s", trxData.iccData);
-    logData("ICC Data Len : %d", trxData.iccDataLen);
-    logData("KSN : %s", trxData.ksn);
-    logData("Track 2 Enc : %s", trxData.track2Enc);
-    logData("Pan Encypted : %s", trxData.panEncrypted);
-    logData("Exp Date Encypted : %s", trxData.expDateEnc);
-    logData("Mac Ksn : %s", trxData.macKsn);
-    logData("Mac : %s", trxData.mac);
-    // logData("Plain Pan : %s", trxData.plainPan); // TODO : Remove
-    // logData("Plain Exp Date : %s", trxData.plainExpDate); // TODO : Remove
-    // logData("Plain Track 2 : %s", trxData.plainTrack2); // TODO : Remove
-    logData("Order id : %s", trxData.orderId);
-    logData("Transaction Status : %s", trxData.txnStatus);
-    logData("Is Balance Update : %s", trxData.isImmedOnline ? "true" : "false");
-    logData("Is Service Creation : %s", trxData.isServiceCreation ? "true" : "false");
-    logData("Update Amount : %s", trxData.updatedAmount);
-    logData("Update Balance : %s", trxData.updatedBalance);
-    logData("Host Response : %s", trxData.hostResponseCode);
-    logData("Money Add Trx Type : %s", trxData.moneyAddTrxType);
-    logData("Money Add Trx RRN : %s", trxData.moneyAddRRN);
-    logData("Money Add Trx TID : %s", trxData.moneyAddTid);
-    logData("Check Date : %s", trxData.checkDate);
-    logData("Check Date Result : %d", trxData.checkDateResult);
-    logData("Trx Issue Detail : %s", trxData.trxIssueDetail);
-    logData("Is Card Present Sent : %s", trxData.cardPresentedSent ? "true" : "false");
-    logData("Is Rupay Txn : %s", trxData.isRupayTxn ? "true" : "false");
-    logData("Is Gate Open : %s", trxData.isGateOpen ? "true" : "false");
-    logData("GMT Time : %s", trxData.gmtTime);
+    logDataEx("L3-App", "Util", "Current Transaction Data");
+    logDataEx("L3-App", "Util", "Unique Id : %s", trxData.transactionId);
+    logDataEx("L3-App", "Util", "Transaction Type : %s", trxData.trxType);
+    logDataEx("L3-App", "Util", "Transaction Bin : %02X", trxData.trxTypeBin);
+    logDataEx("L3-App", "Util", "Processing Code : %s", trxData.processingCode);
+    logDataEx("L3-App", "Util", "Counter : %d", trxData.txnCounter);
+    logDataEx("L3-App", "Util", "Stan : %s", trxData.stan);
+    logDataEx("L3-App", "Util", "Amount String : %s", trxData.sAmount);
+    logDataEx("L3-App", "Util", "Time : %s", trxData.time);
+    logDataEx("L3-App", "Util", "Date : %s", trxData.date);
+    logDataEx("L3-App", "Util", "Year : %s", trxData.year);
+    logDataEx("L3-App", "Util", "AID : %s", trxData.aid);
+    logDataEx("L3-App", "Util", "Masked PAN : %s", trxData.maskPan);
+    logDataEx("L3-App", "Util", "Token : %s", trxData.token);
+    logDataEx("L3-App", "Util", "Effective Date : %s", trxData.effectiveDate);
+    logDataEx("L3-App", "Util", "Service Id : %s", trxData.serviceId);
+    logDataEx("L3-App", "Util", "Service Index : %s", trxData.serviceIndex);
+    logDataEx("L3-App", "Util", "Service Data : %s", trxData.serviceData);
+    logDataEx("L3-App", "Util", "Service Control : %s", trxData.serviceControl);
+    logDataEx("L3-App", "Util", "Service Balance : %s", trxData.serviceBalance);
+    logDataEx("L3-App", "Util", "ICC Data : %s", trxData.iccData);
+    logDataEx("L3-App", "Util", "ICC Data Len : %d", trxData.iccDataLen);
+    logDataEx("L3-App", "Util", "KSN : %s", trxData.ksn);
+    logDataEx("L3-App", "Util", "Track 2 Enc : %s", trxData.track2Enc);
+    logDataEx("L3-App", "Util", "Pan Encypted : %s", trxData.panEncrypted);
+    logDataEx("L3-App", "Util", "Exp Date Encypted : %s", trxData.expDateEnc);
+    logDataEx("L3-App", "Util", "Mac Ksn : %s", trxData.macKsn);
+    logDataEx("L3-App", "Util", "Mac : %s", trxData.mac);
+    // logDataEx("L3-App", "Util", "Plain Pan : %s", trxData.plainPan); // TODO : Remove
+    // logDataEx("L3-App", "Util", "Plain Exp Date : %s", trxData.plainExpDate); // TODO : Remove
+    // logDataEx("L3-App", "Util", "Plain Track 2 : %s", trxData.plainTrack2); // TODO : Remove
+    logDataEx("L3-App", "Util", "Order id : %s", trxData.orderId);
+    logDataEx("L3-App", "Util", "Transaction Status : %s", trxData.txnStatus);
+    logDataEx("L3-App", "Util", "Is Balance Update : %s", trxData.isImmedOnline ? "true" : "false");
+    logDataEx("L3-App", "Util", "Is Service Creation : %s", trxData.isServiceCreation ? "true" : "false");
+    logDataEx("L3-App", "Util", "Update Amount : %s", trxData.updatedAmount);
+    logDataEx("L3-App", "Util", "Update Balance : %s", trxData.updatedBalance);
+    logDataEx("L3-App", "Util", "Host Response : %s", trxData.hostResponseCode);
+    logDataEx("L3-App", "Util", "Money Add Trx Type : %s", trxData.moneyAddTrxType);
+    logDataEx("L3-App", "Util", "Money Add Trx RRN : %s", trxData.moneyAddRRN);
+    logDataEx("L3-App", "Util", "Money Add Trx TID : %s", trxData.moneyAddTid);
+    logDataEx("L3-App", "Util", "Check Date : %s", trxData.checkDate);
+    logDataEx("L3-App", "Util", "Check Date Result : %d", trxData.checkDateResult);
+    logDataEx("L3-App", "Util", "Trx Issue Detail : %s", trxData.trxIssueDetail);
+    logDataEx("L3-App", "Util", "Is Card Present Sent : %s", trxData.cardPresentedSent ? "true" : "false");
+    logDataEx("L3-App", "Util", "Is Rupay Txn : %s", trxData.isRupayTxn ? "true" : "false");
+    logDataEx("L3-App", "Util", "Is Gate Open : %s", trxData.isGateOpen ? "true" : "false");
+    logDataEx("L3-App", "Util", "GMT Time : %s", trxData.gmtTime);
 
-    logData("=========================================");
+    logDataEx("L3-App", "Util", "=========================================");
 }
 
 /**
@@ -881,7 +938,7 @@ void doUnLock()
  **/
 void resetTransactionData()
 {
-    logData("Resetting the transaction data");
+    logDataEx("L3-App", "Util", "Resetting the transaction data");
     resetSecondTap();
     selectedService = NULL;
 
@@ -937,7 +994,7 @@ void resetTransactionData()
     memset(currentTxnData.acqUniqueTransactionId, 0, sizeof(currentTxnData.acqUniqueTransactionId));
     memset(currentTxnData.plainPanWithTag, 0, sizeof(currentTxnData.plainPanWithTag));
 
-    logInfo("Transaction data reset successfully");
+    logInfoEx("L3-App", "", "Transaction data reset successfully");
 }
 
 /**
@@ -945,18 +1002,18 @@ void resetTransactionData()
  */
 void incrementTransactionCounter()
 {
-    logData("Incrementing transaction counter. Current : %d", appData.transactionCounter);
+    logDataEx("L3-App", "Util", "Incrementing transaction counter. Current : %d", appData.transactionCounter);
     // Increment the next and save
     appData.transactionCounter++;
 
     if (appData.transactionCounter > MAX_TXN_COUNTER)
     {
-        logData("Transaction counter is reset to 1 as the max is reached");
+        logDataEx("L3-App", "Util", "Transaction counter is reset to 1 as the max is reached");
         appData.transactionCounter = 1;
     }
 
     writeAppData();
-    logData("Updated one : %d", appData.transactionCounter);
+    logDataEx("L3-App", "Util", "Updated one : %d", appData.transactionCounter);
 }
 
 /**
@@ -987,7 +1044,7 @@ void formatTransactionTime(struct transactionData trxData, char trxDate[20])
  **/
 char *removeTrack2FPadding(const char *track2, int len)
 {
-    // logData("Track 2 recevied : %s", track2);
+    // logDataEx("L3-App", "Util", "Track 2 recevied : %s", track2);
 
     // count F padding in last
     int totalFPadding = 0;
@@ -1002,7 +1059,7 @@ char *removeTrack2FPadding(const char *track2, int len)
             break;
         }
     }
-    // logData("Total F padding : %d", totalFPadding);
+    // logDataEx("L3-App", "Util", "Total F padding : %d", totalFPadding);
     int size = len - totalFPadding;
     char *updatedTrack2 = malloc(size + 1);
 
@@ -1013,7 +1070,7 @@ char *removeTrack2FPadding(const char *track2, int len)
 
     updatedTrack2[size] = '\0';
 
-    // logData("Updated Track 2 is : %s", updatedTrack2);
+    // logDataEx("L3-App", "Util", "Updated Track 2 is : %s", updatedTrack2);
     return updatedTrack2;
 }
 /**
@@ -1118,7 +1175,7 @@ void generatePanToken(const char *panNumber, const char *track2, char buffer[65]
     const char *found = strchr(track2, 'D');
     if (found == NULL)
     {
-        logError("generatePanToken: no 'D' separator in track2");
+        logErrorEx("L3-App", "Util", "generatePanToken: no 'D' separator in track2");
         return;
     }
     int index = (int)(found - track2) + 5;
@@ -1135,14 +1192,14 @@ void generatePanToken(const char *panNumber, const char *track2, char buffer[65]
         k++;
     }
     salt[7] = '\0';
-    // logData("Salt found : %s", salt);
-    // logData("Salt length : %d", strlen(salt));
+    // logDataEx("L3-App", "Util", "Salt found : %s", salt);
+    // logDataEx("L3-App", "Util", "Salt length : %d", strlen(salt));
 
     char data[200];
     safe_strcpy(data, sizeof(data), "");
     safe_strcat(data, sizeof(data), salt);
     safe_strcat(data, sizeof(data), panNumber);
-    // logData("Data for Sha %s", data);
+    // logDataEx("L3-App", "Util", "Data for Sha %s", data);
     generateSha(data, buffer);
 }
 
@@ -1167,23 +1224,23 @@ void string2hexString(const char *input, char *output, size_t output_size)
  **/
 void pad0MultipleOf8(const char *input, char *output, size_t output_size, int *outLen)
 {
-    logData("Input data : %s", input);
+    logDataEx("L3-App", "Util", "Input data : %s", input);
     int inputLen = strlen(input);
-    logData("Input len : %d", inputLen);
+    logDataEx("L3-App", "Util", "Input len : %d", inputLen);
 
     int evenAdd = (inputLen % 2 != 0) ? 1 : 0;
-    logData("Now even add : %d", evenAdd);
+    logDataEx("L3-App", "Util", "Now even add : %d", evenAdd);
 
     int bLen = (inputLen + evenAdd) / 2;
-    logData("Byte length : %d", bLen);
+    logDataEx("L3-App", "Util", "Byte length : %d", bLen);
 
     int bal = (bLen % 8 != 0) ? (8 - (bLen % 8)) * 2 : 0;
-    logData("Balance padding as per 8 byte len : %d", bal);
+    logDataEx("L3-App", "Util", "Balance padding as per 8 byte len : %d", bal);
     *outLen = bal + evenAdd + inputLen;
 
     if ((size_t)(*outLen + 1) > output_size)
     {
-        logError("pad0MultipleOf8: output buffer too small (%zu needed, %zu provided)", (size_t)(*outLen + 1), output_size);
+        logErrorEx("L3-App", "Util", "pad0MultipleOf8: output buffer too small (%zu needed, %zu provided)", (size_t)(*outLen + 1), output_size);
         output[0] = '\0';
         return;
     }
@@ -1196,8 +1253,8 @@ void pad0MultipleOf8(const char *input, char *output, size_t output_size, int *o
         output[idx++] = input[i];
 
     output[idx] = '\0';
-    logData("Final padded length : %d", *outLen);
-    logData("Final padded data : %s", output);
+    logDataEx("L3-App", "Util", "Final padded length : %d", *outLen);
+    logDataEx("L3-App", "Util", "Final padded data : %s", output);
 }
 
 /**

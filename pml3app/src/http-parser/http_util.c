@@ -6,10 +6,13 @@
 #include "../include/logutil.h"
 #include "../include/commonutil.h"
 
+extern char currentTrxType[100];
+extern char lastPanDigit[10];
+
 static int onBody(http_parser *parser, const char *data, size_t length)
 {
-    logData("Body Received");
-    logData("Body length received : %d", length);
+    logDataEx(currentTrxType, lastPanDigit, "Body Received");
+    logDataEx(currentTrxType, lastPanDigit, "Body length received : %d", length);
 
     HttpResponseData *httpResponseData = (struct http_response_data *)parser->data;
     httpResponseData->messageLen = length;
@@ -17,7 +20,7 @@ static int onBody(http_parser *parser, const char *data, size_t length)
     httpResponseData->message = malloc(length + 1);
     if (httpResponseData->message == NULL)
     {
-        logData("ERROR: malloc failed in onBody");
+        logDataEx(currentTrxType, lastPanDigit, "ERROR: malloc failed in onBody");
         httpResponseData->messageLen = 0;
         return -1;
     }
@@ -29,8 +32,8 @@ static int onBody(http_parser *parser, const char *data, size_t length)
 
 static int onStatus(http_parser *parser, const char *data, size_t length)
 {
-    logData("Status Received");
-    logData("Status length received : %d", length);
+    logDataEx(currentTrxType, lastPanDigit, "Status Received");
+    logDataEx(currentTrxType, lastPanDigit, "Status length received : %d", length);
 
     HttpResponseData *httpResponseData = (struct http_response_data *)parser->data;
     int maxLen = 19;
@@ -107,7 +110,7 @@ HttpResponseData parseHttpResponse(const char *responseMessage)
     httpResponseData.message = NULL;
     if (responseMessage == NULL)
     {
-        logData("ERROR: NULL response message");
+        logDataEx(currentTrxType, lastPanDigit, "ERROR: NULL response message");
         httpResponseData.code = 0;
         safe_strcpy(httpResponseData.status, sizeof(httpResponseData.status), "");
         safe_strcpy(httpResponseData.contentLength, sizeof(httpResponseData.contentLength), "");
@@ -122,21 +125,21 @@ HttpResponseData parseHttpResponse(const char *responseMessage)
     parser.data = &httpResponseData;
     size_t parsed = http_parser_execute(&parser, &settings, responseMessage, strlen(responseMessage));
 
-    logData("Parsed : %d", parsed);
-    logData("Major : %d", parser.http_major);
-    logData("Minor : %d", parser.http_minor);
-    logData("Status Code : %d", parser.status_code);
+    logDataEx(currentTrxType, lastPanDigit, "Parsed : %d", parsed);
+    logDataEx(currentTrxType, lastPanDigit, "Major : %d", parser.http_major);
+    logDataEx(currentTrxType, lastPanDigit, "Minor : %d", parser.http_minor);
+    logDataEx(currentTrxType, lastPanDigit, "Status Code : %d", parser.status_code);
     httpResponseData.code = parser.status_code;
 
-    logData("-------------------------------------------------");
-    logData("Http Response Parsed Object");
-    logData("Code : %d", httpResponseData.code);
-    logData("Status : %s", httpResponseData.status);
-    logData("Message Len : %d", httpResponseData.messageLen);
-    logData("Message : %s", httpResponseData.message);
-    logData("Content Length : %s", httpResponseData.contentLength);
-    logData("ContentType : %s", httpResponseData.contentType);
-    logData("-------------------------------------------------");
+    logDataEx(currentTrxType, lastPanDigit, "-------------------------------------------------");
+    logDataEx(currentTrxType, lastPanDigit, "Http Response Parsed Object");
+    logDataEx(currentTrxType, lastPanDigit, "Code : %d", httpResponseData.code);
+    logDataEx(currentTrxType, lastPanDigit, "Status : %s", httpResponseData.status);
+    logDataEx(currentTrxType, lastPanDigit, "Message Len : %d", httpResponseData.messageLen);
+    logDataEx(currentTrxType, lastPanDigit, "Message : %s", httpResponseData.message);
+    logDataEx(currentTrxType, lastPanDigit, "Content Length : %s", httpResponseData.contentLength);
+    logDataEx(currentTrxType, lastPanDigit, "ContentType : %s", httpResponseData.contentType);
+    logDataEx(currentTrxType, lastPanDigit, "-------------------------------------------------");
 
     return httpResponseData;
 }

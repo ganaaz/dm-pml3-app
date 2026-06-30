@@ -9,12 +9,13 @@
 
         <!-- default appenders ===================================== -->
         <rollingpolicy name="myrollingpolicy" type="sizewin" maxsize="5MB" maxnum="10" />
-	    <appender name="myrollingfileappender" type="rollingfile" logdir="." 
-            prefix="l3app.log" layout="dated" rollingpolicy="myrollingpolicy" />
-	
-        <appender name="stdout" type="stream" layout="dated"/>
+	    <appender name="myrollingfileappender" type="rollingfile" logdir="."
+            prefix="l3app.log" layout="message" rollingpolicy="myrollingpolicy" />
+
+        <appender name="stdout" type="plain_stdout" layout="message"/>
 
         <!-- default layouts ======================================= -->
         <layout name="basic" type="basic"/>
         <layout name="dated" type="dated"/>
+        <layout name="message" type="message"/>
 </log4c>

@@ -62,12 +62,15 @@ long long deEndEvent;
 long long deAzCompletedTime;
 long long trxEndTime;
 
+char currentTrxType[100];
+char lastPanDigit[10];
+
 /**
  * Initiate a transaction
  **/
 void *processTransaction(void *arg)
 {
-    logInfo("Starting Thread processTransaction");
+    logInfoEx(currentTrxType, lastPanDigit, "Starting Thread processTransaction");
 
     int retVal = 0;
     int rc = 0;
@@ -92,7 +95,7 @@ void *processTransaction(void *arg)
         // --- Shutdown check at top of loop ---
         if (shutdown_requested)
         {
-            logInfo("Shutdown requested, exiting processTransaction thread");
+            logInfoEx(currentTrxType, lastPanDigit, "Shutdown requested, exiting processTransaction thread");
             break;
         }
 
@@ -116,7 +119,7 @@ void *processTransaction(void *arg)
             continue;
         }
 
-        logInfo("Going to run the transaction");
+        logInfoEx(currentTrxType, lastPanDigit, "Going to run the transaction");
         displayLight(LED_ST_AWAITING_CARD_SUCCESS);
 
         amount_authorized_bin = appData.amountAuthorizedBin;
@@ -140,17 +143,17 @@ void *processTransaction(void *arg)
         struct tlv *tlv_outcome_tmp = NULL;
         struct tlv *tlv = NULL;
 
-        logData("Amount = %llu,%02llu Currency Code : %0llu",
-                amount_authorized_bin / 100,
-                amount_authorized_bin % 100,
-                appData.currCodeBin);
+        logDataEx(currentTrxType, lastPanDigit, "Amount = %llu,%02llu Currency Code : %0llu",
+                  amount_authorized_bin / 100,
+                  amount_authorized_bin % 100,
+                  appData.currCodeBin);
 
-        logData("Doing pre processing ...");
+        logDataEx(currentTrxType, lastPanDigit, "Doing pre processing ...");
 
         rc = generatePreProcessData(&data, &dataLen);
         if (rc)
         {
-            logWarn("Preprocess data generation failed");
+            logWarnEx(currentTrxType, lastPanDigit, "Preprocess data generation failed");
             break;
         }
 
@@ -160,7 +163,7 @@ void *processTransaction(void *arg)
 
         if (rc != FETPF_RC_OK)
         {
-            logError("fetpf_ep_preprocess failed with rc:  %d", rc);
+            logErrorEx("L3-App", "FeigPreProcess", "fetpf_ep_preprocess failed with rc:  %d", rc);
             break;
         }
 
@@ -174,7 +177,7 @@ void *processTransaction(void *arg)
             goto next;
         }
 
-        logData("Preprocess success, now going to poll for the card");
+        logDataEx(currentTrxType, lastPanDigit, "Preprocess success, now going to poll for the card");
         memset(outcome, 0, sizeof(outcome));
         outcome_len = sizeof(outcome);
 
@@ -190,7 +193,7 @@ void *processTransaction(void *arg)
         // --- Shutdown check before blocking SDK call ---
         if (shutdown_requested)
         {
-            logInfo("Shutdown requested before card polling, aborting transaction");
+            logInfoEx(currentTrxType, lastPanDigit, "Shutdown requested before card polling, aborting transaction");
             goto cleanup;
         }
 
@@ -201,8 +204,8 @@ void *processTransaction(void *arg)
             timeOut = 30 * 1000;
         }
 
-        logInfo("Waiting for the card in the reader \n");
-        logInfo("Search time out : %d milli seconds", timeOut);
+        logInfoEx(currentTrxType, lastPanDigit, "Waiting for the card in the reader \n");
+        logInfoEx(currentTrxType, lastPanDigit, "Search time out : %d milli seconds", timeOut);
 
         if (appConfig.isTimingEnabled)
         {
@@ -213,14 +216,14 @@ void *processTransaction(void *arg)
         // --- Shutdown check after blocking SDK call returns ---
         if (shutdown_requested)
         {
-            logInfo("Shutdown requested after card polling, aborting transaction");
+            logInfoEx(currentTrxType, lastPanDigit, "Shutdown requested after card polling, aborting transaction");
             goto cleanup;
         }
 
         rc = fetpf_ep_transaction(fetpf, data, dataLen, outcome, &outcome_len,
                                   onlineResponse, &onlineResponseLen, timeOut, &fetpfCallBacks);
 
-        logInfo("Result of Transaction : %d", rc);
+        logInfoEx(currentTrxType, lastPanDigit, "Result of Transaction : %d", rc);
         trxEndTime = getCurrentSeconds();
         if (appConfig.isTimingEnabled)
         {
@@ -243,28 +246,30 @@ void *processTransaction(void *arg)
 
         // Only for debug printing
         processOutcome(outcome, outcome_len);
-        logError("Completed count : %d", index++);
+        logErrorEx(currentTrxType, lastPanDigit, "Completed count : %d", index++);
+        safe_strcpy(currentTrxType, sizeof(currentTrxType), "");
+        safe_strcpy(lastPanDigit, sizeof(lastPanDigit), "");
 
     next:
         pthread_mutex_lock(&lockFeigTrx);
 
         if (appData.searchMode == SEARCH_MODE_SINGLE || retVal == EXIT_FAILURE)
         {
-            logInfo("Thread stop requested, so setting the value of not to run txn");
+            logInfoEx(currentTrxType, lastPanDigit, "Thread stop requested, so setting the value of not to run txn");
             canRunTransaction = false;
-            logInfo("Setting app status to Ready now");
+            logInfoEx(currentTrxType, lastPanDigit, "Setting app status to Ready now");
             changeAppState(APP_STATUS_READY);
             displayLight(LED_ST_APP_STARTED);
         }
         else if (canRunTransaction == false)
         {
-            logInfo("Cancel requested, so not running the transaction.");
+            logInfoEx(currentTrxType, lastPanDigit, "Cancel requested, so not running the transaction.");
             changeAppState(APP_STATUS_READY);
             displayLight(LED_ST_APP_STARTED);
         }
         else
         {
-            logInfo("Going to wait for another card");
+            logInfoEx(currentTrxType, lastPanDigit, "Going to wait for another card");
         }
 
         if (appConfig.isTimingEnabled)
@@ -275,7 +280,7 @@ void *processTransaction(void *arg)
 
         if (DEVICE_STATUS == STATUS_OFFLINE)
         {
-            logData("Device status is offline in feigtransaction. sending message");
+            logDataEx(currentTrxType, lastPanDigit, "Device status is offline in feigtransaction. sending message");
             sendDeviceOfflineMessage();
         }
 
@@ -295,7 +300,7 @@ void *processTransaction(void *arg)
         break;
     }
 
-    logError("processTransaction thread exiting, freeing resources");
+    logErrorEx(currentTrxType, lastPanDigit, "processTransaction thread exiting, freeing resources");
 
     if (NULL != fetpf)
     {
@@ -336,19 +341,19 @@ int callBackFinalOutcome(struct fetpf *client, const void *outcome,
     (void)online_response;
     (void)online_response_len;
     (void)out_data;
-    logData("%s() called this time", __func__);
+    logDataEx(currentTrxType, lastPanDigit, "%s() called this time", __func__);
 
     processOutcome(outcome, outcome_len);
 
     if (appConfig.autoReadCard)
     {
         *out_data_len = 14;
-        logData("Auto read card is set");
+        logDataEx(currentTrxType, lastPanDigit, "Auto read card is set");
         memcpy(out_data, FETPF_PROCEED_RESTART_WITH_CARD_RESET, 14);
     }
     else
     {
-        logData("Auto read card is NOT set");
+        logDataEx(currentTrxType, lastPanDigit, "Auto read card is NOT set");
         *out_data_len = 6;
         memcpy(out_data, FETPF_PROCEED_DONE_WITH_CARD_REMOVAL, 6);
     }
@@ -385,7 +390,7 @@ void populateTrxDetails(uint64_t amount_authorized_bin)
     currentTxnData.txnCounter = appData.transactionCounter;
     char stan[7];
     snprintf(stan, 7, "%06ld", currentTxnData.txnCounter);
-    logData("Stan : %s", stan);
+    logDataEx(currentTrxType, lastPanDigit, "Stan : %s", stan);
     safe_strcpy(currentTxnData.stan, sizeof(currentTxnData.stan), stan);
     safe_strcpy(currentTxnData.moneyAddTrxType, sizeof(currentTxnData.moneyAddTrxType), appData.moneyAddTrxType);
     safe_strcpy(currentTxnData.moneyAddRRN, sizeof(currentTxnData.moneyAddRRN), appData.moneyAddRRN);
@@ -416,10 +421,10 @@ void readAndStoreLimit(void *config, size_t configLen)
         safe_strcat(limitStr, temp);
     }
 
-    logData("Contactless limit string : %s", limitStr);
+    logDataEx(currentTrxType, lastPanDigit, "Contactless limit string : %s", limitStr);
     appConfig.contactlessLimit = strtol(limitStr, NULL, 10);
 
-    logData("Contactless Limit : %llu.%02llu", appConfig.contactlessLimit/100, appConfig.contactlessLimit % 100);
+    logDataEx(currentTrxType, lastPanDigit, "Contactless Limit : %llu.%02llu", appConfig.contactlessLimit/100, appConfig.contactlessLimit % 100);
 }
 */
 
@@ -447,10 +452,10 @@ void readAndStoreCVMLimit(void *config, size_t configLen)
     }
     cvmLimitStr[12] = '\0';
 
-    logData("CVM Limit String : %s", cvmLimitStr);
+    logDataEx(currentTrxType, lastPanDigit, "CVM Limit String : %s", cvmLimitStr);
 
     appConfig.cvmLimit = strtol(cvmLimitStr, NULL, 10);
-    logData("CVM Limit : %llu.%02llu", appConfig.cvmLimit/100, appConfig.cvmLimit % 100);
+    logDataEx(currentTrxType, lastPanDigit, "CVM Limit : %llu.%02llu", appConfig.cvmLimit/100, appConfig.cvmLimit % 100);
 }
 */
 
@@ -477,13 +482,13 @@ void readAndStoreFloorLimit(void *config, size_t configLen)
         safe_strcat(floorLimitStr, data);
     }
     floorLimitStr[8] = '\0';
-    logData("Floor limit string : %s", floorLimitStr);
+    logDataEx(currentTrxType, lastPanDigit, "Floor limit string : %s", floorLimitStr);
     //safe_strcpy(floorLimitStr, "00004E20");
     safe_strcpy(floorLimitStr, "00030D40");
-    logData("Floor limit string : %s", floorLimitStr);
+    logDataEx(currentTrxType, lastPanDigit, "Floor limit string : %s", floorLimitStr);
 
     appConfig.floorLimit = strtol(floorLimitStr, NULL, 16);
-    logData("Terminal Floor Limit : %llu.%02llu", appConfig.floorLimit/100, appConfig.floorLimit % 100);
+    logDataEx(currentTrxType, lastPanDigit, "Terminal Floor Limit : %llu.%02llu", appConfig.floorLimit/100, appConfig.floorLimit % 100);
 }
 */
 
@@ -545,8 +550,8 @@ int callBackDataExchange(struct fetpf *client,
             size_t t1 = sizeof(d1);
             char d1_str[(2 * t1) + 1];
             tlv_encode_value(tlv_fci, d1, &t1);
-            logData("%s(): Source: Kernel ID: %s",
-                    __func__, libtlv_bin_to_hex(d1, t1, d1_str));
+            logDataEx(currentTrxType, lastPanDigit, "%s(): Source: Kernel ID: %s",
+                      __func__, libtlv_bin_to_hex(d1, t1, d1_str));
         }
 
         struct tlv *tlv_df_name = tlv_find(tlv_source, EMV_ID_DF_NAME);
@@ -559,15 +564,15 @@ int callBackDataExchange(struct fetpf *client,
         if (kid_sz > 0)
         {
             char kid_str[(2 * kid_sz) + 1];
-            logData("%s(): Source: Kernel ID: %s",
-                    __func__, libtlv_bin_to_hex(kid, kid_sz, kid_str));
+            logDataEx(currentTrxType, lastPanDigit, "%s(): Source: Kernel ID: %s",
+                      __func__, libtlv_bin_to_hex(kid, kid_sz, kid_str));
         }
 
         if (df_name_sz > 0)
         {
             char df_name_str[(2 * df_name_sz) + 1];
-            logData("%s(): Source: DF-Name %s",
-                    __func__, libtlv_bin_to_hex(df_name, df_name_sz, df_name_str));
+            logDataEx(currentTrxType, lastPanDigit, "%s(): Source: DF-Name %s",
+                      __func__, libtlv_bin_to_hex(df_name, df_name_sz, df_name_str));
 
             safe_strncpy(currentTxnData.aid, sizeof(currentTxnData.aid), df_name_str, (2 * df_name_sz) + 1);
         }
@@ -575,19 +580,19 @@ int callBackDataExchange(struct fetpf *client,
         tlv_free(tlv_source);
     }
 
-    logInfo("Kernel id : %02x", kid[0]);
+    logInfoEx(currentTrxType, lastPanDigit, "Kernel id : %02x", kid[0]);
 
     // Rupay kernel
     if (kid[0] == 0x0D)
     {
         if (currentTxnData.cardPresentedSent && isSecondTap == false)
         {
-            logError("ALREADY CARD PRESENTED, DECLINING IT");
+            logErrorEx(currentTrxType, lastPanDigit, "ALREADY CARD PRESENTED, DECLINING IT");
             return EMVCO_RC_FAIL;
         }
 
         currentTxnData.isRupayTxn = true;
-        logData("Rupay card detected");
+        logDataEx(currentTrxType, lastPanDigit, "Rupay card detected");
         currentTxnData = updateTransactionDateTime(currentTxnData);
         int rc = handleDataExchange(client, request, request_len, reply, reply_len);
         long long endEvent = getCurrentSeconds();
@@ -603,7 +608,7 @@ int callBackDataExchange(struct fetpf *client,
     }
     else
     {
-        logError("Unsupported card");
+        logErrorEx(currentTrxType, lastPanDigit, "Unsupported card");
         return EMVCO_RC_FAIL;
     }
 }
@@ -620,13 +625,13 @@ int callBackOnlineRequest(struct fetpf *client,
     (void)out_data;
     int rc = 0;
     *out_data_len = 0;
-    logData("%s() called\n", __func__);
+    logDataEx(currentTrxType, lastPanDigit, "%s() called\n", __func__);
 
     // logHexData("Online outcome : ", outcome, outcome_len);
     // processOutcome(outcome, outcome_len);
     if (currentTxnData.isRupayTxn == false && appConfig.enableAbt == true)
     {
-        logData("This is a ABT transaction so no online required");
+        logDataEx(currentTrxType, lastPanDigit, "This is a ABT transaction so no online required");
         *response_len = 0;
         return rc;
     }
@@ -642,7 +647,7 @@ int callBackOnlineRequest(struct fetpf *client,
 int handle_online_request(const void *outcome, size_t outcome_len,
                           uint8_t *response, size_t *response_len)
 {
-    logInfo("Sending online data to host");
+    logInfoEx(currentTrxType, lastPanDigit, "Sending online data to host");
     long long startOnlineReqTime = getCurrentSeconds();
     logTimeWarnData("Inititating online request calculations : %lld", startOnlineReqTime);
 
@@ -665,8 +670,8 @@ int handle_online_request(const void *outcome, size_t outcome_len,
     // byteToHex(buffer, buffer_len, currentTxnData.iccData);
     // currentTxnData.iccDataLen = buffer_len * 2;
 
-    // logData("ICC Data : %s", currentTxnData.iccData);
-    // logData("ICC Data Len : %d", currentTxnData.iccDataLen);
+    // logDataEx(currentTrxType, lastPanDigit, "ICC Data : %s", currentTxnData.iccData);
+    // logDataEx(currentTrxType, lastPanDigit, "ICC Data Len : %d", currentTxnData.iccDataLen);
 
     // To get the card expiry from the ICC Data
     // populateCardExpiry(buffer, buffer_len);
@@ -685,28 +690,28 @@ int handle_online_request(const void *outcome, size_t outcome_len,
         safe_strcpy(currentTxnData.plainTrack2, sizeof(currentTxnData.plainTrack2), updatedTrack2);
         currentTxnData.plainTrack2[strlen(updatedTrack2)] = '\0';
         free(updatedTrack2);
-        // logData("Plain Track 2 received : %s", currentTxnData.plainTrack2); // TODO : Remove
-        // logData("Plain Track 2 len : %d", strlen(currentTxnData.plainTrack2));
+        // logDataEx(currentTrxType, lastPanDigit, "Plain Track 2 received : %s", currentTxnData.plainTrack2); // TODO : Remove
+        // logDataEx(currentTrxType, lastPanDigit, "Plain Track 2 len : %d", strlen(currentTxnData.plainTrack2));
     }
 
     // tlv_free(tlv_obj);
     tlv_free(tlv_data_record);
     tlv_free(tlv_outcome);
 
-    logData("Local Transaction Counter : %ld", currentTxnData.txnCounter);
-    logData("Batch counter : %ld", appData.batchCounter);
+    logDataEx(currentTrxType, lastPanDigit, "Local Transaction Counter : %ld", currentTxnData.txnCounter);
+    logDataEx(currentTrxType, lastPanDigit, "Batch counter : %ld", appData.batchCounter);
     currentTxnData.isImmedOnline = true;
 
     generateOrderId();
-    logData("Order id of txn data : %s", currentTxnData.orderId);
+    logDataEx(currentTrxType, lastPanDigit, "Order id of txn data : %s", currentTxnData.orderId);
     // encryptPanTrack2ExpDate();
 
     // Save the txn to db
     safe_strcpy(currentTxnData.txnStatus, sizeof(currentTxnData.txnStatus), STATUS_PENDING);
-    logData("Already generated txn id : %s", currentTxnData.transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Already generated txn id : %s", currentTxnData.transactionId);
     // char *transactionId = malloc(UUID_STR_LEN);
     // generateUUID(transactionId);
-    // logInfo("Unique Transaction Id : %s", transactionId);
+    // logInfoEx(currentTrxType, lastPanDigit, "Unique Transaction Id : %s", transactionId);
     // safe_strcpy(currentTxnData.transactionId, transactionId);
     // free(transactionId);
 
@@ -716,7 +721,7 @@ int handle_online_request(const void *outcome, size_t outcome_len,
 
         // if (!appConfig.useAirtelHost)
         // {
-        //     logData("Balance update, generating mac for paytm");
+        //     logDataEx(currentTrxType, lastPanDigit, "Balance update, generating mac for paytm");
         //     generateMacBalanceUpdate(currentTxnData);
         //     createTxnDataForOnline(currentTxnData);
         //     long long endTime = getCurrentSeconds();
@@ -727,12 +732,12 @@ int handle_online_request(const void *outcome, size_t outcome_len,
 
         // else
         // {
-        //     logData("Balance update, generating for airtel");
+        //     logDataEx(currentTrxType, lastPanDigit, "Balance update, generating for airtel");
         //     createTxnDataForOnline(currentTxnData);
         //     long long endTime = getCurrentSeconds();
         //     logTimeWarnData("Calculation completed : %lld", endTime);
         //     logTimeWarnData("Time took for preparation : %lld", (endTime - startOnlineReqTime));
-        //     logData("Going to perform airtel balance update");
+        //     logDataEx(currentTrxType, lastPanDigit, "Going to perform airtel balance update");
         //     performAirtelHostUpdate(currentTxnData, appData.batchCounter, response, response_len, BALANCE_UPDATE);
         // }
     }
@@ -742,7 +747,7 @@ int handle_online_request(const void *outcome, size_t outcome_len,
         performHostServiceCreate(currentTxnData, appData.batchCounter, response, response_len);
         //     if (!appConfig.useAirtelHost)
         //     {
-        //         logData("Service create, generating mac");
+        //         logDataEx(currentTrxType, lastPanDigit, "Service create, generating mac");
         //         generateMacServiceCreation(currentTxnData);
         //         createTxnDataForOnline(currentTxnData);
 
@@ -754,12 +759,12 @@ int handle_online_request(const void *outcome, size_t outcome_len,
         //     }
         //     else
         //     {
-        //         logData("Service Create, generating for airtel");
+        //         logDataEx(currentTrxType, lastPanDigit, "Service Create, generating for airtel");
         //         createTxnDataForOnline(currentTxnData);
         //         long long endTime = getCurrentSeconds();
         //         logTimeWarnData("Calculation completed : %lld", endTime);
         //         logTimeWarnData("Time took for preparation : %lld", (endTime - startOnlineReqTime));
-        //         logData("Going to perform airtel service create");
+        //         logDataEx(currentTrxType, lastPanDigit, "Going to perform airtel service create");
         //         performAirtelHostUpdate(currentTxnData, appData.batchCounter, response, response_len, SERVICE_CREATION);
         //     }
     }
@@ -769,7 +774,7 @@ int handle_online_request(const void *outcome, size_t outcome_len,
         performHostMoneyAdd(currentTxnData, appData.batchCounter, response, response_len);
         //     if (!appConfig.useAirtelHost)
         //     {
-        //         logData("Money add, generating mac");
+        //         logDataEx(currentTrxType, lastPanDigit, "Money add, generating mac");
         //         generateMacMoneyAdd(currentTxnData);
         //         createTxnDataForOnline(currentTxnData);
         //         long long endTime = getCurrentSeconds();
@@ -780,17 +785,17 @@ int handle_online_request(const void *outcome, size_t outcome_len,
         //     }
         //     else
         //     {
-        //         logData("Money Add, generating for airtel");
+        //         logDataEx(currentTrxType, lastPanDigit, "Money Add, generating for airtel");
         //         createTxnDataForOnline(currentTxnData);
         //         long long endTime = getCurrentSeconds();
         //         logTimeWarnData("Calculation completed : %lld", endTime);
         //         logTimeWarnData("Time took for preparation : %lld", (endTime - startOnlineReqTime));
-        //         logData("Going to perform airtel Money Add");
+        //         logDataEx(currentTrxType, lastPanDigit, "Going to perform airtel Money Add");
         //         performAirtelHostUpdate(currentTxnData, appData.batchCounter, response, response_len, MONEY_ADD);
         //     }
     }
 
-    logData("Sending responses back to kernel");
+    logDataEx(currentTrxType, lastPanDigit, "Sending responses back to kernel");
 
     long long t1 = getCurrentSeconds();
     logTimeWarnData("Sending the data back to kernel : %lld", t1);
@@ -809,12 +814,12 @@ int generatePreProcessData(void **preData, size_t *preDataLen)
     void *data = NULL;
     size_t dataLen = 0;
 
-    logData("Transaction type in Pre Process : %02X", appData.trxTypeBin);
+    logDataEx(currentTrxType, lastPanDigit, "Transaction type in Pre Process : %02X", appData.trxTypeBin);
 
     rc = libtlv_bcd_to_u64(&appData.trxTypeBin, sizeof(appData.trxTypeBin), &trx_type);
     if (rc)
     {
-        logError("Failure in converting trx type to u64");
+        logErrorEx(currentTrxType, lastPanDigit, "Failure in converting trx type to u64");
         return EXIT_FAILURE;
     }
 
@@ -823,7 +828,7 @@ int generatePreProcessData(void **preData, size_t *preDataLen)
     // It is set in rupay service
     if (appData.trxTypeBin == 0x028)
     {
-        logData("Transaction type is purchase so setting the amount as 0");
+        logDataEx(currentTrxType, lastPanDigit, "Transaction type is purchase so setting the amount as 0");
         amoutBin = 0;
     }
 
@@ -862,10 +867,10 @@ int generatePreProcessData(void **preData, size_t *preDataLen)
 void callBacktrack2(struct fetpf *client, const void *track2Tlv, size_t track_len)
 {
     (void)client;
-    logData("%s() called", __func__);
+    logDataEx(currentTrxType, lastPanDigit, "%s() called", __func__);
 
     const uint8_t *data = (uint8_t *)track2Tlv;
-    logData("Track 2 Length : %d", track_len);
+    logDataEx(currentTrxType, lastPanDigit, "Track 2 Length : %d", track_len);
 
     uint8_t dataBuffer[100];
     size_t dataBufferLen = sizeof(dataBuffer);
@@ -877,47 +882,47 @@ void callBacktrack2(struct fetpf *client, const void *track2Tlv, size_t track_le
     memset(dataBuffer, 0x00, sizeof(dataBuffer));
     tlv_encode_value(tlv_track2, dataBuffer, &dataBufferLen);
     byteToHex(dataBuffer, dataBufferLen, track2Data);
-    logData("Track 2 Parsed and received : %s", track2Data);
+    logDataEx(currentTrxType, lastPanDigit, "Track 2 Parsed and received : %s", track2Data);
     tlv_free(tlv_track2_outcome);
 
     if (strcmp(currentTxnData.trxType, TRXTYPE_BALANCE_UPDATE) == 0 ||
         strcmp(currentTxnData.trxType, TRXTYPE_SERVICE_CREATE) == 0 ||
         strcmp(currentTxnData.trxType, TRXTYPE_MONEY_ADD) == 0)
     {
-        logData("Transaction type is balance update / Service create, so performing track 2 encryption");
+        logDataEx(currentTrxType, lastPanDigit, "Transaction type is balance update / Service create, so performing track 2 encryption");
         unsigned char ksn[10];
         char hex[256], hex2[100];
-        // logData("Plain Track 2 : %s", track2); // TODO Remove
-        // logData("Track 2 len : %d", strlen(track2));
+        // logDataEx(currentTrxType, lastPanDigit, "Plain Track 2 : %s", track2); // TODO Remove
+        // logDataEx(currentTrxType, lastPanDigit, "Track 2 len : %d", strlen(track2));
 
         char track2WithTag[50];
         safe_strcpy(track2WithTag, sizeof(track2WithTag), "57");
         char track2HexLen[12];
         sprintf(track2HexLen, "%02X", strlen(track2Data) / 2);
-        // logData("Hex length of Track 2 : %s", track2HexLen);
+        // logDataEx(currentTrxType, lastPanDigit, "Hex length of Track 2 : %s", track2HexLen);
         safe_strcat(track2WithTag, sizeof(track2WithTag), track2HexLen);
         safe_strcat(track2WithTag, sizeof(track2WithTag), track2Data);
 
-        // logData("Input Track2 : %s", track2WithTag);
-        // logData("Input track 2 len : %d", strlen(track2WithTag));
+        // logDataEx(currentTrxType, lastPanDigit, "Input Track2 : %s", track2WithTag);
+        // logDataEx(currentTrxType, lastPanDigit, "Input track 2 len : %d", strlen(track2WithTag));
 
         encryptPan(track2WithTag, ksn, hex);
-        logData("Result : %s", hex);
+        logDataEx(currentTrxType, lastPanDigit, "Result : %s", hex);
         byteToHex(ksn, 10, hex2);
-        logData("KSN Received : %s", hex2);
-        logData("KSN Len : %d", strlen(hex2));
+        logDataEx(currentTrxType, lastPanDigit, "KSN Received : %s", hex2);
+        logDataEx(currentTrxType, lastPanDigit, "KSN Len : %d", strlen(hex2));
         safe_strcpy(currentTxnData.ksn, sizeof(currentTxnData.ksn), "00000000000000000000");
         safe_strcat(currentTxnData.ksn, sizeof(currentTxnData.ksn), hex2);
-        logData("TXN Data KSN Value : %s", currentTxnData.ksn);
-        logData("TXN Data KSN Len : %d", strlen(currentTxnData.ksn));
+        logDataEx(currentTrxType, lastPanDigit, "TXN Data KSN Value : %s", currentTxnData.ksn);
+        logDataEx(currentTrxType, lastPanDigit, "TXN Data KSN Len : %d", strlen(currentTxnData.ksn));
 
         safe_strcpy(currentTxnData.track2Enc, sizeof(currentTxnData.track2Enc), hex);
-        logData("TXN Track2 Encrypted Value : %s", currentTxnData.track2Enc);
-        logData("TXN Track2 Encrypted Len : %d", strlen(currentTxnData.track2Enc));
+        logDataEx(currentTrxType, lastPanDigit, "TXN Track2 Encrypted Value : %s", currentTxnData.track2Enc);
+        logDataEx(currentTrxType, lastPanDigit, "TXN Track2 Encrypted Len : %d", strlen(currentTxnData.track2Enc));
     }
     else
     {
-        logData("Transaction is not balance update / service create, so no Track 2 encryption required");
+        logDataEx(currentTrxType, lastPanDigit, "Transaction is not balance update / service create, so no Track 2 encryption required");
     }
 
     char *updatedTrack2 = removeTrack2FPadding(track2Data, dataBufferLen * 2);
@@ -927,19 +932,19 @@ void callBacktrack2(struct fetpf *client, const void *track2Tlv, size_t track_le
 
     if (currentTxnData.isRupayTxn == false && appConfig.enableAbt == true)
     {
-        logData("Its an ABT on callback track 2, so generating token");
-        logData("Plain track 2 after F removed : %s", currentTxnData.plainTrack2);
+        logDataEx(currentTrxType, lastPanDigit, "Its an ABT on callback track 2, so generating token");
+        logDataEx(currentTrxType, lastPanDigit, "Plain track 2 after F removed : %s", currentTxnData.plainTrack2);
         // safe_strcpy(currentTxnData.token, currentTxnData.plainTrack2);
 
         int plainTrack2Len = strlen(currentTxnData.plainTrack2);
-        logData("Plain Track 2 length to be used: %d", plainTrack2Len);
+        logDataEx(currentTrxType, lastPanDigit, "Plain Track 2 length to be used: %d", plainTrack2Len);
 
         char plainTrack2[plainTrack2Len];
         memset(plainTrack2, 0, plainTrack2Len);
         safe_strcpy(plainTrack2, sizeof(plainTrack2), currentTxnData.plainTrack2);
 
-        logData("Plain Track 2 received : %s", plainTrack2);
-        logData("Plain text track 2 len : %d", strlen(plainTrack2));
+        logDataEx(currentTrxType, lastPanDigit, "Plain Track 2 received : %s", plainTrack2);
+        logDataEx(currentTrxType, lastPanDigit, "Plain text track 2 len : %d", strlen(plainTrack2));
 
         char *delimiter = strchr(currentTxnData.plainTrack2, 'D');
         size_t len;
@@ -966,18 +971,18 @@ void callBacktrack2(struct fetpf *client, const void *track2Tlv, size_t track_le
                      currentTxnData.plainTrack2,
                      len);
 
-        // logData("Plain pan : %s", currentTxnData.plainPan);
+        // logDataEx(currentTrxType, lastPanDigit, "Plain pan : %s", currentTxnData.plainPan);
 
-        logData("Its abt transaction so generating transaction id here");
+        logDataEx(currentTrxType, lastPanDigit, "Its abt transaction so generating transaction id here");
         char *transactionId = malloc(UUID_STR_LEN);
         generateUUID(transactionId);
-        logInfo("Unique Transaction Id generated : %s", transactionId);
+        logInfoEx(currentTrxType, lastPanDigit, "Unique Transaction Id generated : %s", transactionId);
         safe_strcpy(currentTxnData.transactionId, sizeof(currentTxnData.transactionId), transactionId);
         free(transactionId);
 
         char sha[65];
         generatePanToken(currentTxnData.plainPan, plainTrack2, sha);
-        logData("SHA Generated for Pan : %s\n", sha);
+        logDataEx(currentTrxType, lastPanDigit, "SHA Generated for Pan : %s\n", sha);
         safe_strcpy(currentTxnData.token, sizeof(currentTxnData.token), sha);
     }
 
@@ -988,14 +993,14 @@ void callBacktrack2(struct fetpf *client, const void *track2Tlv, size_t track_le
 
     /*
     const uint8_t *data = (uint8_t *)track2;
-    logData("\t+++++++++++++ Track 2 Data ++++++++++++++");
-    logData("\tTrack 2 Data (len: %zu):\t", track_len);
+    logDataEx(currentTrxType, lastPanDigit, "\t+++++++++++++ Track 2 Data ++++++++++++++");
+    logDataEx(currentTrxType, lastPanDigit, "\tTrack 2 Data (len: %zu):\t", track_len);
     for (int i = 0; i < track_len; i++)
     {
         printf("%02X", data[i]);
     }
     printf("\n");
-    logData("\n+++++++++++++++++++++++++++++++++++++++\n");
+    logDataEx(currentTrxType, lastPanDigit, "\n+++++++++++++++++++++++++++++++++++++++\n");
     */
 }
 
@@ -1005,7 +1010,7 @@ void callBacktrack2(struct fetpf *client, const void *track2Tlv, size_t track_le
 int callBackSurrender(struct fetpf *client)
 {
     (void)client;
-    logData("Cancelling the polling, due to timeout");
+    logDataEx(currentTrxType, lastPanDigit, "Cancelling the polling, due to timeout");
     if (currentTxnData.cardPresentedSent == true)
     {
         sendCardRemovedMessage();

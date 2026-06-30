@@ -48,6 +48,12 @@ unsigned char *readFile(const char fileName[]);
 long int findSize(const char fileName[]);
 
 /**
+ * Get the IPv4 address of eth0 as a dotted-decimal string.
+ * Writes an empty string on failure.
+ **/
+void getLocalIP(char *ip, size_t ip_size);
+
+/**
  * To get the device id
  **/
 void getDeviceId(char *deviceId);

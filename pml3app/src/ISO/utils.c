@@ -53,7 +53,7 @@ int get_hex_string_len(ISO8583_FIELD_SYNTAX syntax, int max_length)
     case ALPHA_OR_NUMERIC:
         return 0;
     default:
-        logData("Invalid Syntax");
+        logDataEx("L3-App", "Util", "Invalid Syntax");
         return 0;
     }
 }
@@ -77,7 +77,7 @@ int get_parser_hex_string_len(ISO8583_FIELD_SYNTAX syntax, int len)
     case ALPHA_OR_NUMERIC:
         return 0;
     default:
-        logData("Invalid Syntax");
+        logDataEx("L3-App", "Util", "Invalid Syntax");
         return 0;
     }
 }
@@ -116,7 +116,7 @@ ISO8583_ERROR_CODES convert_value(ISO8583_FIELD_SYNTAX syntax, char *value, char
     //         }
     //     break;
     default:
-        logData("Invalid Syntax");
+        logDataEx("L3-App", "Util", "Invalid Syntax");
         break;
         ;
     }
@@ -128,7 +128,7 @@ ISO8583_ERROR_CODES padd_left_s(char *hexstr, ISO8583_FIELD_SYNTAX syntax, int p
     int length = padlength - strlen(hexstr);
     if (length < 0)
     {
-        logData("Invalid Pad Length");
+        logDataEx("L3-App", "Util", "Invalid Pad Length");
         return TXN_FAILED;
     }
 
@@ -155,7 +155,7 @@ ISO8583_ERROR_CODES padd_right_s(char *hexstr, ISO8583_FIELD_SYNTAX syntax, int 
     int length = padlength - strlen(hexstr);
     if (length < 0)
     {
-        logData("Invalid Pad Length : %d hexstring Length %d", padlength, (int)strlen(hexstr));
+        logDataEx("L3-App", "Util", "Invalid Pad Length : %d hexstring Length %d", padlength, (int)strlen(hexstr));
         return TXN_FAILED;
     }
 
@@ -209,13 +209,13 @@ ISO8583_ERROR_CODES hexstr_to_bytearray(char *hexstr, unsigned char **bytearray,
 {
     if (strlen(hexstr) % 2 != 0)
     {
-        logData("invalid Hex str length for hexstr_to_bytearray conversion");
+        logDataEx("L3-App", "Util", "invalid Hex str length for hexstr_to_bytearray conversion");
         return TXN_FAILED;
     }
 
     if (is_hex_str(hexstr) == TXN_FAILED)
     {
-        logData("invalid Hex str for hexstr_to_bytearray conversion");
+        logDataEx("L3-App", "Util", "invalid Hex str for hexstr_to_bytearray conversion");
         return TXN_FAILED;
     }
 

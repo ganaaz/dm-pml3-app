@@ -34,17 +34,17 @@ void *createAndListenServer()
     socklen_t optlen = sizeof(opt);
     char buffer[1024 * 5] = {0};
 
-    logInfo("Creating server socket and going to wait for client");
+    logInfoEx("Socket", "", "Creating server socket and going to wait for Socket");
 
     if ((serverFd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
     {
-        logError("Socket creation failed.");
+        logErrorEx("L3-App", "Socket", "Socket creation failed.");
         return NULL; // Never exit() in a thread
     }
 
     if (setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
     {
-        logError("Error in setsockopt");
+        logErrorEx("L3-App", "Socket", "Error in setsockopt");
         close(serverFd);
         return NULL;
     }
@@ -55,14 +55,14 @@ void *createAndListenServer()
 
     if (getsockopt(serverFd, SOL_SOCKET, SO_KEEPALIVE, &opt, &optlen) < 0)
     {
-        logError("Error in getsockopt");
+        logErrorEx("L3-App", "Socket", "Error in getsockopt");
         close(serverFd);
         return NULL;
     }
 
     if (setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
     {
-        logError("Error setsockopt failed.");
+        logErrorEx("L3-App", "Socket", "Error setsockopt failed.");
         close(serverFd);
         return NULL;
     }
@@ -73,23 +73,23 @@ void *createAndListenServer()
         tv.tv_sec = appConfig.socketTimeout;
         tv.tv_usec = 0;
         setsockopt(serverFd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof tv);
-        logData("Socket timeout is set as %d", appConfig.socketTimeout);
+        logDataEx("L3-App", "Socket", "Socket timeout is set as %d", appConfig.socketTimeout);
     }
     else
     {
-        logData("Socket timeout is set as -1, so not setting the timeout val");
+        logDataEx("L3-App", "Socket", "Socket timeout is set as -1, so not setting the timeout val");
     }
 
     if (bind(serverFd, (struct sockaddr *)&address, sizeof(address)) < 0)
     {
-        logError("Error bind failed");
+        logErrorEx("L3-App", "Socket", "Error bind failed");
         close(serverFd);
         return NULL;
     }
 
     if (listen(serverFd, 3) < 0)
     {
-        logError("Error listen failed");
+        logErrorEx("L3-App", "Socket", "Error listen failed");
         close(serverFd);
         return NULL;
     }
@@ -99,7 +99,7 @@ void *createAndListenServer()
         // --- Shutdown check before accept ---
         if (shutdown_requested)
         {
-            logError("Shutdown requested, exiting main server listener");
+            logErrorEx("L3-App", "Socket", "Shutdown requested, exiting main server listener");
             break;
         }
 
@@ -112,7 +112,7 @@ void *createAndListenServer()
         int activity = select(serverFd + 1, &readfds, NULL, NULL, &timeout);
         if (activity < 0)
         {
-            logError("select() error on server socket: %s", strerror(errno));
+            logErrorEx("L3-App", "Socket", "select() error on server socket: %s", strerror(errno));
             break;
         }
         if (activity == 0)
@@ -121,7 +121,7 @@ void *createAndListenServer()
         logInfo("Waiting for the client socket ...");
         if ((CLIENT_SOCKET = accept(serverFd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0)
         {
-            logError("Error in accepting");
+            logErrorEx("L3-App", "Socket", "Error in accepting");
             continue;
         }
 
@@ -129,14 +129,14 @@ void *createAndListenServer()
         struct in_addr ipAddr = pV4Addr->sin_addr;
         char ipString[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &ipAddr, ipString, INET_ADDRSTRLEN);
-        logInfo("Client connected from %s on socket id: %d", ipString, CLIENT_SOCKET);
+        logInfoEx("L3-App", "Socket", "Client connected from %s on socket id: %d", ipString, CLIENT_SOCKET);
 
         // --- Inner read loop ---
         while (1)
         {
             if (shutdown_requested)
             {
-                logInfo("Shutdown requested, closing client socket %d", CLIENT_SOCKET);
+                logInfoEx("L3-App", "Socket", "Shutdown requested, closing client socket %d", CLIENT_SOCKET);
                 break;
             }
 
@@ -149,51 +149,51 @@ void *createAndListenServer()
             int clientActivity = select(CLIENT_SOCKET + 1, &clientfds, NULL, NULL, &readTimeout);
             if (clientActivity < 0)
             {
-                logError("select() error on client socket: %s", strerror(errno));
+                logErrorEx("L3-App", "Socket", "select() error on client socket: %s", strerror(errno));
                 break;
             }
             if (clientActivity == 0)
                 continue; // Timeout — loop back and check shutdown_requested
 
-            logData("Listening for data from client (%s) on socket id: %d ...", ipString, CLIENT_SOCKET);
+            logDataEx("L3-App", "Socket", "Listening for data from client (%s) on socket id: %d ...", ipString, CLIENT_SOCKET);
             reqstatus = read(CLIENT_SOCKET, buffer, sizeof(buffer));
             if (reqstatus < 0)
             {
-                logError("Read error on main socket: %s", strerror(errno));
+                logErrorEx("L3-App", "Socket", "Read error on main socket: %s", strerror(errno));
                 break;
             }
             if (reqstatus == 0)
             {
-                logInfo("Client %s disconnected", ipString);
+                logInfoEx("L3-App", "Socket", "Client %s disconnected", ipString);
                 break;
             }
 
             char *data = (char *)malloc(reqstatus + 1);
             if (data == NULL)
             {
-                logError("malloc failed for incoming data");
+                logErrorEx("L3-App", "Socket", "malloc failed for incoming data");
                 break;
             }
             memcpy(data, buffer, reqstatus);
             data[reqstatus] = '\0';
 
-            logData("Raw data received from client %s, socket: %d (Len: %d): %s",
-                    ipString, CLIENT_SOCKET, reqstatus, data);
+            logDataEx("L3-App", "Socket", "Raw data received from client %s, socket: %d (Len: %d): %s",
+                      ipString, CLIENT_SOCKET, reqstatus, data);
 
             char *response = handleClientMessage(data);
             free(data);
 
             if (response == NULL)
             {
-                logData("Null response, nothing to send");
+                logDataEx("L3-App", "Socket", "Null response, nothing to send");
             }
             else if (strlen(response) == 0)
             {
-                logData("Empty response, nothing to send");
+                logDataEx("L3-App", "Socket", "Empty response, nothing to send");
             }
             else
             {
-                logData("Length of response: %d", strlen(response));
+                logDataEx("L3-App", "Socket", "Length of response: %d", strlen(response));
                 send(CLIENT_SOCKET, response, strlen(response), 0);
                 free(response);
             }
@@ -206,7 +206,7 @@ void *createAndListenServer()
         stopCardSearch();
     }
 
-    logError("Closing main server socket");
+    logErrorEx("L3-App", "Socket", "Closing main server socket");
     close(serverFd);
     return NULL;
 }

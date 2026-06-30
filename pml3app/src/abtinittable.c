@@ -30,7 +30,7 @@ void initAbtTrxTable()
         exit(-1);
     }
 
-    logInfo("ABT database opened successfully");
+    logInfoEx("ABT", "", "ABT database opened successfully");
     doVaccum();
 
     const char *createTableQuery = "CREATE TABLE IF NOT EXISTS AbtTransactions("
@@ -84,7 +84,7 @@ void initAbtTrxTable()
         exit(-1);
     }
 
-    logInfo("ABT Trx Table created / avaialble success");
+    logInfoEx("ABT", "", "ABT Trx Table created / avaialble success");
     if (errormsg)
     {
         free(errormsg);
@@ -96,10 +96,10 @@ void doVaccum()
     int rc = sqlite3_exec(sqlite3AbtDb, "VACUUM;", 0, 0, 0);
     if (rc != SQLITE_OK)
     {
-        logError("Error in VACUUM for abt db: %s\n", sqlite3_errmsg(sqlite3AbtDb));
+        logErrorEx("ABT", "Init", "Error in VACUUM for abt db: %s\n", sqlite3_errmsg(sqlite3AbtDb));
     }
     else
     {
-        logInfo("VACUUM operation successful for ABT DB.\n");
+        logInfoEx("ABT", "", "VACUUM operation successful for ABT DB.\n");
     }
 }

@@ -25,6 +25,9 @@ extern _Atomic int activePendingTxnCount;
 extern int IS_SERIAL_CONNECTED;
 extern _Atomic enum device_status DEVICE_STATUS;
 
+extern char currentTrxType[100];
+extern char lastPanDigit[10];
+
 /**
  * Build the status response message
  **/
@@ -186,38 +189,20 @@ void sendFileToSocket(const char fileName[])
 {
     unsigned char *data = readFile(fileName);
     long int size = findSize(fileName);
-    logData("Going to send the data with size : %d", size);
+    logDataEx(currentTrxType, lastPanDigit, "Going to send the data with size : %d", size);
 
-    /*
-    int parts = size / 1024;
-    for(int i = 0; i < parts; i++)
-    {
-        unsigned char temp[1024] = {0};
-        for (int k = 0; k < 1024; k++)
-            temp[i] = data[i * parts + k];
+    // Allocate single buffer: 4-byte header + file data
+    unsigned char *sendBuf = (unsigned char *)malloc(4 + size);
+    sendBuf[0] = (size >> 24) & 0xFF;
+    sendBuf[1] = (size >> 16) & 0xFF;
+    sendBuf[2] = (size >> 8) & 0xFF;
+    sendBuf[3] = size & 0xFF;
+    memcpy(sendBuf + 4, data, size);
 
-        send(DATA_SOCKET_ID, temp, 1024, 0);
-        sleep(1);
-    }
-    int bal = size % 1024;
-    if (bal != 0)
-    {
-        unsigned char temp[bal];
-        for (int k = 0; k < bal; k++)
-            temp[k] = data[parts * 1024 + k];
-        send(DATA_SOCKET_ID, temp, bal, 0);
-    }
-    */
-    int sent = send(DATA_SOCKET_ID, data, size, 0);
-    logData("Total Bytes sent : %d", sent);
-    // Send terminating data
-    unsigned char endData[4];
-    endData[0] = 0xFF;
-    endData[1] = 0xFE;
-    endData[2] = 0xFD;
-    endData[3] = 0xFC;
-    sent = send(DATA_SOCKET_ID, endData, 4, 0);
-    logData("Sent terminating data of length : %d", sent);
+    int sent = send(DATA_SOCKET_ID, sendBuf, 4 + size, 0);
+    logDataEx(currentTrxType, lastPanDigit, "Total Bytes sent : %d", sent - 4);
+
+    free(sendBuf);
     free(data);
 }
 
@@ -615,7 +600,7 @@ char *buildAirtelHealthCheckResponseMessage(AirtelHealthCheckResponse response, 
  **/
 void sendBalanceMessage(struct transactionData trxData)
 {
-    logData("Sending balance message");
+    logDataEx(currentTrxType, lastPanDigit, "Sending balance message");
     json_object *jobj = json_object_new_object();
     // Root
     json_object *jCommand = json_object_new_string(COMMAND_STATUS);
@@ -681,8 +666,8 @@ void sendAbtCardPresented(struct transactionData trxData)
     json_object *jCommand = json_object_new_string(COMMAND_STATUS);
     json_object *jState = json_object_new_string(STATE_CARD_PRESENTED_ABT);
 
-    logData("Amount IS :: %lld", trxData.amount);
-    logData("Amount is : %s", trxData.sAmount);
+    logDataEx(currentTrxType, lastPanDigit, "Amount IS :: %lld", trxData.amount);
+    logDataEx(currentTrxType, lastPanDigit, "Amount is : %s", trxData.sAmount);
 
     // Data
     json_object *jToken = json_object_new_string(trxData.token);
@@ -696,7 +681,7 @@ void sendAbtCardPresented(struct transactionData trxData)
     json_object_object_add(jDataObject, "amount", json_object_new_int64(trxData.amount));
     json_object_object_add(jDataObject, "orderId", jOrderId);
 
-    logData("GMT Time IS :: %s", trxData.gmtTime);
+    logDataEx(currentTrxType, lastPanDigit, "GMT Time IS :: %s", trxData.gmtTime);
     char trxDate[20];
     formatTransactionTime(trxData, trxDate);
     json_object_object_add(jDataObject, "transactionTime", json_object_new_string(trxDate));
@@ -813,7 +798,7 @@ char *buildAbtTrxSummaryMessage()
  **/
 void sendTransactionProcessedMessage(struct transactionData trxData, const char *outcomeStatus)
 {
-    logData("Sending transaction processed message");
+    logDataEx(currentTrxType, lastPanDigit, "Sending transaction processed message");
 
     char narration[63];
     char amount[13];
@@ -874,7 +859,7 @@ void sendTransactionProcessedMessage(struct transactionData trxData, const char 
 
     if (trxData.isImmedOnline == true)
     {
-        logData("Generating data for balance update");
+        logDataEx(currentTrxType, lastPanDigit, "Generating data for balance update");
         json_object *jUpdatedAmount = json_object_new_string(trxData.updatedAmount);
         json_object_object_add(jDataObject, "updatedAmount", jUpdatedAmount);
         json_object *jUpdatedBalance = json_object_new_string(trxData.updatedBalance);
@@ -909,11 +894,11 @@ void sendTransactionProcessedMessage(struct transactionData trxData, const char 
     json_object_object_add(jobj, COMMAND_STATE, jState);
     json_object_object_add(jobj, COMMAND_DATA, jDataObject);
 
-    logData("JSON generated, going to prepare string");
+    logDataEx(currentTrxType, lastPanDigit, "JSON generated, going to prepare string");
 
     const char *result = json_object_to_json_string(jobj);
 
-    logData("Sending to the socket");
+    logDataEx(currentTrxType, lastPanDigit, "Sending to the socket");
 
     // Send the data in socket
     send(CLIENT_SOCKET, result, strlen(result), 0);
@@ -924,7 +909,7 @@ void sendTransactionProcessedMessage(struct transactionData trxData, const char 
         write(SERIAL_PORT, result, strlen(result));
     }
 
-    logData("Message sent");
+    logDataEx(currentTrxType, lastPanDigit, "Message sent");
 
     json_object_put(jobj); // clean json memory
 }

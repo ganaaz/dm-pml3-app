@@ -30,7 +30,7 @@ extern volatile __sig_atomic_t shutdown_requested;
  */
 void handleAbtCompletion(const void *outcome, size_t outcomeLen)
 {
-    logData("Handling ABT Complete");
+    logDataEx("ABT", "", "Handling ABT Complete");
     printCurrentTxnData(currentTxnData);
     appData.status = APP_STATUS_ABT_CARD_PRSENTED;
     sendAbtCardPresented(currentTxnData);
@@ -39,7 +39,7 @@ void handleAbtCompletion(const void *outcome, size_t outcomeLen)
         safe_strcpy(currentTxnData.txnStatus, sizeof(currentTxnData.txnStatus), STATUS_SUCCESS);
     else
         safe_strcpy(currentTxnData.txnStatus, sizeof(currentTxnData.txnStatus), STATUS_FAILURE);
-    logData("Gate status received : %d", gateStatus);
+    logDataEx("ABT", "", "Gate status received : %d", gateStatus);
     currentTxnData.isGateOpen = gateStatus;
     createAbtTransactionData(&currentTxnData);
 }
@@ -65,7 +65,7 @@ bool checkAndGetGateOpen()
         if (gateOpenCommand == 1)
         {
             displayLight(LED_ST_WRITE_SUCCESS);
-            logInfo("Gate Open command received, so breaking the waiting");
+            logInfoEx("ABT", "", "Gate Open command received, so breaking the waiting");
             break;
         }
 
@@ -73,11 +73,11 @@ bool checkAndGetGateOpen()
 
     if (gateOpenCommand == 1)
     {
-        logData("Gate open command received with status : %d", gateOpenStatus);
+        logDataEx("ABT", "", "Gate open command received with status : %d", gateOpenStatus);
         return gateOpenStatus;
     }
 
-    logData("Gate open status not received so return false");
+    logDataEx("ABT", "", "Gate open status not received so return false");
 
     return false;
 }
@@ -87,8 +87,8 @@ bool checkAndGetGateOpen()
  **/
 void *handleAbtTransactions()
 {
-    logData("ABT pending / nok transaction thread triggered");
-    logData("Host process interval : %d", appConfig.abtHostProcessWaitTimeInMinutes);
+    logDataEx("ABT", "", "ABT pending / nok transaction thread triggered");
+    logDataEx("ABT", "", "Host process interval : %d", appConfig.abtHostProcessWaitTimeInMinutes);
     int waitTime = appConfig.abtHostProcessWaitTimeInMinutes * 60;
     int counter = 1;
     while (1)
@@ -97,15 +97,15 @@ void *handleAbtTransactions()
         {
             if (shutdown_requested)
             {
-                logData("Shutting down the abt thread");
+                logDataEx("ABT", "", "Shutting down the abt thread");
                 return NULL;
             }
             sleep(1);
         }
 
-        logData("Initiating the abt pending transaction, counter : %d", counter);
+        logDataEx("ABT", "", "Initiating the abt pending transaction, counter : %d", counter);
         processAbtPendingTransactions();
-        logData("Abt pending transaction process completed. Now sleeping for %d seconds.", waitTime);
+        logDataEx("ABT", "", "Abt pending transaction process completed. Now sleeping for %d seconds.", waitTime);
         counter++;
     }
 }
@@ -116,12 +116,12 @@ void *handleAbtTransactions()
  **/
 void *houseKeepingAbtTransactions()
 {
-    logData("ABT House keeping thread triggered");
+    logDataEx("ABT", "", "ABT House keeping thread triggered");
     while (1)
     {
         if (shutdown_requested)
         {
-            logError("Shutting down ABT house keeping thread");
+            logErrorEx("ABT", "HouseKeeping", "Shutting down ABT house keeping thread");
             return NULL;
         }
 
@@ -133,15 +133,15 @@ void *houseKeepingAbtTransactions()
         int current_minute = current_time->tm_min;
         if (current_hour == target_hour && current_minute == target_minute)
         {
-            logData("Initiating the abt house keeping transaction");
+            logDataEx("ABT", "", "Initiating the abt house keeping transaction");
             deleteAbtTransactions();
-            logData("Abt house keeping transaction process completed.");
+            logDataEx("ABT", "", "Abt house keeping transaction process completed.");
             // Sleep for 23 hours in 1-second intervals
             for (int i = 0; i < 23 * 60 * 60; i++)
             {
                 if (shutdown_requested)
                 {
-                    logError("Shutting down ABT house keeping thread during sleep");
+                    logErrorEx("ABT", "HouseKeeping", "Shutting down ABT house keeping thread during sleep");
                     return NULL;
                 }
                 sleep(1);
@@ -153,7 +153,7 @@ void *houseKeepingAbtTransactions()
         {
             if (shutdown_requested)
             {
-                logError("Shutting down ABT house keeping thread");
+                logErrorEx("ABT", "HouseKeeping", "Shutting down ABT house keeping thread");
                 return NULL;
             }
             sleep(1);

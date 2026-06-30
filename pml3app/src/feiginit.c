@@ -29,8 +29,8 @@ int initializeFeigReader(struct fetpf **fetpfClient)
     rc = fetrm_get_slot_id_by_uid(&slot_id);
     if (0 != rc)
     {
-        logError("%s: %s() [%d]: fetrm_get_slot_id_by_uid() failed! rc: %d errno: %d",
-                 __FILE__, __func__, __LINE__, rc, errno);
+        logErrorEx("L3-App", "FeigInit", "%s: %s() [%d]: fetrm_get_slot_id_by_uid() failed! rc: %d errno: %d",
+                   __FILE__, __func__, __LINE__, rc, errno);
         return EXIT_FAILURE;
     }
 
@@ -43,14 +43,14 @@ int initializeFeigReader(struct fetpf **fetpfClient)
     fetpf = fetpf_new(slot_id);
     if (!fetpf)
     {
-        logError("fetpf_new() failed\n");
+        logErrorEx("L3-App", "FeigInit", "fetpf_new() failed\n");
         return EXIT_FAILURE;
     }
 
     fd_feclr = open("/dev/feclr0", O_RDWR | O_CLOEXEC);
     if (fd_feclr < 0)
     {
-        logError("feclr open failed: %m\n");
+        logErrorEx("L3-App", "FeigInit", "feclr open failed: %m\n");
         return EXIT_FAILURE;
     }
     fetpf_set_user_data(fetpf, (void *)fd_feclr);
@@ -59,7 +59,7 @@ int initializeFeigReader(struct fetpf **fetpfClient)
     rc = fetpf_register_ep_client(fetpf);
     if (rc != FETPF_RC_OK)
     {
-        logError("fetpf_register_ep_client failed (rc: %d)\n", rc);
+        logErrorEx("L3-App", "FeigInit", "fetpf_register_ep_client failed (rc: %d)\n", rc);
         return EXIT_FAILURE;
     }
 
@@ -67,32 +67,32 @@ int initializeFeigReader(struct fetpf **fetpfClient)
     rc = fetpf_ep_register_kernel(fetpf, "libemvco_c2.so", (uint8_t *)"\x02", 1);
     if (rc != FETPF_RC_OK)
     {
-        logError("%s: fetpf_ep_register_kernel failed (rc %d)!\n",
-                 __func__, rc);
+        logErrorEx("L3-App", "FeigInit", "%s: fetpf_ep_register_kernel failed (rc %d)!\n",
+                   __func__, rc);
         return EXIT_FAILURE;
     }
 
     rc = fetpf_ep_register_kernel(fetpf, "libemvco_c3.so", (uint8_t *)"\x03", 1);
     if (rc != FETPF_RC_OK)
     {
-        logError("%s: fetpf_ep_register_kernel failed (rc %d)!\n",
-                 __func__, rc);
+        logErrorEx("L3-App", "FeigInit", "%s: fetpf_ep_register_kernel failed (rc %d)!\n",
+                   __func__, rc);
         return EXIT_FAILURE;
     }
 
     rc = fetpf_ep_register_kernel(fetpf, "libemvco_c4.so", (uint8_t *)"\x04", 1);
     if (rc != FETPF_RC_OK)
     {
-        logError("%s: fetpf_ep_register_kernel failed (rc %d)!\n",
-                 __func__, rc);
+        logErrorEx("L3-App", "FeigInit", "%s: fetpf_ep_register_kernel failed (rc %d)!\n",
+                   __func__, rc);
         return EXIT_FAILURE;
     }
 
     rc = fetpf_ep_register_kernel(fetpf, "libemvco_c6.so", (uint8_t *)"\x06", 1);
     if (rc != FETPF_RC_OK)
     {
-        logError("%s: fetpf_ep_register_kernel failed (rc %d)!\n",
-                 __func__, rc);
+        logErrorEx("L3-App", "FeigInit", "%s: fetpf_ep_register_kernel failed (rc %d)!\n",
+                   __func__, rc);
         return EXIT_FAILURE;
     }
 
@@ -100,13 +100,13 @@ int initializeFeigReader(struct fetpf **fetpfClient)
     rc = fetpf_ep_register_kernel(fetpf, "libemvco_c13.so", (uint8_t *)"\x0D", 1);
     if (rc != FETPF_RC_OK)
     {
-        logError("%s: fetpf_ep_register_kernel failed (rc %d)!\n",
-                 __func__, rc);
+        logErrorEx("L3-App", "FeigInit", "%s: fetpf_ep_register_kernel failed (rc %d)!\n",
+                   __func__, rc);
         return EXIT_FAILURE;
     }
 
     *fetpfClient = fetpf;
-    logInfo("Feig reader is successfully initialized.");
+    logInfoEx("L3-App", "FeigInit", "Feig reader is successfully initialized.");
 
     return 0;
 }

@@ -15,6 +15,9 @@
 #define MAX_TLV_VALUE_SIZE 65536
 #define MAX_REQUEST_LEN 65536
 
+extern char currentTrxType[100];
+extern char lastPanDigit[10];
+
 extern struct applicationConfig appConfig;
 extern struct transactionData currentTxnData;
 
@@ -40,7 +43,7 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
     {
         if (request_len > MAX_REQUEST_LEN)
         {
-            logData("request_len %zu exceeds MAX_REQUEST_LEN\n", request_len);
+            logDataEx(currentTrxType, lastPanDigit, "request_len %zu exceeds MAX_REQUEST_LEN\n", request_len);
             rc = EMVCO_RC_FAIL;
             goto done;
         }
@@ -48,7 +51,7 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
         int tlv_rc = tlv_parse(request, request_len, &tlv_req);
         if (tlv_rc != TLV_RC_OK)
         {
-            logData("tlv_parse() failed with %d\n", tlv_rc);
+            logDataEx(currentTrxType, lastPanDigit, "tlv_parse() failed with %d\n", tlv_rc);
             rc = EMVCO_RC_FAIL;
             goto done;
         }
@@ -60,27 +63,27 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
             tlv_rc = tlv_encode_identifier(tlv_attr, tag, &tag_sz);
             if (tlv_rc != TLV_RC_OK)
             {
-                logData("tlv_encode_identifier() failed with %d\n", tlv_rc);
+                logDataEx(currentTrxType, lastPanDigit, "tlv_encode_identifier() failed with %d\n", tlv_rc);
                 continue;
             }
 
-            logData("++++++++++++++++++++++++++++++++\n");
-            logData(" RuPay Data Exchange Signal\n");
-            logData("++++++++++++++++++++++++++++++++\n");
+            logDataEx(currentTrxType, lastPanDigit, "++++++++++++++++++++++++++++++++\n");
+            logDataEx(currentTrxType, lastPanDigit, " RuPay Data Exchange Signal\n");
+            logDataEx(currentTrxType, lastPanDigit, "++++++++++++++++++++++++++++++++\n");
 
             if (0 == libtlv_compare_ids(FEIG_C13_ID_SERVICE_SIGNAL_REQ_FS, tag))
             {
-                logData("Service Signal after SELECT");
+                logDataEx(currentTrxType, lastPanDigit, "Service Signal after SELECT");
                 // Simple
                 rc = c13_service_signal_req_fs_handling(tlv_req, &tlv_reply_data);
             }
             else if (0 == libtlv_compare_ids(FEIG_C13_ID_SERVICE_SIGNAL_REQ_PRE_GPO, tag))
             {
 
-                logData("Service Signal before GPO");
+                logDataEx(currentTrxType, lastPanDigit, "Service Signal before GPO");
                 rc = c13_service_signal_req_pre_gpo_handling(tlv_req, &tlv_reply_data);
 
-                logData("Pre GPO Result : %d", rc);
+                logDataEx(currentTrxType, lastPanDigit, "Pre GPO Result : %d", rc);
                 if (rc == EMVCO_RC_FAIL)
                 {
                     goto done;
@@ -88,19 +91,19 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
             }
             else if (0 == libtlv_compare_ids(FEIG_C13_ID_SERVICE_SIGNAL_REQ_POST_GPO, tag))
             {
-                logData("Service Signal after GPO");
+                logDataEx(currentTrxType, lastPanDigit, "Service Signal after GPO");
                 // Simple
                 rc = c13_service_signal_req_post_gpo_handling(tlv_req, &tlv_reply_data);
             }
             else if (0 == libtlv_compare_ids(FEIG_C13_ID_SERVICE_SIGNAL_REQ_RR, tag))
             {
-                logData("Service Signal after Read Records");
+                logDataEx(currentTrxType, lastPanDigit, "Service Signal after Read Records");
                 // Simple
                 rc = c13_service_signal_req_rr_handling(tlv_req, &tlv_reply_data);
             }
             else if (0 == libtlv_compare_ids(FEIG_C13_ID_SERVICE_SIGNAL_REQ_GAC, tag))
             {
-                logData("Service Signal before Gen AC");
+                logDataEx(currentTrxType, lastPanDigit, "Service Signal before Gen AC");
                 size_t value_sz = 0;
                 tlv_rc = tlv_encode_value(tlv_attr, NULL, &value_sz);
                 if (value_sz == 0 || value_sz > MAX_TLV_VALUE_SIZE)
@@ -111,13 +114,13 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
 
                 if (tlv_rc != TLV_RC_OK)
                 {
-                    logData("tlv_encode_value() failed with %d\n", tlv_rc);
+                    logDataEx(currentTrxType, lastPanDigit, "tlv_encode_value() failed with %d\n", tlv_rc);
                     rc = EMVCO_RC_FAIL;
                     goto done;
                 }
                 else if (value_sz == 0)
                 {
-                    logData("tlv_encode_value() returnd value_sz of 0\n");
+                    logDataEx(currentTrxType, lastPanDigit, "tlv_encode_value() returnd value_sz of 0\n");
                     rc = EMVCO_RC_FAIL;
                     goto done;
                 }
@@ -131,7 +134,7 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
                 tlv_rc = tlv_encode_value(tlv_attr, value, &value_sz);
                 if (tlv_rc != TLV_RC_OK)
                 {
-                    logData("tlv_encode_value() failed with %d\n", tlv_rc);
+                    logDataEx(currentTrxType, lastPanDigit, "tlv_encode_value() failed with %d\n", tlv_rc);
                     rc = EMVCO_RC_FAIL;
                     free(value);
                     goto done;
@@ -140,7 +143,7 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
                 tlv_rc = tlv_parse(value, value_sz, &tlv_request_data);
                 if (tlv_rc != TLV_RC_OK)
                 {
-                    logData("tlv_parse() failed with %d\n", tlv_rc);
+                    logDataEx(currentTrxType, lastPanDigit, "tlv_parse() failed with %d\n", tlv_rc);
                     rc = EMVCO_RC_FAIL;
                     free(value);
                     goto done;
@@ -157,42 +160,42 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
             }
             else
             {
-                logData("UNKNOWN\n");
+                logDataEx(currentTrxType, lastPanDigit, "UNKNOWN\n");
             }
 
-            logData("RuPay Service signal handling returned with %d\n", rc);
+            logDataEx(currentTrxType, lastPanDigit, "RuPay Service signal handling returned with %d\n", rc);
 
             if (reply_len)
             {
                 size_t max_reply = *reply_len;
-                // logData("Reply available size: %d\n", *reply_len);
+                // logDataEx(currentTrxType, lastPanDigit, "Reply available size: %d\n", *reply_len);
                 if (tlv_reply_data)
                 {
                     size_t reply_data_sz = 0;
                     tlv_rc = tlv_encode(tlv_reply_data, NULL, &reply_data_sz);
                     if (tlv_rc != TLV_RC_OK)
                     {
-                        logData("[%d]: tlv_encode() failed with %d\n", __LINE__, tlv_rc);
+                        logDataEx(currentTrxType, lastPanDigit, "[%d]: tlv_encode() failed with %d\n", __LINE__, tlv_rc);
                         rc = EMVCO_RC_FAIL;
                         goto done;
                     }
                     else if (reply_data_sz == 0)
                     {
-                        logData("[%d]: reply_data_sz is 0\n", __LINE__);
+                        logDataEx(currentTrxType, lastPanDigit, "[%d]: reply_data_sz is 0\n", __LINE__);
                         rc = EMVCO_RC_FAIL;
                         goto done;
                     }
                     reply_data = (uint8_t *)malloc(reply_data_sz);
                     if (!reply_data)
                     {
-                        logData("[%d]: malloc() failed\n", __LINE__);
+                        logDataEx(currentTrxType, lastPanDigit, "[%d]: malloc() failed\n", __LINE__);
                         rc = EMVCO_RC_FAIL;
                         goto done;
                     }
                     tlv_rc = tlv_encode(tlv_reply_data, reply_data, &reply_data_sz);
                     if (tlv_rc != TLV_RC_OK)
                     {
-                        logData("[%d]: tlv_encode() failed with %d\n", __LINE__, tlv_rc);
+                        logDataEx(currentTrxType, lastPanDigit, "[%d]: tlv_encode() failed with %d\n", __LINE__, tlv_rc);
                         rc = EMVCO_RC_FAIL;
                         goto done;
                     }
@@ -202,14 +205,14 @@ int handleDataExchange(struct fetpf *client, const void *request, size_t request
                     tlv_rc = tlv_encode(tlv_reply, NULL, &tlv_reply_sz);
                     if (tlv_rc != TLV_RC_OK || tlv_reply_sz > max_reply)
                     {
-                        logData("[%d]: reply buffer too small: need %zu, have %zu\n", __LINE__, tlv_reply_sz, max_reply);
+                        logDataEx(currentTrxType, lastPanDigit, "[%d]: reply buffer too small: need %zu, have %zu\n", __LINE__, tlv_reply_sz, max_reply);
                         rc = EMVCO_RC_FAIL;
                         goto done;
                     }
                     tlv_rc = tlv_encode(tlv_reply, reply, reply_len);
                     if (tlv_rc != TLV_RC_OK)
                     {
-                        logData("tlv_encode() failed with %d\n", tlv_rc);
+                        logDataEx(currentTrxType, lastPanDigit, "tlv_encode() failed with %d\n", tlv_rc);
                         rc = EMVCO_RC_FAIL;
                         goto done;
                     }

@@ -17,7 +17,7 @@ KEYID = 00A3
 #SLOTAPP = app0
 #KEYID = 00A0
 PIN = 648219
-VERSION = "1.0.6"
+VERSION = "1.0.7"
 APPDESC = "Datamatic L3 App - PML3"
 
 # Makefile settings - Can be customized.
@@ -61,18 +61,6 @@ signapp:
 	cp $(APPNAME) /home/${USER}/$(APPNAME)
 	fesign --module opensc-pkcs11.so --keyid $(KEYID) --pin $(PIN) --force --no-backup --infile /home/${USER}/$(APPNAME)
 	cp /home/${USER}/$(APPNAME) $(APPNAME)
-
-copyToTerminal:
-	sshpass -p '$(SLOTAPP)' scp ./$(APPNAME) $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)
-	sshpass -p '$(SLOTAPP)' scp ./src/config/app_config.json $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
-	sshpass -p '$(SLOTAPP)' scp ./src/config/emv_config.json $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/config/
-	sshpass -p '$(SLOTAPP)' scp ./src/log4crc $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-	sshpass -p '$(SLOTAPP)' scp ./src/log4crc.info $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-	sshpass -p '$(SLOTAPP)' scp ./src/log4crc.debug $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-	sshpass -p '$(SLOTAPP)' scp ./src/log4crc.error $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-	sshpass -p '$(SLOTAPP)' scp ./l3start.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/
-	sshpass -p '$(SLOTAPP)' scp ./runl3.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/runl3.sh
-	sshpass -p '$(SLOTAPP)' scp ./autorun.sh $(SLOTAPP)@$(DEVICE):/home/$(SLOTAPP)/autorun.sh	
 
 update_helper:
 	echo "Generating update package ..."

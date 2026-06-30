@@ -26,24 +26,24 @@ extern volatile __sig_atomic_t shutdown_requested;
 
 void *createAndListenForUSB()
 {
-    logInfo("Going to create serial listener");
+    logInfoEx("Serial", "", "Going to create serial listener");
 
     SERIAL_PORT = open("/dev/ttyGS0", O_RDWR);
     if (SERIAL_PORT < 0)
     {
-        logError("Failed to open serial port: %s", strerror(errno));
+        logErrorEx("L3-App", "Serial", "Failed to open serial port: %s", strerror(errno));
         return NULL;
     }
 
     struct termios tty;
     if (tcgetattr(SERIAL_PORT, &tty) != 0)
     {
-        logError("Error %i from tcgetattr: %s", errno, strerror(errno));
+        logErrorEx("L3-App", "Serial", "Error %i from tcgetattr: %s", errno, strerror(errno));
         close(SERIAL_PORT);
         return NULL;
     }
 
-    logInfo("Serial port attr get done");
+    logInfoEx("Serial", "", "Serial port attr get done");
 
     tty.c_cflag &= ~PARENB;
     tty.c_cflag &= ~CSTOPB;
@@ -71,7 +71,7 @@ void *createAndListenForUSB()
 
     if (tcsetattr(SERIAL_PORT, TCSANOW, &tty) != 0)
     {
-        logError("Error %i from tcsetattr: %s", errno, strerror(errno));
+        logErrorEx("L3-App", "Serial", "Error %i from tcsetattr: %s", errno, strerror(errno));
         close(SERIAL_PORT);
         return NULL;
     }
@@ -83,7 +83,7 @@ void *createAndListenForUSB()
         // --- Shutdown check ---
         if (shutdown_requested)
         {
-            logError("Shutdown requested, exiting USB serial listener");
+            logErrorEx("L3-App", "Serial", "Shutdown requested, exiting USB serial listener");
             break;
         }
 
@@ -96,7 +96,7 @@ void *createAndListenForUSB()
         int activity = select(SERIAL_PORT + 1, &readfds, NULL, NULL, &timeout);
         if (activity < 0)
         {
-            logError("select() error on serial port: %s", strerror(errno));
+            logErrorEx("L3-App", "Serial", "select() error on serial port: %s", strerror(errno));
             break;
         }
         if (activity == 0)
@@ -112,13 +112,13 @@ void *createAndListenForUSB()
             int bytesRead = read(SERIAL_PORT, buffer, sizeof(buffer));
             if (bytesRead > 0)
             {
-                logData("Serial read chunk length: %d", bytesRead);
-                logData("Data is: %s", buffer);
+                logDataEx("L3-App", "Serial", "Serial read chunk length: %d", bytesRead);
+                logDataEx("L3-App", "Serial", "Data is: %s", buffer);
 
                 // Guard against overflow
                 if (readCount + bytesRead >= (int)sizeof(readBuffer) - 1)
                 {
-                    logError("Serial read buffer overflow, discarding message");
+                    logErrorEx("L3-App", "Serial", "Serial read buffer overflow, discarding message");
                     readCount = 0;
                     break;
                 }
@@ -136,8 +136,8 @@ void *createAndListenForUSB()
             continue;
 
         readBuffer[readCount] = '\0';
-        logData("Total data read count: %d", readCount);
-        logData("Complete data: %s", readBuffer);
+        logDataEx("L3-App", "Serial", "Total data read count: %d", readCount);
+        logDataEx("L3-App", "Serial", "Complete data: %s", readBuffer);
 
         IS_SERIAL_CONNECTED = 1;
 
@@ -145,44 +145,44 @@ void *createAndListenForUSB()
         char *data = (char *)malloc(readCount + 1);
         if (data == NULL)
         {
-            logError("malloc failed for serial data");
+            logErrorEx("L3-App", "Serial", "malloc failed for serial data");
             continue;
         }
         memcpy(data, readBuffer, readCount);
         data[readCount] = '\0';
 
-        logData("Serial received message: %s", data);
+        logDataEx("L3-App", "Serial", "Serial received message: %s", data);
 
         char *response = NULL;
         if (isDataSocketCommand(data))
         {
-            logData("Data socket command message received");
+            logDataEx("L3-App", "Serial", "Data socket command message received");
             response = handleClientFetchMessage(data);
         }
         else
         {
-            logData("Normal transaction data message received");
+            logDataEx("L3-App", "Serial", "Normal transaction data message received");
             response = handleClientMessage(data);
         }
         free(data);
 
         if (response == NULL)
         {
-            logData("Null response, nothing to send");
+            logDataEx("L3-App", "Serial", "Null response, nothing to send");
         }
         else if (strlen(response) == 0)
         {
-            logData("Empty response, nothing to send");
+            logDataEx("L3-App", "Serial", "Empty response, nothing to send");
         }
         else
         {
-            logData("Length of response: %d", strlen(response));
+            logDataEx("L3-App", "Serial", "Length of response: %d", strlen(response));
             write(SERIAL_PORT, response, strlen(response));
             free(response);
         }
     }
 
-    logError("Closing serial port");
+    logErrorEx("L3-App", "Serial", "Closing serial port");
     close(SERIAL_PORT);
     SERIAL_PORT = -1;
     return NULL;

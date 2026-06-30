@@ -2,6 +2,7 @@
 #define LOGUTIL_H
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -51,29 +52,49 @@ void getHostLogFileName(char *fileName);
 void logHostData(const char *message);
 
 /**
- * log data to log4c
+ * log data to log4c — formats structured pipe-delimited message
  **/
-void logToLog4c(int priority, const char *fmt, va_list args);
+void logToLog4c(int priority, const char *module, const char *subModule, const char *fmt, va_list args);
 
 /**
- * Debug log
+ * Debug log (module/subModule default to "")
  **/
 void logData(const char *fmt, ...);
 
 /**
- * Info log
+ * Info log (module/subModule default to "")
  **/
 void logInfo(const char *fmt, ...);
 
 /**
- * Error log
+ * Error log (module/subModule default to "")
  **/
 void logError(const char *fmt, ...);
 
 /**
- * Warn log
+ * Warn log (module/subModule default to "")
  **/
 void logWarn(const char *fmt, ...);
+
+/**
+ * Debug log with explicit module and subModule
+ **/
+void logDataEx(const char *module, const char *subModule, const char *fmt, ...);
+
+/**
+ * Info log with explicit module and subModule
+ **/
+void logInfoEx(const char *module, const char *subModule, const char *fmt, ...);
+
+/**
+ * Error log with explicit module and subModule
+ **/
+void logErrorEx(const char *module, const char *subModule, const char *fmt, ...);
+
+/**
+ * Warn log with explicit module and subModule
+ **/
+void logWarnEx(const char *module, const char *subModule, const char *fmt, ...);
 
 /**
  * To log time data for measuring performance
@@ -139,5 +160,15 @@ void processOutcome(const void *outcome, size_t outcome_len);
  * Generate the log required as per certification purpose
  **/
 int generateLog(const void *outcome, size_t outcome_len, const char *prefixFileName, int trxCounter);
+
+/**
+ * Register "message" layout type with log4c — call before log4c_init()
+ **/
+void registerMessageLayout(void);
+
+/**
+ * Register "plain_stdout" appender type with log4c — call before log4c_init()
+ **/
+void registerPlainStdoutAppender(void);
 
 #endif

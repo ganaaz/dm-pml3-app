@@ -6,6 +6,9 @@
 #include "utils.h"
 #include "../include/logutil.h"
 
+extern char currentTrxType[100];
+extern char lastPanDigit[10];
+
 ISO8583_ERROR_CODES construct_transaction_request_object_for_service_create(ISO8583_TXN_REQ_OBJECT *req_txn_obj, SERVICE_CREATE_REQUEST *txn_obj)
 {
     int txn = SERVICE_CREATE;
@@ -101,7 +104,7 @@ ISO8583_ERROR_CODES construct_transaction_request_object_for_service_create(ISO8
                     break;
 
                 default:
-                    logData("No Case for Field : %d", length + j);
+                    logDataEx(currentTrxType, lastPanDigit, "No Case for Field : %d", length + j);
                     break;
                 }
             }
@@ -114,7 +117,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_service_create(SER
 {
     if (resp_txn_obj->data[1].field_value.simple_field.value == NULL)
     {
-        logData("BITMAP is not present in the Response");
+        logDataEx(currentTrxType, lastPanDigit, "BITMAP is not present in the Response");
         return TXN_PARSE_VALIDATION_FAILED;
     }
 
@@ -144,7 +147,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_service_create(SER
                             memcpy(resp_obj->DE04_TXN_AMOUNT, value, len + NULL_BYTE_LEN);
                         }
                         else
-                            logData("Failed to copy the field %d into service create response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into service create response buffer", length + j);
                         break;
 
                     case DE11_STAN:
@@ -155,7 +158,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_service_create(SER
                             memcpy(resp_obj->DE11_STAN, value, len + NULL_BYTE_LEN);
                         }
                         else
-                            logData("Failed to copy the field %d into service create response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into service create response buffer", length + j);
                         break;
 
                     case DE12_TRANSACTION_TIME_LOCAL:
@@ -166,7 +169,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_service_create(SER
                             memcpy(resp_obj->DE12_TXN_TIME, value, len + NULL_BYTE_LEN);
                         }
                         else
-                            logData("Failed to copy the field %d into service create response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into service create response buffer", length + j);
                         break;
 
                     case DE13_TRANSACTION_DATE_LOCAL:
@@ -177,7 +180,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_service_create(SER
                             memcpy(resp_obj->DE13_TXN_DATE, value, len + NULL_BYTE_LEN);
                         }
                         else
-                            logData("Failed to copy the field %d into service create response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into service create response buffer", length + j);
                         break;
 
                     case DE37_RRN:
@@ -197,7 +200,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_service_create(SER
                                 free(rrn);
                         }
                         else
-                            logData("Failed to copy the field %d into service create response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into service create response buffer", length + j);
                         break;
 
                     case DE38_AUTHORIZATION_IDENTIFICATION_RESPONSE:
@@ -217,7 +220,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_service_create(SER
                                 free(auth_code);
                         }
                         else
-                            logData("Failed to copy the field %d into service create response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into service create response buffer", length + j);
                         break;
 
                     case DE39_RESPONSE_CODE:
@@ -237,7 +240,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_service_create(SER
                                 free(resp_code);
                         }
                         else
-                            logData("Failed to copy the field %d into service create response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into service create response buffer", length + j);
                         break;
 
                     case DE55_RESERVED_ISO_1:
@@ -250,7 +253,7 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_service_create(SER
                             resp_obj->DE55_ICC_DATA.len = len;
                         }
                         else
-                            logData("Failed to copy the field %d into service create response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into service create response buffer", length + j);
                         break;
 
                     case DE63_RESERVED_PRIVATE_3:
@@ -261,22 +264,22 @@ ISO8583_ERROR_CODES construct_transaction_response_object_for_service_create(SER
                             // char fund_src_type[5] = "3033";
                             // if (strncmp((const char *)value, fund_src_type, strlen(fund_src_type)))
                             // {
-                            //     logData("Invalid Fund Source Type");
+                            //     logDataEx(currentTrxType, lastPanDigit, "Invalid Fund Source Type");
                             //     return TXN_PARSE_VALIDATION_FAILED;
                             // }
                         }
                         else
-                            logData("Failed to copy the field %d into service create response buffer", length + j);
+                            logDataEx(currentTrxType, lastPanDigit, "Failed to copy the field %d into service create response buffer", length + j);
                         break;
 
                     default:
-                        // logData("No Case for Field : %d", length + j);
+                        // logDataEx(currentTrxType, lastPanDigit, "No Case for Field : %d", length + j);
                         break;
                     }
                 }
                 else
                 {
-                    logData("Field %d is not in the response", length + j);
+                    logDataEx(currentTrxType, lastPanDigit, "Field %d is not in the response", length + j);
                 }
             }
         }
@@ -288,7 +291,7 @@ ISO8583_ERROR_CODES process_service_create_transaction(SERVICE_CREATE_REQUEST *t
 {
     if (txn_obj == NULL)
     {
-        logData("NULL SERVICE_CREATE_REQUEST Object Passed");
+        logDataEx(currentTrxType, lastPanDigit, "NULL SERVICE_CREATE_REQUEST Object Passed");
         return TXN_FAILED;
     }
 
@@ -304,7 +307,7 @@ ISO8583_ERROR_CODES process_service_create_transaction(SERVICE_CREATE_REQUEST *t
         {
             clear_transaction_object(req_txn_obj);
         }
-        logData("Failed to construct the Transaction Object for service create");
+        logDataEx(currentTrxType, lastPanDigit, "Failed to construct the Transaction Object for service create");
         return ret;
     }
 
@@ -316,7 +319,7 @@ ISO8583_ERROR_CODES process_service_create_transaction(SERVICE_CREATE_REQUEST *t
         {
             clear_transaction_object(req_txn_obj);
         }
-        logData("Failed to Process Transaction for service_create");
+        logDataEx(currentTrxType, lastPanDigit, "Failed to Process Transaction for service_create");
         return ret != TXN_SUCCESS ? ret : TXN_FAILED;
     }
 
@@ -328,7 +331,7 @@ ISO8583_ERROR_CODES process_service_create_transaction(SERVICE_CREATE_REQUEST *t
         if (resp_txn_obj)
             clear_transaction_object(resp_txn_obj);
 
-        logData("Failed to construct the SERVICE_CREATE_RESPONSE Object for service create");
+        logDataEx(currentTrxType, lastPanDigit, "Failed to construct the SERVICE_CREATE_RESPONSE Object for service create");
         return ret;
     }
 

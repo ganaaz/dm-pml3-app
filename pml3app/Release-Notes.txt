@@ -1,3 +1,13 @@
+Version : 1.0.7
+Date : 29-Jun-26
+
+Changes
+
+- File download issue fixed from L3 Simulator
+- Log formats are updated as per the request
+
+=============================================================================================
+
 Version : 1.0.6
 Date : 02-Jun-26
 

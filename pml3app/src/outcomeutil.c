@@ -42,12 +42,15 @@ extern _Atomic int activePendingTxnCount;
 extern long long trxEndTime;
 extern _Atomic enum device_status DEVICE_STATUS;
 
+extern char currentTrxType[100];
+extern char lastPanDigit[10];
+
 /**
  * Get the updated balance
  **/
 char *getUpdatedBalance(struct tlv *tlv_outcome)
 {
-    logData("Going to get the updated balance");
+    logDataEx(currentTrxType, lastPanDigit, "Going to get the updated balance");
     struct tlv *tlv_obj = NULL;
     uint8_t buffer[1024];
     size_t buffer_len = sizeof(buffer);
@@ -61,7 +64,7 @@ char *getUpdatedBalance(struct tlv *tlv_outcome)
     int rc = tlv_parse(buffer, buffer_len, &tlv_data_record);
     if (TLV_RC_OK != rc)
     {
-        logError("%s: data record format is corrupted", __func__);
+        logErrorEx(currentTrxType, lastPanDigit, "%s: data record format is corrupted", __func__);
         return "";
     }
 
@@ -70,13 +73,13 @@ char *getUpdatedBalance(struct tlv *tlv_outcome)
     tlv_encode_value(tlv_obj, buffer, &buffer_len);
     tlv_free(tlv_data_record);
 
-    logData("Buffer len : %d", buffer_len);
+    logDataEx(currentTrxType, lastPanDigit, "Buffer len : %d", buffer_len);
     logHexData("IAD : ", buffer, buffer_len);
 
-    logData("Updated balance received");
+    logDataEx(currentTrxType, lastPanDigit, "Updated balance received");
     char *balance = malloc(13);
     sprintf(balance, "%02X%02X%02X%02X%02X%02X", buffer[11], buffer[12], buffer[13], buffer[14], buffer[15], buffer[16]);
-    logData("Value : %s", balance);
+    logDataEx(currentTrxType, lastPanDigit, "Value : %s", balance);
     return balance;
 }
 
@@ -92,7 +95,7 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
 
     if (currentTxnData.isRupayTxn == false && appConfig.enableAbt == true)
     {
-        logData("Its abt so incrementing the transaction counter manually here and setting time");
+        logDataEx(currentTrxType, lastPanDigit, "Its abt so incrementing the transaction counter manually here and setting time");
         currentTxnData = updateTransactionDateTime(currentTxnData);
         incrementTransactionCounter();
     }
@@ -106,7 +109,7 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
     rc = tlv_parse(outcome, outcomeLen, &tlv_outcome);
     if (TLV_RC_OK != rc)
     {
-        logData("%s: outcome format is corrupted", __func__);
+        logDataEx(currentTrxType, lastPanDigit, "%s: outcome format is corrupted", __func__);
         return;
     }
 
@@ -115,11 +118,11 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
     // only for offline sale
     if (currentTxnData.trxTypeBin == 0x00)
     {
-        logInfo("Local Transaction Counter : %ld", currentTxnData.txnCounter);
-        logData("Already generated transaction id : %s", currentTxnData.transactionId);
+        logInfoEx(currentTrxType, lastPanDigit, "Local Transaction Counter : %ld", currentTxnData.txnCounter);
+        logDataEx(currentTrxType, lastPanDigit, "Already generated transaction id : %s", currentTxnData.transactionId);
         // char *transactionId = malloc(UUID_STR_LEN);
         // generateUUID(transactionId);
-        // logInfo("Unique Transaction Id : %s", transactionId);
+        // logInfoEx(currentTrxType, lastPanDigit, "Unique Transaction Id : %s", transactionId);
         // safe_strcpy(currentTxnData.transactionId, transactionId);
         // free(transactionId);
 
@@ -134,7 +137,7 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
         // currentTxnData.iccDataLen = buffer_len * 2;
 
         generateOrderId();
-        logData("Order id of txn data : %s", currentTxnData.orderId);
+        logDataEx(currentTrxType, lastPanDigit, "Order id of txn data : %s", currentTxnData.orderId);
         populateCardExpiry(buffer, buffer_len);
 
         if (appData.isCheckDateAvailable)
@@ -144,7 +147,7 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
     }
     else
     {
-        logInfo("Transaction id already created : %s", currentTxnData.transactionId);
+        logInfoEx(currentTrxType, lastPanDigit, "Transaction id already created : %s", currentTxnData.transactionId);
         trxTable = getTransactionTableData(currentTxnData.transactionId);
         if (appConfig.useAirtelHost)
             safe_strcpy(currentTxnData.hostResponseCode, sizeof(currentTxnData.hostResponseCode),
@@ -153,29 +156,29 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
             safe_strcpy(currentTxnData.hostResponseCode, sizeof(currentTxnData.hostResponseCode),
                         trxTable.hostResultCode);
 
-        logData("Host Response : %s", currentTxnData.hostResponseCode);
+        logDataEx(currentTrxType, lastPanDigit, "Host Response : %s", currentTxnData.hostResponseCode);
 
         if (strcmp(currentTxnData.trxType, TRXTYPE_BALANCE_UPDATE) == 0 ||
             strcmp(currentTxnData.trxType, TRXTYPE_MONEY_ADD) == 0)
         {
             safe_strcpy(currentTxnData.updatedAmount, sizeof(currentTxnData.updatedAmount), trxTable.updateAmount);
-            logData("Updated Amount Found : %s", currentTxnData.updatedAmount);
+            logDataEx(currentTrxType, lastPanDigit, "Updated Amount Found : %s", currentTxnData.updatedAmount);
             char *updatedBal = getUpdatedBalance(tlv_outcome);
             safe_strcpy(currentTxnData.updatedBalance, sizeof(currentTxnData.updatedBalance), updatedBal);
             free(updatedBal);
-            logData("Updated Balance Found : %s", currentTxnData.updatedBalance);
+            logDataEx(currentTrxType, lastPanDigit, "Updated Balance Found : %s", currentTxnData.updatedBalance);
         }
     }
 
     if (currentTxnData.isRupayTxn == false && appConfig.enableAbt == true)
     {
-        logData("On Transaction completion, this is an ABT so handle accordingly");
+        logDataEx(currentTrxType, lastPanDigit, "On Transaction completion, this is an ABT so handle accordingly");
         handleAbtCompletion(outcome, outcomeLen);
         return;
     }
 
     const char *outcomeStatus = getOutcomeStatus(tlv_outcome);
-    logData("OUTCOME STATUS : %s", outcomeStatus);
+    logDataEx(currentTrxType, lastPanDigit, "OUTCOME STATUS : %s", outcomeStatus);
 
     tlv_free(tlv_obj);
     tlv_free(tlv_outcome);
@@ -198,7 +201,7 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
     // for other types transaction id is already available
     if (currentTxnData.trxTypeBin != 0x00 && currentTxnData.trxTypeBin != 0x31)
     {
-        logData("Going to update the status for the balance update / service creation / money add");
+        logDataEx(currentTrxType, lastPanDigit, "Going to update the status for the balance update / service creation / money add");
         updateTransactionStatus(currentTxnData.transactionId, currentTxnData.txnStatus, currentTxnData.updatedBalance);
     }
 
@@ -220,20 +223,20 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
         initTimeLogData();
     }
 
-    logData("TXN Status : %s", currentTxnData.txnStatus);
-    logData("Host Response : %s", currentTxnData.hostResponseCode);
+    logDataEx(currentTrxType, lastPanDigit, "TXN Status : %s", currentTxnData.txnStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Host Response : %s", currentTxnData.hostResponseCode);
 
     // Only for online scenario
     if (strcmp(currentTxnData.txnStatus, STATUS_FAILURE) == 0 &&
         strcmp(currentTxnData.hostResponseCode, "00") == 0)
     {
-        logInfo("Host is success, but card failed, so generating reversal with code : %s", REVERSAL_CODE_E1);
+        logInfoEx(currentTrxType, lastPanDigit, "Host is success, but card failed, so generating reversal with code : %s", REVERSAL_CODE_E1);
         updateReversalStatusOnly(currentTxnData.transactionId, STATUS_PENDING);
-        logInfo("Host is success, but card failed, so generating reversal with E1");
+        logInfoEx(currentTrxType, lastPanDigit, "Host is success, but card failed, so generating reversal with E1");
         performReversal(currentTxnData.transactionId, false, "E1");
     }
 
-    logInfo("Transaction completed with status : %s", currentTxnData.txnStatus);
+    logInfoEx(currentTrxType, lastPanDigit, "Transaction completed with status : %s", currentTxnData.txnStatus);
     sendTransactionProcessedMessage(currentTxnData, outcomeStatus);
     displayLight(LED_ST_CARD_PROCESSED_MSG_SENT);
 
@@ -242,8 +245,8 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
     {
         if (currentTxnData.amount == 0 && appConfig.ignoreZeroValueTxn == true)
         {
-            logInfo("Zero value transaction, so it is not store in DB");
-            logInfo("This transaction is ignored and not sent to host or Fetch");
+            logInfoEx(currentTrxType, lastPanDigit, "Zero value transaction, so it is not store in DB");
+            logInfoEx(currentTrxType, lastPanDigit, "This transaction is ignored and not sent to host or Fetch");
         }
         else
         {
@@ -252,10 +255,10 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
             if (strcmp(currentTxnData.txnStatus, STATUS_SUCCESS) == 0)
             {
                 activePendingTxnCount++;
-                logData("Active pending transaction count increased and now : %d", activePendingTxnCount);
+                logDataEx(currentTrxType, lastPanDigit, "Active pending transaction count increased and now : %d", activePendingTxnCount);
                 if (activePendingTxnCount > appConfig.maxOfflineTransactions)
                 {
-                    logWarn("Exceeded the number of maxOfflineTransactions, setting device offline");
+                    logWarnEx(currentTrxType, lastPanDigit, "Exceeded the number of maxOfflineTransactions, setting device offline");
                     DEVICE_STATUS = STATUS_OFFLINE;
                 }
             }
@@ -271,7 +274,7 @@ void handleTransactionCompletion(const void *outcome, size_t outcomeLen)
     {
         char logFile[50];
         sprintf(logFile, "log_%s", currentTxnData.transactionId);
-        logData("Generating APDU Log");
+        logDataEx(currentTrxType, lastPanDigit, "Generating APDU Log");
         generateLog(outcome, outcomeLen, logFile, currentTxnData.txnCounter);
     }
 }
@@ -283,49 +286,49 @@ void doPanEncryption()
 {
     char pan[21];
     safe_strcpy(pan, sizeof(pan), currentTxnData.plainPan);
-    logData("Performing pan encryption for purchase transaction");
+    logDataEx(currentTrxType, lastPanDigit, "Performing pan encryption for purchase transaction");
     unsigned char ksn[10];
     char hex[256], hex2[100];
     char panWithTag[25];
     safe_strcpy(panWithTag, sizeof(panWithTag), "5A");
 
-    logData("Mod val : %d", strlen(pan) % 2);
+    logDataEx(currentTrxType, lastPanDigit, "Mod val : %d", strlen(pan) % 2);
     if (strlen(pan) % 2 != 0)
         safe_strcat(pan, sizeof(pan), "F");
 
     char panHexLen[12];
     sprintf(panHexLen, "%02X", strlen(pan) / 2);
-    logData("Hex length of Pan : %s", panHexLen);
+    logDataEx(currentTrxType, lastPanDigit, "Hex length of Pan : %s", panHexLen);
     safe_strcat(panWithTag, sizeof(panWithTag), panHexLen);
     safe_strcat(panWithTag, sizeof(panWithTag), pan);
     safe_strcpy(currentTxnData.plainPanWithTag, sizeof(currentTxnData.plainPanWithTag), panWithTag);
-    logData("Pan with tag used for encryption : %s", currentTxnData.plainPanWithTag);
+    logDataEx(currentTrxType, lastPanDigit, "Pan with tag used for encryption : %s", currentTxnData.plainPanWithTag);
 
     encryptPan(panWithTag, ksn, hex);
-    logData("Encrypt Result : %s", hex);
+    logDataEx(currentTrxType, lastPanDigit, "Encrypt Result : %s", hex);
     byteToHex(ksn, 10, hex2);
-    logData("KSN Received : %s", hex2);
-    logData("KSN Len : %d", strlen(hex2));
+    logDataEx(currentTrxType, lastPanDigit, "KSN Received : %s", hex2);
+    logDataEx(currentTrxType, lastPanDigit, "KSN Len : %d", strlen(hex2));
     safe_strcpy(currentTxnData.ksn, sizeof(currentTxnData.ksn), "00000000000000000000");
     safe_strcat(currentTxnData.ksn, sizeof(currentTxnData.ksn), hex2);
-    logData("TXN Data KSN Value : %s", currentTxnData.ksn);
-    logData("TXN Data KSN Len : %d", strlen(currentTxnData.ksn));
+    logDataEx(currentTrxType, lastPanDigit, "TXN Data KSN Value : %s", currentTxnData.ksn);
+    logDataEx(currentTrxType, lastPanDigit, "TXN Data KSN Len : %d", strlen(currentTxnData.ksn));
 
     safe_strcpy(currentTxnData.panEncrypted, sizeof(currentTxnData.panEncrypted), hex);
-    logData("TXN Pan Encrypted Value : %s", currentTxnData.panEncrypted);
-    logData("TXN Pan Encrypted Len : %d", strlen(currentTxnData.panEncrypted));
+    logDataEx(currentTrxType, lastPanDigit, "TXN Pan Encrypted Value : %s", currentTxnData.panEncrypted);
+    logDataEx(currentTrxType, lastPanDigit, "TXN Pan Encrypted Len : %d", strlen(currentTxnData.panEncrypted));
 }
 
 void performCheckDate()
 {
-    logData("Performing check date");
-    // logData("Expiry Date : %s", currentTxnData.plainExpDate);
-    logData("Check Date : %s", currentTxnData.checkDate);
+    logDataEx(currentTrxType, lastPanDigit, "Performing check date");
+    // logDataEx(currentTrxType, lastPanDigit, "Expiry Date : %s", currentTxnData.plainExpDate);
+    logDataEx(currentTrxType, lastPanDigit, "Check Date : %s", currentTxnData.checkDate);
 
     char fullExpiry[9];
     safe_strcpy(fullExpiry, sizeof(fullExpiry), "20");
     safe_strcat(fullExpiry, sizeof(fullExpiry), currentTxnData.plainExpDate);
-    // logData("Full Expiry : %s", fullExpiry);
+    // logDataEx(currentTrxType, lastPanDigit, "Full Expiry : %s", fullExpiry);
 
     char checkDateClean[9] = {0};
     int j = 0;
@@ -337,20 +340,20 @@ void performCheckDate()
         }
     }
     checkDateClean[j] = '\0';
-    logData("Clean Check Date : %s", checkDateClean);
+    logDataEx(currentTrxType, lastPanDigit, "Clean Check Date : %s", checkDateClean);
 
     long long expVal = atoll(fullExpiry);
     long long chkVal = atoll(checkDateClean);
 
-    // logData("Expiry (long): %lld", expVal);
-    logData("Check  (long): %lld", chkVal);
+    // logDataEx(currentTrxType, lastPanDigit, "Expiry (long): %lld", expVal);
+    logDataEx(currentTrxType, lastPanDigit, "Check  (long): %lld", chkVal);
 
     if (expVal >= chkVal)
         currentTxnData.checkDateResult = 1; // valid
     else
         currentTxnData.checkDateResult = 0; // expired
 
-    logData("Check Date Result : %d", currentTxnData.checkDateResult);
+    logDataEx(currentTrxType, lastPanDigit, "Check Date Result : %d", currentTxnData.checkDateResult);
 }
 
 void populateCardExpiry(uint8_t *buffer, size_t buffer_len)
@@ -365,11 +368,11 @@ void populateCardExpiry(uint8_t *buffer, size_t buffer_len)
     memset(dataBuffer, 0x00, sizeof(dataBuffer));
     tlv_encode_value(tlv_date, dataBuffer, &dataBufferLen);
     byteToHex(dataBuffer, dataBufferLen, expDate);
-    // logData("Expiry Date : %s", expDate); // TODO : Remove
+    // logDataEx(currentTrxType, lastPanDigit, "Expiry Date : %s", expDate); // TODO : Remove
     tlv_free(tlv_date);
     tlv_free(tlv_date_outcome);
     safe_strcpy(currentTxnData.plainExpDate, sizeof(currentTxnData.plainExpDate), expDate);
-    // logData("Plain Expiry Date : %s", currentTxnData.plainExpDate);
+    // logDataEx(currentTrxType, lastPanDigit, "Plain Expiry Date : %s", currentTxnData.plainExpDate);
 }
 
 /**
@@ -377,8 +380,8 @@ void populateCardExpiry(uint8_t *buffer, size_t buffer_len)
  */
 void handleSecondTapNotPresented()
 {
-    logInfo("Second tap card not presented, txn to be failed and reversal to be generated");
-    logInfo("Second tap, transaction id already created : %s", currentTxnData.transactionId);
+    logInfoEx(currentTrxType, lastPanDigit, "Second tap card not presented, txn to be failed and reversal to be generated");
+    logInfoEx(currentTrxType, lastPanDigit, "Second tap, transaction id already created : %s", currentTxnData.transactionId);
     TransactionTable trxTable = getTransactionTableData(currentTxnData.transactionId);
 
     // Update the reversal status to pending
@@ -386,12 +389,12 @@ void handleSecondTapNotPresented()
 
     safe_strcpy(currentTxnData.updatedAmount, sizeof(currentTxnData.updatedAmount), trxTable.updateAmount);
     safe_strcpy(currentTxnData.hostResponseCode, sizeof(currentTxnData.hostResponseCode), trxTable.hostResultCode);
-    logData("Updated Amount : %s", currentTxnData.updatedAmount);
-    logData("Host Response : %s", currentTxnData.hostResponseCode);
+    logDataEx(currentTrxType, lastPanDigit, "Updated Amount : %s", currentTxnData.updatedAmount);
+    logDataEx(currentTrxType, lastPanDigit, "Host Response : %s", currentTxnData.hostResponseCode);
     safe_strcpy(currentTxnData.updatedAmount, sizeof(currentTxnData.updatedAmount), "000000000000");
     safe_strcpy(currentTxnData.txnStatus, sizeof(currentTxnData.txnStatus), STATUS_FAILURE);
 
-    logData("Going to update the status for the balance update");
+    logDataEx(currentTrxType, lastPanDigit, "Going to update the status for the balance update");
     // Update data for balance update
     updateTransactionStatus(currentTxnData.transactionId, currentTxnData.txnStatus, trxTable.updatedBalance);
 
@@ -402,26 +405,26 @@ void handleSecondTapNotPresented()
         logTimeWarnData("Total Time taken : %lld\n", endTrxTime - startTrxTime);
     }
 
-    logData("TXN Status : %s", currentTxnData.txnStatus);
-    logData("Host Response : %s", currentTxnData.hostResponseCode);
+    logDataEx(currentTrxType, lastPanDigit, "TXN Status : %s", currentTxnData.txnStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Host Response : %s", currentTxnData.hostResponseCode);
 
     if (strcmp(currentTxnData.trxType, TRXTYPE_SERVICE_CREATE) == 0)
     {
-        logError("Service creation host success, but card failed, no need for any reversal");
+        logErrorEx(currentTrxType, lastPanDigit, "Service creation host success, but card failed, no need for any reversal");
     }
     else
     {
         if (strcmp(currentTxnData.txnStatus, STATUS_FAILURE) == 0 &&
             strcmp(currentTxnData.hostResponseCode, "00") == 0)
         {
-            logInfo("Host is success, but card failed, so generating reversal with code : %s", REVERSAL_CODE_E2);
+            logInfoEx(currentTrxType, lastPanDigit, "Host is success, but card failed, so generating reversal with code : %s", REVERSAL_CODE_E2);
             updateReversalStatusOnly(currentTxnData.transactionId, STATUS_PENDING);
-            logInfo("Host is success, but card failed, so generating reversal");
+            logInfoEx(currentTrxType, lastPanDigit, "Host is success, but card failed, so generating reversal");
             performReversal(currentTxnData.transactionId, false, "E2");
         }
     }
 
-    logInfo("Transaction completed with status : %s", currentTxnData.txnStatus);
+    logInfoEx(currentTrxType, lastPanDigit, "Transaction completed with status : %s", currentTxnData.txnStatus);
     sendTransactionProcessedMessage(currentTxnData, "DECLINED");
     displayLight(LED_ST_CARD_PROCESSED_MSG_SENT);
 }

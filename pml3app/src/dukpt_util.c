@@ -50,6 +50,9 @@ extern struct applicationConfig appConfig;
 extern struct pkcs11 *crypto;
 extern struct transactionData currentTxnData;
 
+extern char currentTrxType[100];
+extern char lastPanDigit[10];
+
 static CK_OBJECT_HANDLE get_dukpt_ikey(CK_SESSION_HANDLE hSession, char *label)
 {
     CK_OBJECT_HANDLE hKey = CK_INVALID_HANDLE;
@@ -254,8 +257,8 @@ void dukpt_encrypt(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hIKey,
     size_t padded_len = (in_len + 7) & ~0x7u;
     unsigned char padded_in[padded_len];
 
-    logData("Padded len : %d", padded_len);
-    logData("out len: %d", *out_len);
+    logDataEx(currentTrxType, lastPanDigit, "Padded len : %d", padded_len);
+    logDataEx(currentTrxType, lastPanDigit, "out len: %d", *out_len);
 
     assert(*out_len >= padded_len);
 
@@ -304,20 +307,20 @@ void generateMac(const char *macInput)
     unsigned char byteMac[macLen];
     hexToByte(hexMac, byteMac);
 
-    logData("Key Label for MAC : %s", key->label);
+    logDataEx(currentTrxType, lastPanDigit, "Key Label for MAC : %s", key->label);
     hIKey = get_dukpt_ikey(hSession, key->label);
     get_key_serial_number(hSession, hIKey, ksn);
     get_key_check_value(hSession, hIKey, kcv);
 
     byteToHex(ksn, 10, currentTxnData.macKsn);
-    logData("Mac KSN Generated : %s", currentTxnData.macKsn);
+    logDataEx(currentTrxType, lastPanDigit, "Mac KSN Generated : %s", currentTxnData.macKsn);
 
     len = sizeof(buffer);
     dukpt_mac(hSession, hIKey, byteMac, sizeof(byteMac), buffer, &len);
 
     byteToHex(buffer, len, currentTxnData.mac);
-    logData("Generated Mac : %s", currentTxnData.mac);
-    logData("Generated Mac length : %d", strlen(currentTxnData.mac));
+    logDataEx(currentTrxType, lastPanDigit, "Generated Mac : %s", currentTxnData.mac);
+    logDataEx(currentTrxType, lastPanDigit, "Generated Mac length : %d", strlen(currentTxnData.mac));
 }
 
 /**
@@ -347,20 +350,20 @@ void generateMacReversalEcho(const char *macInput, char ksnData[21], char macDat
     unsigned char byteMac[macLen];
     hexToByte(hexMac, byteMac);
 
-    logData("Key Label for MAC : %s", key->label);
+    logDataEx(currentTrxType, lastPanDigit, "Key Label for MAC : %s", key->label);
     hIKey = get_dukpt_ikey(hSession, key->label);
     get_key_serial_number(hSession, hIKey, ksn);
     get_key_check_value(hSession, hIKey, kcv);
 
     byteToHex(ksn, 10, ksnData);
-    logData("Mac KSN Generated : %s", ksnData);
+    logDataEx(currentTrxType, lastPanDigit, "Mac KSN Generated : %s", ksnData);
 
     len = sizeof(buffer);
     dukpt_mac(hSession, hIKey, byteMac, sizeof(byteMac), buffer, &len);
 
     byteToHex(buffer, len, macData);
-    logData("Generated Mac : %s", macData);
-    logData("Generated Mac length : %d", strlen(macData));
+    logDataEx(currentTrxType, lastPanDigit, "Generated Mac : %s", macData);
+    logDataEx(currentTrxType, lastPanDigit, "Generated Mac length : %d", strlen(macData));
 }
 
 /**
@@ -381,18 +384,18 @@ void encryptPan(const char *pan, unsigned char ksn[10], char hex[256])
 
     hSession = crypto->hSession;
 
-    logData("Going to retrieve key from device for label : %s", dukptKey->label);
+    logDataEx(currentTrxType, lastPanDigit, "Going to retrieve key from device for label : %s", dukptKey->label);
     hIKey = get_dukpt_ikey(hSession, dukptKey->label);
     if (hIKey == CK_INVALID_HANDLE)
     {
-        logData("No DUKPT Initial Key found (label '%s', id %02hX).\n", dukptKey->label, 0);
+        logDataEx(currentTrxType, lastPanDigit, "No DUKPT Initial Key found (label '%s', id %02hX).\n", dukptKey->label, 0);
         return;
     }
 
-    // logData("Encrypt input PAN : %s, Len : %d", pan, strlen(pan));
-    logData("KSN : %s\n", bin2hex(hex, get_key_serial_number(hSession, hIKey, ksn), 10));
-    logData("KCV(IKEY) : %s\n", bin2hex(hex, get_key_check_value(hSession, hIKey, kcv), sizeof(kcv)));
-    // logData("Plaintext : %s\n", bin2hex(hex, pan, strlen(pan)));
+    // logDataEx(currentTrxType, lastPanDigit, "Encrypt input PAN : %s, Len : %d", pan, strlen(pan));
+    logDataEx(currentTrxType, lastPanDigit, "KSN : %s\n", bin2hex(hex, get_key_serial_number(hSession, hIKey, ksn), 10));
+    logDataEx(currentTrxType, lastPanDigit, "KCV(IKEY) : %s\n", bin2hex(hex, get_key_check_value(hSession, hIKey, kcv), sizeof(kcv)));
+    // logDataEx(currentTrxType, lastPanDigit, "Plaintext : %s\n", bin2hex(hex, pan, strlen(pan)));
 
     unsigned char panHex[strlen(pan) / 2];
     hexToByte(pan, panHex);
@@ -401,7 +404,7 @@ void encryptPan(const char *pan, unsigned char ksn[10], char hex[256])
     dukpt_encrypt_plain(hSession, hIKey, panHex, strlen(pan) / 2, buffer, &len);
     bin2hex(hex, buffer, len);
     // const char* result = bin2hex(hex, buffer, len);
-    // logData("CipherText: %s\n",result);
+    // logDataEx(currentTrxType, lastPanDigit, "CipherText: %s\n",result);
 }
 
 /**
@@ -420,24 +423,24 @@ void encryptPanExpDate()
 
     hSession = crypto->hSession;
 
-    logData("Going to retrieve key from device for label : %s", key->label);
+    logDataEx(currentTrxType, lastPanDigit, "Going to retrieve key from device for label : %s", key->label);
     hIKey = get_dukpt_ikey(hSession, key->label);
     if (hIKey == CK_INVALID_HANDLE)
     {
         printf("No DUKPT Initial Key found (label '%s', id %02hX).\n", key->label, 0);
         return;
     }
-    logData("Dukpt key retrieved success");
+    logDataEx(currentTrxType, lastPanDigit, "Dukpt key retrieved success");
 
     // Generate the KSN and KCV
     get_key_serial_number(hSession, hIKey, ksn);
     get_key_check_value(hSession, hIKey, kcv);
 
     byteToHex(ksn, 10, currentTxnData.ksn);
-    logData("KSN Generated : %s", currentTxnData.ksn);
+    logDataEx(currentTrxType, lastPanDigit, "KSN Generated : %s", currentTxnData.ksn);
 
-    // logData("KSN : %s", bin2hex(hex, get_key_serial_number(hSession, hIKey, ksn), 10));
-    // logData("KCV(IKEY) : %s", bin2hex(hex, get_key_check_value(hSession, hIKey, kcv), sizeof(kcv)));
+    // logDataEx(currentTrxType, lastPanDigit, "KSN : %s", bin2hex(hex, get_key_serial_number(hSession, hIKey, ksn), 10));
+    // logDataEx(currentTrxType, lastPanDigit, "KCV(IKEY) : %s", bin2hex(hex, get_key_check_value(hSession, hIKey, kcv), sizeof(kcv)));
 
     // Perform encryption of PAN
     // Do the padding for Pan as per Airtel requirement
@@ -445,8 +448,8 @@ void encryptPanExpDate()
     int paddedPanLen;
     pad0MultipleOf8(currentTxnData.plainPan, paddedPan, sizeof(paddedPan), &paddedPanLen);
 
-    // logData("Padded pan data : %s", paddedPan); // TODO : Remove
-    // logData("Padded pan length : %d", paddedPanLen);
+    // logDataEx(currentTrxType, lastPanDigit, "Padded pan data : %s", paddedPan); // TODO : Remove
+    // logDataEx(currentTrxType, lastPanDigit, "Padded pan length : %d", paddedPanLen);
 
     // Generate byte data of the hex pan
     unsigned char panByte[paddedPanLen];
@@ -460,8 +463,8 @@ void encryptPanExpDate()
     len = sizeof(buffer);
     dukpt_encrypt(hSession, hIKey, panByte, paddedPanLen, buffer, &len, FALSE, TRUE);
     byteToHex(buffer, len, currentTxnData.panEncrypted);
-    logData("Encrypted pan : %s", currentTxnData.panEncrypted);
-    logData("Encrypted pan length : %d", strlen(currentTxnData.panEncrypted));
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted pan : %s", currentTxnData.panEncrypted);
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted pan length : %d", strlen(currentTxnData.panEncrypted));
 
     // Perform the card expiry encryption
     // Do the padding for expiry as per PayTM requirement
@@ -469,8 +472,8 @@ void encryptPanExpDate()
     int paddedExpLen;
     pad0MultipleOf8(currentTxnData.plainExpDate, paddedExpiry, sizeof(paddedExpiry), &paddedExpLen);
 
-    logData("Padded exp data : %s", paddedExpiry); // TODO : Remove
-    logData("Padded exp length : %d", paddedExpLen);
+    logDataEx(currentTrxType, lastPanDigit, "Padded exp data : %s", paddedExpiry); // TODO : Remove
+    logDataEx(currentTrxType, lastPanDigit, "Padded exp length : %d", paddedExpLen);
 
     // Generate byte data of the hex pan
     unsigned char expByte[paddedExpLen / 2];
@@ -480,8 +483,8 @@ void encryptPanExpDate()
     len = sizeof(buffer);
     dukpt_encrypt(hSession, hIKey, expByte, paddedExpLen / 2, buffer, &len, TRUE, FALSE);
     byteToHex(buffer, len, currentTxnData.expDateEnc);
-    logData("Encrypted exp date : %s", currentTxnData.expDateEnc);
-    logData("Encrypted exp length : %d", strlen(currentTxnData.expDateEnc));
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted exp date : %s", currentTxnData.expDateEnc);
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted exp length : %d", strlen(currentTxnData.expDateEnc));
 }
 
 /**
@@ -500,24 +503,24 @@ void encryptPanTrack2ExpDate()
 
     hSession = crypto->hSession;
 
-    logData("Going to retrieve key from device for label : %s", key->label);
+    logDataEx(currentTrxType, lastPanDigit, "Going to retrieve key from device for label : %s", key->label);
     hIKey = get_dukpt_ikey(hSession, key->label);
     if (hIKey == CK_INVALID_HANDLE)
     {
         printf("No DUKPT Initial Key found (label '%s', id %02hX).\n", key->label, 0);
         return;
     }
-    logData("Dukpt key retrieved success");
+    logDataEx(currentTrxType, lastPanDigit, "Dukpt key retrieved success");
 
     // Generate the KSN and KCV
     get_key_serial_number(hSession, hIKey, ksn);
     get_key_check_value(hSession, hIKey, kcv);
 
     byteToHex(ksn, 10, currentTxnData.ksn);
-    logData("KSN Generated : %s", currentTxnData.ksn);
+    logDataEx(currentTrxType, lastPanDigit, "KSN Generated : %s", currentTxnData.ksn);
 
-    // logData("KSN : %s", bin2hex(hex, get_key_serial_number(hSession, hIKey, ksn), 10));
-    // logData("KCV(IKEY) : %s", bin2hex(hex, get_key_check_value(hSession, hIKey, kcv), sizeof(kcv)));
+    // logDataEx(currentTrxType, lastPanDigit, "KSN : %s", bin2hex(hex, get_key_serial_number(hSession, hIKey, ksn), 10));
+    // logDataEx(currentTrxType, lastPanDigit, "KCV(IKEY) : %s", bin2hex(hex, get_key_check_value(hSession, hIKey, kcv), sizeof(kcv)));
 
     // Perform encryption of Track2
     // Do the padding for data as per PayTM requirement
@@ -525,8 +528,8 @@ void encryptPanTrack2ExpDate()
     int paddedTrack2Len;
     pad0MultipleOf8(currentTxnData.plainTrack2, paddedTrack2, sizeof(paddedTrack2), &paddedTrack2Len);
 
-    // logData("Padded track2 data : %s", paddedTrack2); // TODO : Remove
-    // logData("Padded track2 length : %d", paddedTrack2Len);
+    // logDataEx(currentTrxType, lastPanDigit, "Padded track2 data : %s", paddedTrack2); // TODO : Remove
+    // logDataEx(currentTrxType, lastPanDigit, "Padded track2 length : %d", paddedTrack2Len);
 
     // Generate byte data of the hex track 2
     unsigned char track2Byte[paddedTrack2Len];
@@ -540,8 +543,8 @@ void encryptPanTrack2ExpDate()
     len = sizeof(buffer);
     dukpt_encrypt(hSession, hIKey, track2Byte, paddedTrack2Len, buffer, &len, FALSE, TRUE);
     byteToHex(buffer, len, currentTxnData.track2Enc);
-    logData("Encrypted track2 : %s", currentTxnData.track2Enc);
-    logData("Encrypted track2 length : %d", strlen(currentTxnData.track2Enc));
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted track2 : %s", currentTxnData.track2Enc);
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted track2 length : %d", strlen(currentTxnData.track2Enc));
 
     // Perform encryption of Pan
     // Do the padding for data as per Airtel requirement
@@ -559,8 +562,8 @@ void encryptPanTrack2ExpDate()
         paddedPanLen += 8;
     }
 
-    logData("Padded pan data : %s", paddedPan); // TODO : Remove
-    logData("Padded pan length : %d", paddedPanLen);
+    logDataEx(currentTrxType, lastPanDigit, "Padded pan data : %s", paddedPan); // TODO : Remove
+    logDataEx(currentTrxType, lastPanDigit, "Padded pan length : %d", paddedPanLen);
 
     // Generate byte data of the hex pan
     unsigned char panByte[paddedPanLen];
@@ -574,8 +577,8 @@ void encryptPanTrack2ExpDate()
     len = sizeof(buffer);
     dukpt_encrypt(hSession, hIKey, panByte, paddedPanLen, buffer, &len, FALSE, FALSE);
     byteToHex(buffer, len, currentTxnData.panEncrypted);
-    logData("Encrypted pan : %s", currentTxnData.panEncrypted);
-    logData("Encrypted pan length : %d", strlen(currentTxnData.panEncrypted));
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted pan : %s", currentTxnData.panEncrypted);
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted pan length : %d", strlen(currentTxnData.panEncrypted));
 
     // Perform the card expiry encryption
     // Do the padding for expiry as per PayTM requirement
@@ -588,9 +591,9 @@ void encryptPanTrack2ExpDate()
 
     pad0MultipleOf8(expDateYYMM, paddedExpiry, sizeof(paddedExpiry), &paddedExpLen);
 
-    // logData("Exp date used for padding : %s and len is : %d", expDateYYMM, strlen(expDateYYMM));
-    // logData("Padded exp data : %s", paddedExpiry); // TODO : Remove
-    // logData("Padded exp length : %d", paddedExpLen);
+    // logDataEx(currentTrxType, lastPanDigit, "Exp date used for padding : %s and len is : %d", expDateYYMM, strlen(expDateYYMM));
+    // logDataEx(currentTrxType, lastPanDigit, "Padded exp data : %s", paddedExpiry); // TODO : Remove
+    // logDataEx(currentTrxType, lastPanDigit, "Padded exp length : %d", paddedExpLen);
 
     // Generate byte data of the hex pan
     unsigned char expByte[paddedExpLen / 2];
@@ -600,8 +603,8 @@ void encryptPanTrack2ExpDate()
     len = sizeof(buffer);
     dukpt_encrypt(hSession, hIKey, expByte, paddedExpLen / 2, buffer, &len, TRUE, FALSE);
     byteToHex(buffer, len, currentTxnData.expDateEnc);
-    logData("Encrypted exp date : %s", currentTxnData.expDateEnc);
-    logData("Encrypted pan length : %d", strlen(currentTxnData.expDateEnc));
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted exp date : %s", currentTxnData.expDateEnc);
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted pan length : %d", strlen(currentTxnData.expDateEnc));
 }
 
 /**
@@ -619,24 +622,24 @@ void encryptPanExpDatePayTm()
 
     hSession = crypto->hSession;
 
-    logData("Going to retrieve key from device for label : %s", key->label);
+    logDataEx(currentTrxType, lastPanDigit, "Going to retrieve key from device for label : %s", key->label);
     hIKey = get_dukpt_ikey(hSession, key->label);
     if (hIKey == CK_INVALID_HANDLE)
     {
         printf("No DUKPT Initial Key found (label '%s', id %02hX).\n", key->label, 0);
         return;
     }
-    logData("Dukpt key retrieved success");
+    logDataEx(currentTrxType, lastPanDigit, "Dukpt key retrieved success");
 
     // Generate the KSN and KCV
     get_key_serial_number(hSession, hIKey, ksn);
     get_key_check_value(hSession, hIKey, kcv);
 
     byteToHex(ksn, 10, currentTxnData.ksn);
-    logData("KSN Generated : %s", currentTxnData.ksn);
+    logDataEx(currentTrxType, lastPanDigit, "KSN Generated : %s", currentTxnData.ksn);
 
-    // logData("KSN : %s", bin2hex(hex, get_key_serial_number(hSession, hIKey, ksn), 10));
-    // logData("KCV(IKEY) : %s", bin2hex(hex, get_key_check_value(hSession, hIKey, kcv), sizeof(kcv)));
+    // logDataEx(currentTrxType, lastPanDigit, "KSN : %s", bin2hex(hex, get_key_serial_number(hSession, hIKey, ksn), 10));
+    // logDataEx(currentTrxType, lastPanDigit, "KCV(IKEY) : %s", bin2hex(hex, get_key_check_value(hSession, hIKey, kcv), sizeof(kcv)));
 
     // Perform encryption of PAN
     // Do the padding for Pan as per PayTM requirement
@@ -644,8 +647,8 @@ void encryptPanExpDatePayTm()
     int paddedPanLen;
     pad0MultipleOf8(currentTxnData.plainPan, paddedPan, sizeof(paddedPan), &paddedPanLen);
 
-    logData("Padded pan data : %s", paddedPan); // TODO : Remove
-    logData("Padded pan length : %d", paddedPanLen);
+    logDataEx(currentTrxType, lastPanDigit, "Padded pan data : %s", paddedPan); // TODO : Remove
+    logDataEx(currentTrxType, lastPanDigit, "Padded pan length : %d", paddedPanLen);
 
     // Generate byte data of the hex pan
     unsigned char panByte[paddedPanLen / 2];
@@ -655,8 +658,8 @@ void encryptPanExpDatePayTm()
     len = sizeof(buffer);
     dukpt_encrypt(hSession, hIKey, panByte, paddedPanLen / 2, buffer, &len, FALSE, TRUE);
     byteToHex(buffer, len, currentTxnData.panEncrypted);
-    logData("Encrypted pan : %s", currentTxnData.panEncrypted);
-    logData("Encrypted pan length : %d", strlen(currentTxnData.panEncrypted));
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted pan : %s", currentTxnData.panEncrypted);
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted pan length : %d", strlen(currentTxnData.panEncrypted));
 
     // Perform the card expiry encryption
     // Do the padding for expiry as per PayTM requirement
@@ -664,8 +667,8 @@ void encryptPanExpDatePayTm()
     int paddedExpLen;
     pad0MultipleOf8(currentTxnData.plainExpDate, paddedExpiry, sizeof(paddedExpiry), &paddedExpLen);
 
-    logData("Padded exp data : %s", paddedExpiry); // TODO : Remove
-    logData("Padded exp length : %d", paddedExpLen);
+    logDataEx(currentTrxType, lastPanDigit, "Padded exp data : %s", paddedExpiry); // TODO : Remove
+    logDataEx(currentTrxType, lastPanDigit, "Padded exp length : %d", paddedExpLen);
 
     // Generate byte data of the hex pan
     unsigned char expByte[paddedExpLen / 2];
@@ -675,8 +678,8 @@ void encryptPanExpDatePayTm()
     len = sizeof(buffer);
     dukpt_encrypt(hSession, hIKey, expByte, paddedExpLen / 2, buffer, &len, TRUE, FALSE);
     byteToHex(buffer, len, currentTxnData.expDateEnc);
-    logData("Encrypted exp date : %s", currentTxnData.expDateEnc);
-    logData("Encrypted pan length : %d", strlen(currentTxnData.expDateEnc));
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted exp date : %s", currentTxnData.expDateEnc);
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted pan length : %d", strlen(currentTxnData.expDateEnc));
 }
 
 /**
@@ -694,24 +697,24 @@ void encryptPanTrack2ExpDatePayTm()
 
     hSession = crypto->hSession;
 
-    logData("Going to retrieve key from device for label : %s", key->label);
+    logDataEx(currentTrxType, lastPanDigit, "Going to retrieve key from device for label : %s", key->label);
     hIKey = get_dukpt_ikey(hSession, key->label);
     if (hIKey == CK_INVALID_HANDLE)
     {
         printf("No DUKPT Initial Key found (label '%s', id %02hX).\n", key->label, 0);
         return;
     }
-    logData("Dukpt key retrieved success");
+    logDataEx(currentTrxType, lastPanDigit, "Dukpt key retrieved success");
 
     // Generate the KSN and KCV
     get_key_serial_number(hSession, hIKey, ksn);
     get_key_check_value(hSession, hIKey, kcv);
 
     byteToHex(ksn, 10, currentTxnData.ksn);
-    logData("KSN Generated : %s", currentTxnData.ksn);
+    logDataEx(currentTrxType, lastPanDigit, "KSN Generated : %s", currentTxnData.ksn);
 
-    // logData("KSN : %s", bin2hex(hex, get_key_serial_number(hSession, hIKey, ksn), 10));
-    // logData("KCV(IKEY) : %s", bin2hex(hex, get_key_check_value(hSession, hIKey, kcv), sizeof(kcv)));
+    // logDataEx(currentTrxType, lastPanDigit, "KSN : %s", bin2hex(hex, get_key_serial_number(hSession, hIKey, ksn), 10));
+    // logDataEx(currentTrxType, lastPanDigit, "KCV(IKEY) : %s", bin2hex(hex, get_key_check_value(hSession, hIKey, kcv), sizeof(kcv)));
 
     // Perform encryption of Track2
     // Do the padding for data as per PayTM requirement
@@ -719,8 +722,8 @@ void encryptPanTrack2ExpDatePayTm()
     int paddedTrack2Len;
     pad0MultipleOf8(currentTxnData.plainTrack2, paddedTrack2, sizeof(paddedTrack2), &paddedTrack2Len);
 
-    // logData("Padded track2 data : %s", paddedTrack2); // TODO : Remove
-    // logData("Padded track2 length : %d", paddedTrack2Len);
+    // logDataEx(currentTrxType, lastPanDigit, "Padded track2 data : %s", paddedTrack2); // TODO : Remove
+    // logDataEx(currentTrxType, lastPanDigit, "Padded track2 length : %d", paddedTrack2Len);
 
     // Generate byte data of the hex track 2
     unsigned char track2Byte[paddedTrack2Len / 2];
@@ -730,8 +733,8 @@ void encryptPanTrack2ExpDatePayTm()
     len = sizeof(buffer);
     dukpt_encrypt(hSession, hIKey, track2Byte, paddedTrack2Len / 2, buffer, &len, FALSE, TRUE);
     byteToHex(buffer, len, currentTxnData.track2Enc);
-    logData("Encrypted track2 : %s", currentTxnData.track2Enc);
-    logData("Encrypted track2 length : %d", strlen(currentTxnData.track2Enc));
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted track2 : %s", currentTxnData.track2Enc);
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted track2 length : %d", strlen(currentTxnData.track2Enc));
 
     // Perform encryption of Pan
     // Do the padding for data as per PayTM requirement
@@ -739,8 +742,8 @@ void encryptPanTrack2ExpDatePayTm()
     int paddedPanLen;
     pad0MultipleOf8(currentTxnData.plainPan, paddedPan, sizeof(paddedPan), &paddedPanLen);
 
-    // logData("Padded pan data : %s", paddedPan); // TODO : Remove
-    // logData("Padded pan length : %d", paddedPanLen);
+    // logDataEx(currentTrxType, lastPanDigit, "Padded pan data : %s", paddedPan); // TODO : Remove
+    // logDataEx(currentTrxType, lastPanDigit, "Padded pan length : %d", paddedPanLen);
 
     // Generate byte data of the hex pan
     unsigned char panByte[paddedPanLen / 2];
@@ -750,8 +753,8 @@ void encryptPanTrack2ExpDatePayTm()
     len = sizeof(buffer);
     dukpt_encrypt(hSession, hIKey, panByte, paddedPanLen / 2, buffer, &len, FALSE, FALSE);
     byteToHex(buffer, len, currentTxnData.panEncrypted);
-    logData("Encrypted pan : %s", currentTxnData.track2Enc);
-    logData("Encrypted pan length : %d", strlen(currentTxnData.track2Enc));
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted pan : %s", currentTxnData.track2Enc);
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted pan length : %d", strlen(currentTxnData.track2Enc));
 
     // Perform the card expiry encryption
     // Do the padding for expiry as per PayTM requirement
@@ -764,9 +767,9 @@ void encryptPanTrack2ExpDatePayTm()
 
     pad0MultipleOf8(expDateYYMM, paddedExpiry, sizeof(paddedExpiry), &paddedExpLen);
 
-    // logData("Exp date used for padding : %s and len is : %d", expDateYYMM, strlen(expDateYYMM));
-    // logData("Padded exp data : %s", paddedExpiry); // TODO : Remove
-    // logData("Padded exp length : %d", paddedExpLen);
+    // logDataEx(currentTrxType, lastPanDigit, "Exp date used for padding : %s and len is : %d", expDateYYMM, strlen(expDateYYMM));
+    // logDataEx(currentTrxType, lastPanDigit, "Padded exp data : %s", paddedExpiry); // TODO : Remove
+    // logDataEx(currentTrxType, lastPanDigit, "Padded exp length : %d", paddedExpLen);
 
     // Generate byte data of the hex pan
     unsigned char expByte[paddedExpLen / 2];
@@ -776,8 +779,8 @@ void encryptPanTrack2ExpDatePayTm()
     len = sizeof(buffer);
     dukpt_encrypt(hSession, hIKey, expByte, paddedExpLen / 2, buffer, &len, TRUE, FALSE);
     byteToHex(buffer, len, currentTxnData.expDateEnc);
-    logData("Encrypted exp date : %s", currentTxnData.expDateEnc);
-    logData("Encrypted pan length : %d", strlen(currentTxnData.expDateEnc));
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted exp date : %s", currentTxnData.expDateEnc);
+    logDataEx(currentTrxType, lastPanDigit, "Encrypted pan length : %d", strlen(currentTxnData.expDateEnc));
 }
 
 /*

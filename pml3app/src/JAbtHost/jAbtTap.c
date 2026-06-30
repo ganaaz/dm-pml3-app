@@ -87,11 +87,11 @@ char *generateAbtTapRequest(AbtTransactionTable trxDataList[], int start, int tr
 void parseAbtTapResponse(const char *data, int *count, AbtTapResponse abtTapResponses[])
 {
     json_object *jObject = json_tokener_parse(data);
-    logData("JSON Object Created for the response data");
+    logDataEx("ABT", "", "JSON Object Created for the response data");
 
     if (jObject == NULL)
     {
-        logError("Unable to parse response");
+        logErrorEx("Abt", "", "Unable to parse response");
         *count = 0;
         goto done;
     }
@@ -100,18 +100,18 @@ void parseAbtTapResponse(const char *data, int *count, AbtTapResponse abtTapResp
 
     if (responses == NULL)
     {
-        logError("Unable to parse response");
+        logErrorEx("Abt", "", "Unable to parse response");
         *count = 0;
         goto done;
     }
 
     *count = json_object_array_length(responses);
-    logData("Total response parsed : %d", *count);
+    logDataEx("ABT", "", "Total response parsed : %d", *count);
 
     json_object *jResponseValue;
     for (int i = 0; i < *count; i++)
     {
-        logData("Going to parse the tap response : %d", (i + 1));
+        logDataEx("ABT", "", "Going to parse the tap response : %d", (i + 1));
 
         jResponseValue = json_object_array_get_idx(responses, i);
         if (json_object_object_get(jResponseValue, "tuid") != NULL)

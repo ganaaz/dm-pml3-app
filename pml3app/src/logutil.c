@@ -6,6 +6,8 @@
 #include <pthread.h>
 #include <inttypes.h>
 #include <log4c.h>
+#include <log4c/appender.h>
+#include <log4c/layout.h>
 
 #include <libpay/tlv.h>
 #include <feig/emvco_tags.h>
@@ -23,6 +25,42 @@ pthread_t logThread;
 pthread_mutex_t logLock;
 extern struct applicationConfig appConfig;
 extern log4c_category_t *logCategory;
+extern struct applicationData appData;
+
+static const char *message_layout_format(const log4c_layout_t *layout, const log4c_logging_event_t *event)
+{
+    static char buf[4096];
+    snprintf(buf, sizeof(buf), "%s\n", event->evt_msg);
+    return buf;
+}
+
+static const log4c_layout_type_t message_layout_type = {
+    "message",
+    message_layout_format};
+
+void registerMessageLayout(void)
+{
+    log4c_layout_type_set(&message_layout_type);
+}
+
+static int plain_stdout_open(log4c_appender_t *appender) { return 0; }
+static int plain_stdout_close(log4c_appender_t *appender) { return 0; }
+
+static int plain_stdout_append(log4c_appender_t *appender, const log4c_logging_event_t *event)
+{
+    return fputs(log4c_layout_format(log4c_appender_get_layout(appender), event), stdout);
+}
+
+static const log4c_appender_type_t plain_stdout_appender_type = {
+    "plain_stdout",
+    plain_stdout_open,
+    plain_stdout_append,
+    plain_stdout_close};
+
+void registerPlainStdoutAppender(void)
+{
+    log4c_appender_type_set(&plain_stdout_appender_type);
+}
 
 char **logTimeMessageList;
 int logTimeMessageCount = 0;
@@ -76,7 +114,7 @@ void loadPayTmIndex()
 
     if (fp == NULL)
     {
-        logData("paytm_index file does not exists, creating index as 1");
+        logDataEx("L3-App", "", "paytm_index file does not exists, creating index as 1");
         paytmLogIndex = 1;
         fp = fopen("paytm_index", "w");
         fprintf(fp, "%d", paytmLogIndex);
@@ -84,12 +122,12 @@ void loadPayTmIndex()
     }
     else
     {
-        logData("paytm_index file exists so reading it");
+        logDataEx("L3-App", "", "paytm_index file exists so reading it");
         int count;
         fscanf(fp, "%d", &count);
         fclose(fp);
         paytmLogIndex = count;
-        logData("Index read : %d", paytmLogIndex);
+        logDataEx("L3-App", "", "Index read : %d", paytmLogIndex);
     }
 }
 
@@ -112,7 +150,7 @@ long getFileSize(char fileName[50])
     FILE *fp = fopen(fileName, "r");
     if (fp == NULL)
     {
-        logData("File doesnt exists");
+        logDataEx("L3-App", "", "File doesnt exists");
         return 0;
     }
 
@@ -120,7 +158,7 @@ long getFileSize(char fileName[50])
 
     long fileSize = ftell(fp);
     fclose(fp);
-    logData("Size of the file : %s is %d", fileName, fileSize);
+    logDataEx("L3-App", "", "Size of the file : %s is %d", fileName, fileSize);
     return fileSize;
 }
 
@@ -147,12 +185,12 @@ void getHostLogFileName(char *fileName)
     char currFileName[50] = {0};
     char index[3] = {0};
     sprintf(index, "%d", paytmLogIndex);
-    logData("Index : %s", index);
+    logDataEx("L3-App", "", "Index : %s", index);
 
     safe_strcpy(currFileName, sizeof(currFileName), "host.log.");
     safe_strcat(currFileName, sizeof(currFileName), index);
 
-    logData("Generated file name : %s", currFileName);
+    logDataEx("L3-App", "", "Generated file name : %s", currFileName);
 
     bool exists = isFileExists(currFileName);
 
@@ -160,7 +198,7 @@ void getHostLogFileName(char *fileName)
     if (exists == false)
     {
         safe_strcpy(fileName, 50, currFileName);
-        logData("Log file doesnot exists, so using that");
+        logDataEx("L3-App", "", "Log file doesnot exists, so using that");
         return;
     }
 
@@ -170,34 +208,34 @@ void getHostLogFileName(char *fileName)
 
     if (fileSize < maxSize)
     {
-        logData("File size under the limit, so using that");
+        logDataEx("L3-App", "", "File size under the limit, so using that");
         safe_strcpy(fileName, 50, currFileName);
         return;
     }
 
-    logData("File size is more than the max, so increasing the index");
+    logDataEx("L3-App", "", "File size is more than the max, so increasing the index");
     paytmLogIndex++;
-    logData("Now the host log index : %d", paytmLogIndex);
+    logDataEx("L3-App", "", "Now the host log index : %d", paytmLogIndex);
 
     if (paytmLogIndex <= appConfig.paytmLogCount)
     {
-        logData("Log index is less than the max count");
+        logDataEx("L3-App", "", "Log index is less than the max count");
     }
     else
     {
-        logData("Reset to the 1 as the max count is reached");
+        logDataEx("L3-App", "", "Reset to the 1 as the max count is reached");
         paytmLogIndex = 1;
     }
 
     char newFileName[50] = {0};
     char newIndex[3] = {0};
     sprintf(newIndex, "%d", paytmLogIndex);
-    logData("newIndex : %s", newIndex);
+    logDataEx("L3-App", "", "newIndex : %s", newIndex);
 
     safe_strcpy(newFileName, 50, "paytm.log.");
     safe_strcat(newFileName, 50, newIndex);
 
-    logData("Generated new file name : %s", newFileName);
+    logDataEx("L3-App", "", "Generated new file name : %s", newFileName);
 
     // Reset the file if present to empty
     FILE *fp;
@@ -207,9 +245,9 @@ void getHostLogFileName(char *fileName)
         fprintf(fp, "%s", "");
         fclose(fp);
     }
-    logData("File %s is reset", newFileName);
+    logDataEx("L3-App", "", "File %s is reset", newFileName);
     long size = getFileSize(newFileName);
-    logData("Size is : %d", size);
+    logDataEx("L3-App", "", "Size is : %d", size);
     safe_strcpy(fileName, 50, newFileName);
 }
 
@@ -225,14 +263,14 @@ void logHostData(const char *message)
 
     char fileName[50];
     getHostLogFileName(fileName);
-    logData("File used : %s", fileName);
+    logDataEx("L3-App", "", "File used : %s", fileName);
 
     FILE *fp;
     fp = fopen(fileName, "a+");
 
     if (fp == NULL)
     {
-        logError("Unable to open the file for host data write");
+        logErrorEx("L3-App", "HostData", "Unable to open the file for host data write");
         return;
     }
 
@@ -241,16 +279,70 @@ void logHostData(const char *message)
 }
 
 /**
- * Log to log4c logger
+ * Log to log4c logger.
+ * Formats message as:
+ *   DateTime|Identifier|IP|LoggingLevel|Module|SubModule|Status|AppVersion|Message|AdditionalInfo
  **/
-void logToLog4c(int priority, const char *fmt, va_list args)
+void logToLog4c(int priority, const char *module, const char *subModule, const char *fmt, va_list args)
 {
-    if (log4c_category_is_priority_enabled(logCategory, priority))
+    if (!log4c_category_is_priority_enabled(logCategory, priority))
+        return;
+
+    static char cachedIp[64] = {0};
+    static char cachedDeviceId[128] = {0};
+    static bool cacheInitialized = false;
+
+    if (!cacheInitialized)
     {
-        pthread_mutex_lock(&logLock);
-        log4c_category_vlog(logCategory, priority, fmt, args);
-        pthread_mutex_unlock(&logLock);
+        getLocalIP(cachedIp, sizeof(cachedIp));
+        getDeviceId(cachedDeviceId);
+        cacheInitialized = true;
     }
+
+    char userMessage[2048];
+    vsnprintf(userMessage, sizeof(userMessage), fmt, args);
+
+    char dateTime[32];
+    time_t timer = time(NULL);
+    struct tm tm_buf;
+    struct tm *tm_info = localtime_r(&timer, &tm_buf);
+    strftime(dateTime, sizeof(dateTime), "%d-%m-%Y %H:%M:%S", tm_info);
+
+    const char *levelStr;
+    switch (priority)
+    {
+    case LOG4C_PRIORITY_INFO:
+        levelStr = "INFO";
+        break;
+    case LOG4C_PRIORITY_WARN:
+        levelStr = "WARN";
+        break;
+    case LOG4C_PRIORITY_ERROR:
+        levelStr = "ERROR";
+        break;
+    default:
+        levelStr = "DEBUG";
+        break;
+    }
+
+    char *status = getStatusString(appData.status);
+
+    char fullMessage[4096];
+    snprintf(fullMessage, sizeof(fullMessage),
+             "%s|%s|%s|%s|%s|%s|%s|%s|%s|",
+             dateTime,
+             cachedDeviceId,
+             cachedIp,
+             levelStr,
+             module ? module : "",
+             subModule ? subModule : "",
+             status,
+             appConfig.version,
+             userMessage);
+
+    pthread_mutex_lock(&logLock);
+    log4c_category_log(logCategory, priority, "%s", fullMessage);
+    pthread_mutex_unlock(&logLock);
 }
 
 /**
@@ -260,7 +352,15 @@ void logInfo(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    logToLog4c(LOG4C_PRIORITY_INFO, fmt, args);
+    logToLog4c(LOG4C_PRIORITY_INFO, "", "", fmt, args);
+    va_end(args);
+}
+
+void logInfoEx(const char *module, const char *subModule, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    logToLog4c(LOG4C_PRIORITY_INFO, module, subModule, fmt, args);
     va_end(args);
 }
 
@@ -271,7 +371,15 @@ void logError(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    logToLog4c(LOG4C_PRIORITY_ERROR, fmt, args);
+    logToLog4c(LOG4C_PRIORITY_ERROR, "", "", fmt, args);
+    va_end(args);
+}
+
+void logErrorEx(const char *module, const char *subModule, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    logToLog4c(LOG4C_PRIORITY_ERROR, module, subModule, fmt, args);
     va_end(args);
 }
 
@@ -309,7 +417,15 @@ void logWarn(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    logToLog4c(LOG4C_PRIORITY_WARN, fmt, args);
+    logToLog4c(LOG4C_PRIORITY_WARN, "", "", fmt, args);
+    va_end(args);
+}
+
+void logWarnEx(const char *module, const char *subModule, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    logToLog4c(LOG4C_PRIORITY_WARN, module, subModule, fmt, args);
     va_end(args);
 }
 
@@ -320,23 +436,16 @@ void logData(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    logToLog4c(LOG4C_PRIORITY_DEBUG, fmt, args);
+    logToLog4c(LOG4C_PRIORITY_DEBUG, "", "", fmt, args);
     va_end(args);
+}
 
-    /*
-    if (appConfig.isDebugEnabled == 1)
-    {
-        char buffer[26];
-        getDateTime(buffer);
-        char *data = (char*)malloc(strlen(fmt) + 31);
-        safe_strcpy(data, buffer);
-        safe_strcat(data, fmt);
-        va_list args;
-        safe_strcat(data, "\n");
-        va_start(args, data);
-        vfprintf(stdout, data, args);
-        va_end(args);
-    }*/
+void logDataEx(const char *module, const char *subModule, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    logToLog4c(LOG4C_PRIORITY_DEBUG, module, subModule, fmt, args);
+    va_end(args);
 }
 
 /**
@@ -410,7 +519,7 @@ void printServiceQualifier(uint8_t *buffer, size_t buffer_len)
 {
     if (0 != buffer_len % 5)
     {
-        logData("Invalid Service Qualifier format!");
+        logDataEx("L3-App", "", "Invalid Service Qualifier format!");
         return;
     }
 
@@ -423,17 +532,17 @@ void printServiceQualifier(uint8_t *buffer, size_t buffer_len)
     size_t i = 0;
     for (i = 0; i < buffer_len / 5; i++)
     {
-        logData("  Service Qualifier: %02X%02X%02X%02X%02X", p[0], p[1], p[2], p[3], p[4]);
-        logData("    Priority 0x%02X: ", p[0] & 0xFE);
+        logDataEx("L3-App", "", "  Service Qualifier: %02X%02X%02X%02X%02X", p[0], p[1], p[2], p[3], p[4]);
+        logDataEx("L3-App", "", "    Priority 0x%02X: ", p[0] & 0xFE);
         if (0x01 == (0x01 & p[0]))
         {
-            logData("Cardholder Confirmation is NOT needed");
+            logDataEx("L3-App", "", "Cardholder Confirmation is NOT needed");
         }
         else
         {
-            logData("Cardholder Confirmation is needed");
+            logDataEx("L3-App", "", "Cardholder Confirmation is needed");
         }
-        logData("    Service ID: %02X%02X", p[1], p[2]);
+        logDataEx("L3-App", "", "    Service ID: %02X%02X", p[1], p[2]);
         printServiceManagementInfo(&p[3], 2);
         p += 5;
     }
@@ -447,7 +556,7 @@ void printServiceManagementInfo(uint8_t *buffer, size_t buffer_len)
 {
     if (2 != buffer_len)
     {
-        logData("Invalid Service Management Info format!");
+        logDataEx("L3-App", "", "Invalid Service Management Info format!");
         return;
     }
 
@@ -458,83 +567,83 @@ void printServiceManagementInfo(uint8_t *buffer, size_t buffer_len)
 
     uint8_t *p = buffer;
 
-    logData("      Service Management Info: %02X%02X", p[0], p[1]);
+    logDataEx("L3-App", "", "      Service Management Info: %02X%02X", p[0], p[1]);
     /* Byte 1 */
-    logData("        Service Type: ");
+    logDataEx("L3-App", "", "        Service Type: ");
     if (0x80 == (0x80 & *p))
     {
-        logData("       Permanent Service");
+        logDataEx("L3-App", "", "       Permanent Service");
     }
     else
     {
-        logData("       Temporary Service");
+        logDataEx("L3-App", "", "       Temporary Service");
     }
 
-    logData("        Service Updata Type: ");
+    logDataEx("L3-App", "", "        Service Updata Type: ");
     if (0x00 == (0x60 & *p))
     {
-        logData("Service specific data");
+        logDataEx("L3-App", "", "Service specific data");
     }
     else if (0x20 == (0x60 & *p))
     {
-        logData("Service Key Plant");
+        logDataEx("L3-App", "", "Service Key Plant");
     }
     else if (0x40 == (0x60 & *p))
     {
-        logData("Service Balance Limit Update");
+        logDataEx("L3-App", "", "Service Balance Limit Update");
     }
     else
     {
-        logData("Undefined");
+        logDataEx("L3-App", "", "Undefined");
     }
 
-    logData("        Service activation: ");
+    logDataEx("L3-App", "", "        Service activation: ");
     if (0x10 == (0x10 & *p))
     {
-        logData(" Active");
+        logDataEx("L3-App", "", " Active");
     }
     else
     {
-        logData(" Inactive");
+        logDataEx("L3-App", "", " Inactive");
     }
-    logData("        Service state: ");
+    logDataEx("L3-App", "", "        Service state: ");
     if (0x08 == (0x08 & *p))
     {
-        logData("      Blocked");
+        logDataEx("L3-App", "", "      Blocked");
     }
     else
     {
-        logData("      Operational");
+        logDataEx("L3-App", "", "      Operational");
     }
-    logData("        Wallet: ");
+    logDataEx("L3-App", "", "        Wallet: ");
     if (0x02 == (0x02 & *p))
     {
-        logData("             Inactive");
+        logDataEx("L3-App", "", "             Inactive");
     }
     else
     {
-        logData("             Active");
+        logDataEx("L3-App", "", "             Active");
     }
-    logData("        Wallet linked to: ");
+    logDataEx("L3-App", "", "        Wallet linked to: ");
     if (0x01 == (0x01 & *p))
     {
-        logData("   Card Global Balance");
+        logDataEx("L3-App", "", "   Card Global Balance");
     }
     else
     {
-        logData("   Service Local Balance");
+        logDataEx("L3-App", "", "   Service Local Balance");
     }
 
     p++;
     /* Byte 2 */
-    logData("        Currency Code: ");
+    logDataEx("L3-App", "", "        Currency Code: ");
     if (0x80 == (0x80 & *p))
     {
-        logData("      Kilometres (0x0999)");
+        logDataEx("L3-App", "", "      Kilometres (0x0999)");
     }
     else
     {
-        logData("      Indian Rupee (0x0356)");
+        logDataEx("L3-App", "", "      Indian Rupee (0x0356)");
     }
     return;
 }
@@ -546,7 +655,7 @@ void printServiceControl(uint8_t *buffer, size_t buffer_len)
 {
     if (2 != buffer_len)
     {
-        logData("Invalid Service Control format!");
+        logDataEx("L3-App", "", "Invalid Service Control format!");
         return;
     }
 
@@ -557,65 +666,65 @@ void printServiceControl(uint8_t *buffer, size_t buffer_len)
 
     uint8_t *p = buffer;
 
-    logData("    Service Control: %02X%02X", p[0], p[1]);
+    logDataEx("L3-App", "", "    Service Control: %02X%02X", p[0], p[1]);
     /* Byte 1 */
-    logData("      Service Type: ");
+    logDataEx("L3-App", "", "      Service Type: ");
     if (0x80 == (0x80 & *p))
     {
-        logData("      Permanent Service");
+        logDataEx("L3-App", "", "      Permanent Service");
     }
     else
     {
-        logData("      Temporary Service");
+        logDataEx("L3-App", "", "      Temporary Service");
     }
 
-    logData("      Service activation: ");
+    logDataEx("L3-App", "", "      Service activation: ");
     if (0x20 == (0x20 & *p))
     {
-        logData("Active");
+        logDataEx("L3-App", "", "Active");
     }
     else
     {
-        logData("Inactive");
+        logDataEx("L3-App", "", "Inactive");
     }
-    logData("      Service state: ");
+    logDataEx("L3-App", "", "      Service state: ");
     if (0x10 == (0x10 & *p))
     {
-        logData("     Blocked");
+        logDataEx("L3-App", "", "     Blocked");
     }
     else
     {
-        logData("     Operational");
+        logDataEx("L3-App", "", "     Operational");
     }
-    logData("      Wallet: ");
+    logDataEx("L3-App", "", "      Wallet: ");
     if (0x08 == (0x08 & *p))
     {
-        logData("            Active");
+        logDataEx("L3-App", "", "            Active");
     }
     else
     {
-        logData("            Inactive");
+        logDataEx("L3-App", "", "            Inactive");
     }
-    logData("      Wallet linked to: ");
+    logDataEx("L3-App", "", "      Wallet linked to: ");
     if (0x04 == (0x04 & *p))
     {
-        logData("  Card Global Balance");
+        logDataEx("L3-App", "", "  Card Global Balance");
     }
     else
     {
-        logData("  Service Local Balance");
+        logDataEx("L3-App", "", "  Service Local Balance");
     }
 
     p++;
     /* Byte 2 */
-    logData("      Currency Code: ");
+    logDataEx("L3-App", "", "      Currency Code: ");
     if (0x80 == (0x80 & *p))
     {
-        logData("     Kilometres (0x0999)");
+        logDataEx("L3-App", "", "     Kilometres (0x0999)");
     }
     else
     {
-        logData("     Indian Rupee (0x0356)");
+        logDataEx("L3-App", "", "     Indian Rupee (0x0356)");
     }
     return;
 }
@@ -627,7 +736,7 @@ void printServiceFolder(uint8_t *buffer, size_t buffer_len)
 {
     if (0 != buffer_len % 4)
     {
-        logData("Invalid Service Folder format!");
+        logDataEx("L3-App", "", "Invalid Service Folder format!");
         return;
     }
 
@@ -649,21 +758,21 @@ void printServiceFolder(uint8_t *buffer, size_t buffer_len)
         else if ((p[0] == 0xFF && p[1] == 0xFF) ||
                  (p[0] == 0x00 && p[1] > 0x01 && p[1] <= 0x0F))
         {
-            logData("  Service Folder %zu: %02X%02X%02X%02X", i, p[0], p[1], p[2], p[3]);
-            logData("    Service ID: %02X%02X --> RFU", p[0], p[1]);
+            logDataEx("L3-App", "", "  Service Folder %zu: %02X%02X%02X%02X", i, p[0], p[1], p[2], p[3]);
+            logDataEx("L3-App", "", "    Service ID: %02X%02X --> RFU", p[0], p[1]);
             printServiceControl(&p[2], 2);
         }
         else if (p[0] == 0xFF && p[1] == 0xFE)
         {
-            logData("  Service Folder %zu: %02X%02X%02X%02X", i, p[0], p[1], p[2], p[3]);
-            logData("    Service ID: %02X%02X --> Indicates Global offline balance is to be updated",
-                    p[0], p[1]);
+            logDataEx("L3-App", "", "  Service Folder %zu: %02X%02X%02X%02X", i, p[0], p[1], p[2], p[3]);
+            logDataEx("L3-App", "", "    Service ID: %02X%02X --> Indicates Global offline balance is to be updated",
+                      p[0], p[1]);
             printServiceControl(&p[2], 2);
         }
         else
         {
-            logData("  Service Folder %zu: %02X%02X%02X%02X", i, p[0], p[1], p[2], p[3]);
-            logData("    Service ID: %02X%02X", p[0], p[1]);
+            logDataEx("L3-App", "", "  Service Folder %zu: %02X%02X%02X%02X", i, p[0], p[1], p[2], p[3]);
+            logDataEx("L3-App", "", "    Service ID: %02X%02X", p[0], p[1]);
             printServiceControl(&p[2], 2);
         }
         p += 4;
@@ -678,7 +787,7 @@ void printServiceDirectory(uint8_t *buffer, size_t buffer_len)
 {
     if (buffer_len < 17 || 0 != (buffer_len - 17) % 4)
     {
-        logData("Invalid Service Directory format!");
+        logDataEx("L3-App", "", "Invalid Service Directory format!");
         return;
     }
 
@@ -688,17 +797,17 @@ void printServiceDirectory(uint8_t *buffer, size_t buffer_len)
     }
 
     uint8_t *p = buffer;
-    logData("  Service Version (SVER): %02X", *p++);
-    logData("  RFU: %02X", *p++);
-    logData("  Service Label (SLBL) (PAN+PSN): %02X%02X%02X%02X%02X%02X%02X%02X%02X %02X",
-            p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9]);
+    logDataEx("L3-App", "", "  Service Version (SVER): %02X", *p++);
+    logDataEx("L3-App", "", "  RFU: %02X", *p++);
+    logDataEx("L3-App", "", "  Service Label (SLBL) (PAN+PSN): %02X%02X%02X%02X%02X%02X%02X%02X%02X %02X",
+              p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9]);
     p += 10;
-    logData("  Service Limit (SLIM): %02X", *p++);
-    logData("  Service Counter (SCON): %02X", *p++);
-    logData("  Should be 0x0: %01X", ((p[0] & 0xF0) >> 4));
-    logData("  Service SFI: %02X", (*p++ & 0x0F));
-    logData("  DF50 - Service Permanent Counter (SCPER): %02X", *p++);
-    logData("  DF12 - Service Permanent Limit(SPLIM): %02X", *p++);
+    logDataEx("L3-App", "", "  Service Limit (SLIM): %02X", *p++);
+    logDataEx("L3-App", "", "  Service Counter (SCON): %02X", *p++);
+    logDataEx("L3-App", "", "  Should be 0x0: %01X", ((p[0] & 0xF0) >> 4));
+    logDataEx("L3-App", "", "  Service SFI: %02X", (*p++ & 0x0F));
+    logDataEx("L3-App", "", "  DF50 - Service Permanent Counter (SCPER): %02X", *p++);
+    logDataEx("L3-App", "", "  DF12 - Service Permanent Limit(SPLIM): %02X", *p++);
 
     printServiceFolder(p, buffer_len - 17);
     return;
@@ -711,7 +820,7 @@ void printServiceRelatedData(uint8_t *buffer, size_t buffer_len)
 {
     if (128 != buffer_len)
     {
-        logData("Invalid Service Related Data length!");
+        logDataEx("L3-App", "", "Invalid Service Related Data length!");
         return;
     }
 
@@ -724,23 +833,23 @@ void printServiceRelatedData(uint8_t *buffer, size_t buffer_len)
 
     if (p[1] == 0x00 && p[2] == 0x00)
     {
-        logData("Empty Service Record(%02X)", p[0]);
+        logDataEx("L3-App", "", "Empty Service Record(%02X)", p[0]);
         return;
     }
 
-    logData("Service Record:");
-    logData("    Service Index:       %02X", p[0]);
-    logData("    Service ID:          %02X%02X", p[1], p[2]);
+    logDataEx("L3-App", "", "Service Record:");
+    logDataEx("L3-App", "", "    Service Index:       %02X", p[0]);
+    logDataEx("L3-App", "", "    Service ID:          %02X%02X", p[1], p[2]);
     printServiceControl(&p[3], 2);
-    logData("    KCV:                 %02X%02X%02X", p[5], p[6], p[7]);
-    logData("    PRMacq key index:    %02X", p[8]);
-    logData("    RFU:                 %02X%02X%02X%02X", p[9], p[10], p[11], p[12]);
-    logData("    Last service update ATC: %02X%02X", p[13], p[14]);
-    logData("    Last service update date & time: %02X%02X%02X%02X%02X%02X", p[15], p[16], p[17], p[18], p[19], p[20]);
-    logData("    Service ATC:         %02X%02X", p[21], p[22]);
-    logData("    Service balance:     %02X%02X%02X%02X%02X%02X", p[23], p[24], p[25], p[26], p[27], p[28]);
-    logData("    Service Currency:    %02X%02X", p[29], p[30]);
-    logData("    Service Data Length: %02X", p[31]);
+    logDataEx("L3-App", "", "    KCV:                 %02X%02X%02X", p[5], p[6], p[7]);
+    logDataEx("L3-App", "", "    PRMacq key index:    %02X", p[8]);
+    logDataEx("L3-App", "", "    RFU:                 %02X%02X%02X%02X", p[9], p[10], p[11], p[12]);
+    logDataEx("L3-App", "", "    Last service update ATC: %02X%02X", p[13], p[14]);
+    logDataEx("L3-App", "", "    Last service update date & time: %02X%02X%02X%02X%02X%02X", p[15], p[16], p[17], p[18], p[19], p[20]);
+    logDataEx("L3-App", "", "    Service ATC:         %02X%02X", p[21], p[22]);
+    logDataEx("L3-App", "", "    Service balance:     %02X%02X%02X%02X%02X%02X", p[23], p[24], p[25], p[26], p[27], p[28]);
+    logDataEx("L3-App", "", "    Service Currency:    %02X%02X", p[29], p[30]);
+    logDataEx("L3-App", "", "    Service Data Length: %02X", p[31]);
     logHexData("    Selected Related Data", &p[32], p[31]);
 }
 
@@ -760,7 +869,7 @@ int printTlvData(uint8_t *data, size_t data_len)
     rc = tlv_parse(data, data_len, &tlv);
     if (rc != TLV_RC_OK)
     {
-        logData("tlv_parse() failed with rc = %d", rc);
+        logDataEx("L3-App", "", "tlv_parse() failed with rc = %d", rc);
         return -1;
     }
 
@@ -793,7 +902,7 @@ int printTlvData(uint8_t *data, size_t data_len)
                             buffer[i]);
         /*len += */ snprintf(&line[len], sizeof(line) - len, "\n");
 
-        logData("%s", line);
+        logDataEx("L3-App", "", "%s", line);
 
         tlv = tlv_iterate(tlv);
     } while (tlv);
@@ -808,85 +917,85 @@ void print_service_management_info(uint8_t *buffer, size_t buffer_len)
 {
     if (2 != buffer_len)
     {
-        logData("Invalid Service Management Info format!");
+        logDataEx("L3-App", "", "Invalid Service Management Info format!");
         return;
     }
     uint8_t *p = buffer;
 
     /* Byte 1 */
-    logData("\t      Service Type: ");
+    logDataEx("L3-App", "", "\t      Service Type: ");
     if (0x80 == (0x80 & *p))
     {
-        logData("Permanent Service");
+        logDataEx("L3-App", "", "Permanent Service");
     }
     else
     {
-        logData("Temporary Service");
+        logDataEx("L3-App", "", "Temporary Service");
     }
-    logData("\t      Service operation: ");
+    logDataEx("L3-App", "", "\t      Service operation: ");
     if (0x60 == (0x60 & *p))
     {
-        logData("Undefined");
+        logDataEx("L3-App", "", "Undefined");
     }
     else if (0x40 == (0x40 & *p))
     {
-        logData("Service Balance Limit Update");
+        logDataEx("L3-App", "", "Service Balance Limit Update");
     }
     else if (0x20 == (0x20 & *p))
     {
-        logData("Service Key Plant");
+        logDataEx("L3-App", "", "Service Key Plant");
     }
     else
     {
-        logData("Service specific data");
+        logDataEx("L3-App", "", "Service specific data");
     }
-    logData("\t      Service activation: ");
+    logDataEx("L3-App", "", "\t      Service activation: ");
     if (0x10 == (0x10 & *p))
     {
-        logData("Active");
+        logDataEx("L3-App", "", "Active");
     }
     else
     {
-        logData("Inactive");
+        logDataEx("L3-App", "", "Inactive");
     }
-    logData("\t      Service blockation: ");
+    logDataEx("L3-App", "", "\t      Service blockation: ");
     if (0x08 == (0x08 & *p))
     {
-        logData("Blocked");
+        logDataEx("L3-App", "", "Blocked");
     }
     else
     {
-        logData("Unblocked");
+        logDataEx("L3-App", "", "Unblocked");
     }
-    logData("\t      Wallet: ");
+    logDataEx("L3-App", "", "\t      Wallet: ");
     if (0x02 == (0x02 & *p))
     {
-        logData("Inactive");
+        logDataEx("L3-App", "", "Inactive");
     }
     else
     {
-        logData("Active");
+        logDataEx("L3-App", "", "Active");
     }
-    logData("\t      Wallet linked to: ");
+    logDataEx("L3-App", "", "\t      Wallet linked to: ");
     if (0x01 == (0x01 & *p))
     {
-        logData("Card Global Balance");
+        logDataEx("L3-App", "", "Card Global Balance");
     }
     else
     {
-        logData("Service Local Balance");
+        logDataEx("L3-App", "", "Service Local Balance");
     }
 
     p++;
     /* Byte 2 */
-    logData("\t      Currency Code: ");
+    logDataEx("L3-App", "", "\t      Currency Code: ");
     if (0x80 == (0x80 & *p))
     {
-        logData("Kilometres (0x0999)");
+        logDataEx("L3-App", "", "Kilometres (0x0999)");
     }
     else
     {
-        logData("Indian Rupee (0x0356)");
+        logDataEx("L3-App", "", "Indian Rupee (0x0356)");
     }
     return;
 }
@@ -895,7 +1004,7 @@ void print_cvr(uint8_t *buffer, size_t buffer_len)
 {
     if (8 != buffer_len)
     {
-        logData("Invalid Card Verification result format!");
+        logDataEx("L3-App", "", "Invalid Card Verification result format!");
         return;
     }
     uint8_t *p = buffer;
@@ -904,251 +1013,251 @@ void print_cvr(uint8_t *buffer, size_t buffer_len)
      * Card Verification results
      */
     /* Byte 1 */
-    logData("\t      Application Cryptogram Type Returned in Second GENERATE AC: ");
+    logDataEx("L3-App", "", "\t      Application Cryptogram Type Returned in Second GENERATE AC: ");
     if (0xC0 == (0xC0 & *p))
     {
-        logData("RFU");
+        logDataEx("L3-App", "", "RFU");
     }
     else if (0x80 == (0x80 & *p))
     {
-        logData("Second GENERATE AC not requested");
+        logDataEx("L3-App", "", "Second GENERATE AC not requested");
     }
     else if (0x40 == (0x40 & *p))
     {
-        logData("TC");
+        logDataEx("L3-App", "", "TC");
     }
     else
     {
-        logData("AAC");
+        logDataEx("L3-App", "", "AAC");
     }
-    logData("\t      Application Cryptogram Type Returned in First GENERATE AC: ");
+    logDataEx("L3-App", "", "\t      Application Cryptogram Type Returned in First GENERATE AC: ");
     if (0x30 == (0x30 & *p))
     {
-        logData("RFU");
+        logDataEx("L3-App", "", "RFU");
     }
     else if (0x20 == (0x20 & *p))
     {
-        logData("ARQC");
+        logDataEx("L3-App", "", "ARQC");
     }
     else if (0x10 == (0x10 & *p))
     {
-        logData("TC");
+        logDataEx("L3-App", "", "TC");
     }
     else
     {
-        logData("AAC");
+        logDataEx("L3-App", "", "AAC");
     }
     if (0x08 == (0x08 & *p))
     {
-        logData("\t      CDA performed");
+        logDataEx("L3-App", "", "\t      CDA performed");
     }
     if (0x04 == (0x04 & *p))
     {
-        logData("\t      qDDA signature returned");
+        logDataEx("L3-App", "", "\t      qDDA signature returned");
     }
     if (0x02 == (0x02 & *p))
     {
-        logData("\t      Issuer Authentication NOT performed");
+        logDataEx("L3-App", "", "\t      Issuer Authentication NOT performed");
     }
     if (0x01 == (0x01 & *p))
     {
-        logData("\t      Issuer Authentication failed");
+        logDataEx("L3-App", "", "\t      Issuer Authentication failed");
     }
 
     p++;
     /* Byte 2 */
-    logData("\t      PIN Try Counter: 0x%02X", (0xF0 & *p) >> 4);
+    logDataEx("L3-App", "", "\t      PIN Try Counter: 0x%02X", (0xF0 & *p) >> 4);
     if (0x08 == (0x08 & *p))
     {
-        logData("\t      Offline PIN verification performed");
+        logDataEx("L3-App", "", "\t      Offline PIN verification performed");
     }
     if (0x04 == (0x04 & *p))
     {
-        logData("\t      Offline PIN verification performed and PIN was NOT successfully verified");
+        logDataEx("L3-App", "", "\t      Offline PIN verification performed and PIN was NOT successfully verified");
     }
     if (0x02 == (0x02 & *p))
     {
-        logData("\t      PIN Try Limit has been exceeded");
+        logDataEx("L3-App", "", "\t      PIN Try Limit has been exceeded");
     }
     if (0x01 == (0x01 & *p))
     {
-        logData("\t      Last Online Transaction Not Completed");
+        logDataEx("L3-App", "", "\t      Last Online Transaction Not Completed");
     }
 
     p++;
     /* Byte 3 */
     if (0x80 == (0x80 & *p))
     {
-        logData("\t      Issuer Authentication failed in previous transaction");
+        logDataEx("L3-App", "", "\t      Issuer Authentication failed in previous transaction");
     }
     if (0x40 == (0x40 & *p))
     {
-        logData("\t      Issuer Authentication was NOT performed after online authorisation in previous transaction");
+        logDataEx("L3-App", "", "\t      Issuer Authentication was NOT performed after online authorisation in previous transaction");
     }
     if (0x20 == (0x20 & *p))
     {
-        logData("\t      Go online on next transaction");
+        logDataEx("L3-App", "", "\t      Go online on next transaction");
     }
     if (0x10 == (0x10 & *p))
     {
-        logData("\t      Balance Limit Exceeded");
+        logDataEx("L3-App", "", "\t      Balance Limit Exceeded");
     }
     if (0x08 == (0x08 & *p))
     {
-        logData("\t      Match found in additional check table");
+        logDataEx("L3-App", "", "\t      Match found in additional check table");
     }
     if (0x04 == (0x04 & *p))
     {
-        logData("\t      Application blocked by issuer via CSU processing");
+        logDataEx("L3-App", "", "\t      Application blocked by issuer via CSU processing");
     }
     if (0x02 == (0x02 & *p))
     {
-        logData("\t      Void original and current transaction data mismatch");
+        logDataEx("L3-App", "", "\t      Void original and current transaction data mismatch");
     }
     if (0x01 == (0x01 & *p))
     {
-        logData("\t      Was unable to go online in previous transaction");
+        logDataEx("L3-App", "", "\t      Was unable to go online in previous transaction");
     }
 
     p++;
     /* Byte 4 */
-    logData("\t      Script Counter (Number of Successfully Processed Issuer Script Commands): 0x%02X", (0xF0 & *p) >> 4);
+    logDataEx("L3-App", "", "\t      Script Counter (Number of Successfully Processed Issuer Script Commands): 0x%02X", (0xF0 & *p) >> 4);
     if (0x08 == (0x08 & *p))
     {
-        logData("\t      Issuer Script command processing failed in previous transaction");
+        logDataEx("L3-App", "", "\t      Issuer Script command processing failed in previous transaction");
     }
     if (0x04 == (0x04 & *p))
     {
-        logData("\t      Offline Data Authentication failed");
+        logDataEx("L3-App", "", "\t      Offline Data Authentication failed");
     }
     if (0x02 == (0x02 & *p))
     {
-        logData("\t      RFU");
+        logDataEx("L3-App", "", "\t      RFU");
     }
     if (0x01 == (0x01 & *p))
     {
-        logData("\t      Was unable to go online");
+        logDataEx("L3-App", "", "\t      Was unable to go online");
     }
 
     p++;
     /* Byte 5 */
     if (0x80 == (0x80 & *p))
     {
-        logData("\t      Transaction type not supported");
+        logDataEx("L3-App", "", "\t      Transaction type not supported");
     }
     if (0x40 == (0x40 & *p))
     {
-        logData("\t      RFU");
+        logDataEx("L3-App", "", "\t      RFU");
     }
     if (0x20 == (0x20 & *p))
     {
-        logData("\t      Transaction offline accepted");
+        logDataEx("L3-App", "", "\t      Transaction offline accepted");
     }
     if (0x10 == (0x10 & *p))
     {
-        logData("\t      RFU");
+        logDataEx("L3-App", "", "\t      RFU");
     }
     if (0x08 == (0x08 & *p))
     {
-        logData("\t      Service Key planted");
+        logDataEx("L3-App", "", "\t      Service Key planted");
     }
     if (0x04 == (0x04 & *p))
     {
-        logData("\t      Service Balance received from Issuer");
+        logDataEx("L3-App", "", "\t      Service Balance received from Issuer");
     }
     if (0x02 == (0x02 & *p))
     {
-        logData("\t      Void original transaction not found");
+        logDataEx("L3-App", "", "\t      Void original transaction not found");
     }
     if (0x01 == (0x01 & *p))
     {
-        logData("\t      Void original transaction expired");
+        logDataEx("L3-App", "", "\t      Void original transaction expired");
     }
 
     p++;
     /* Byte 6 */
     if (0x80 == (0x80 & *p))
     {
-        logData("\t      Requested service not allowed for card product");
+        logDataEx("L3-App", "", "\t      Requested service not allowed for card product");
     }
     if (0x40 == (0x40 & *p))
     {
-        logData("\t      New Service Creation");
+        logDataEx("L3-App", "", "\t      New Service Creation");
     }
     if (0x20 == (0x20 & *p))
     {
-        logData("\t      Service reallocation");
+        logDataEx("L3-App", "", "\t      Service reallocation");
     }
     if (0x10 == (0x10 & *p))
     {
-        logData("\t      Transaction Initiated with Service");
+        logDataEx("L3-App", "", "\t      Transaction Initiated with Service");
     }
     if (0x08 == (0x08 & *p))
     {
-        logData("\t      Service update failed");
+        logDataEx("L3-App", "", "\t      Service update failed");
     }
     if (0x04 == (0x04 & *p))
     {
-        logData("\t      Service updated successfully");
+        logDataEx("L3-App", "", "\t      Service updated successfully");
     }
     if (0x02 == (0x02 & *p))
     {
-        logData("\t      Service created with global wallet initiated in first generate AC");
+        logDataEx("L3-App", "", "\t      Service created with global wallet initiated in first generate AC");
     }
     if (0x01 == (0x01 & *p))
     {
-        logData("\t      Service Process skipped");
+        logDataEx("L3-App", "", "\t      Service Process skipped");
     }
 
     p++;
     /* Byte 7 */
     if (0x80 == (0x80 & *p))
     {
-        logData("\t      Offline Balance is Insufficient");
+        logDataEx("L3-App", "", "\t      Offline Balance is Insufficient");
     }
     if (0x40 == (0x40 & *p))
     {
-        logData("\t      CVM Limit Exceeded");
+        logDataEx("L3-App", "", "\t      CVM Limit Exceeded");
     }
     if (0x20 == (0x20 & *p))
     {
-        logData("\t      Invalid Void Transaction");
+        logDataEx("L3-App", "", "\t      Invalid Void Transaction");
     }
-    logData("\t      RFU: 0x%02X\n", (0x1F & *p));
+    logDataEx("L3-App", "", "\t      RFU: 0x%02X\n", (0x1F & *p));
 
     p++;
     /* Byte 8 */
     if (0x80 == (0x80 & *p))
     {
-        logData("\t      Service Signature Failed");
+        logDataEx("L3-App", "", "\t      Service Signature Failed");
     }
     if (0x40 == (0x40 & *p))
     {
-        logData("\t      Service Summary Failed");
+        logDataEx("L3-App", "", "\t      Service Summary Failed");
     }
     if (0x20 == (0x20 & *p))
     {
-        logData("\t      Critical Service Update received");
+        logDataEx("L3-App", "", "\t      Critical Service Update received");
     }
     if (0x10 == (0x10 & *p))
     {
-        logData("\t      Offline Spending Limit exceeded (Amount)");
+        logDataEx("L3-App", "", "\t      Offline Spending Limit exceeded (Amount)");
     }
     if (0x08 == (0x08 & *p))
     {
-        logData("\t      Offline Txn. Limit exceeded (Counter)");
+        logDataEx("L3-App", "", "\t      Offline Txn. Limit exceeded (Counter)");
     }
     if (0x04 == (0x04 & *p))
     {
-        logData("\t      RFU");
+        logDataEx("L3-App", "", "\t      RFU");
     }
     if (0x02 == (0x02 & *p))
     {
-        logData("\t      Transaction date Format (YYMMDD) is incorrect");
+        logDataEx("L3-App", "", "\t      Transaction date Format (YYMMDD) is incorrect");
     }
     if (0x01 == (0x01 & *p))
     {
-        logData("\t      Transaction time Format (HHmmss) is incorrect");
+        logDataEx("L3-App", "", "\t      Transaction time Format (HHmmss) is incorrect");
     }
 
     return;
@@ -1158,55 +1267,55 @@ void print_iad(uint8_t *buffer, size_t buffer_len)
 {
     if (32 != buffer_len)
     {
-        logData("Invalid Issuer Application Data format!");
+        logDataEx("L3-App", "", "Invalid Issuer Application Data format!");
         return;
     }
     size_t i = 0;
     uint8_t *p = buffer;
 
-    logData("\tIssuer Application Data: ");
+    logDataEx("L3-App", "", "\tIssuer Application Data: ");
     for (i = 0; i < buffer_len; i++)
     {
-        logData("%02X", buffer[i]);
+        logDataEx("L3-App", "", "%02X", buffer[i]);
     }
-    logData("");
+    logDataEx("L3-App", "", "");
     /*
      * Byte 1: Length Indicator
      * Length of EMVco defined data in IAD. Set to ‘0F’
      */
-    logData("\t  Length Indicator: %02X", *p);
+    logDataEx("L3-App", "", "\t  Length Indicator: %02X", *p);
 
     p++;
     /*
      * Byte 2: CAII
      * Common Application Implementation Indicator
      */
-    logData("\t  CAII: %02X", *p);
-    logData("\t    IAD Format: ");
+    logDataEx("L3-App", "", "\t  CAII: %02X", *p);
+    logDataEx("L3-App", "", "\t    IAD Format: ");
     if (0xA0 == (0xA0 & *p))
     {
-        logData("CCD Version 4.1");
+        logDataEx("L3-App", "", "CCD Version 4.1");
     }
     else if (0xB0 == (0xB0 & *p))
     {
-        logData("RuPay Version");
+        logDataEx("L3-App", "", "RuPay Version");
     }
     else
     {
-        logData("Unknown");
+        logDataEx("L3-App", "", "Unknown");
     }
-    logData("\t    Cryptogram Version: ");
+    logDataEx("L3-App", "", "\t    Cryptogram Version: ");
     if (0x05 == (0x05 & *p))
     {
-        logData("Triple DES");
+        logDataEx("L3-App", "", "Triple DES");
     }
     else if (0x06 == (0x06 & *p))
     {
-        logData("AES");
+        logDataEx("L3-App", "", "AES");
     }
     else
     {
-        logData("Unknown");
+        logDataEx("L3-App", "", "Unknown");
     }
 
     p++;
@@ -1214,14 +1323,14 @@ void print_iad(uint8_t *buffer, size_t buffer_len)
      * Byte 3: DKI
      * Derivation Key Index
      */
-    logData("\t  DKI: %02X", *p);
+    logDataEx("L3-App", "", "\t  DKI: %02X", *p);
 
     p++;
     /*
      * Byte 4 - 11: CVR
      * Card Verification results
      */
-    logData("\t  CVR: %02X%02X%02X%02X%02X%02X%02X%02X", p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+    logDataEx("L3-App", "", "\t  CVR: %02X%02X%02X%02X%02X%02X%02X%02X", p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
     print_cvr(p, 8);
 
     p += 8;
@@ -1229,23 +1338,23 @@ void print_iad(uint8_t *buffer, size_t buffer_len)
      * Byte 12 - 25: Counters
      * Counters
      */
-    logData("\t  Counters:");
-    logData("\t    Global balance: %02X%02X%02X%02X%02X%02X", p[0], p[1], p[2], p[3], p[4], p[5]);
-    logData("\t    Service Balance current transaction: %02X%02X%02X%02X%02X%02X", p[6], p[7], p[8], p[9], p[10], p[11]);
-    logData("\t    RFU: %02X%02X", p[12], p[13]);
+    logDataEx("L3-App", "", "\t  Counters:");
+    logDataEx("L3-App", "", "\t    Global balance: %02X%02X%02X%02X%02X%02X", p[0], p[1], p[2], p[3], p[4], p[5]);
+    logDataEx("L3-App", "", "\t    Service Balance current transaction: %02X%02X%02X%02X%02X%02X", p[6], p[7], p[8], p[9], p[10], p[11]);
+    logDataEx("L3-App", "", "\t    RFU: %02X%02X", p[12], p[13]);
 
     p += 14;
     /*
      * Byte 26 - 32: IDD
      * Issuer Discretionary Data
      */
-    logData("\t  IDD:");
-    logData("\t    Service ID selected in current transaction: %02X%02X", p[0], p[1]);
-    logData("\t    Service Management Info: %02X%02X", p[2], p[3]);
+    logDataEx("L3-App", "", "\t  IDD:");
+    logDataEx("L3-App", "", "\t    Service ID selected in current transaction: %02X%02X", p[0], p[1]);
+    logDataEx("L3-App", "", "\t    Service Management Info: %02X%02X", p[2], p[3]);
     print_service_management_info(&p[2], 2);
-    logData("\t    Service Compatibility Version (from Application Control): %02X", p[4]);
-    logData("\t    Host Compatibility Version: %02X", p[5]);
-    logData("\t    RFU: %02X", p[6]);
+    logDataEx("L3-App", "", "\t    Service Compatibility Version (from Application Control): %02X", p[4]);
+    logDataEx("L3-App", "", "\t    Host Compatibility Version: %02X", p[5]);
+    logDataEx("L3-App", "", "\t    RFU: %02X", p[6]);
 
     return;
 }
@@ -1261,16 +1370,16 @@ static void print_data_record(uint8_t *data_record, size_t data_record_len)
     rc = tlv_parse(data_record, data_record_len, &tlv_data_record);
     if (TLV_RC_OK != rc)
     {
-        logData("%s: data record format is corrupted", __func__);
+        logDataEx("L3-App", "", "%s: data record format is corrupted", __func__);
         return;
     }
-    logData("\t############# Issuer Application Data (IAD) ##############");
+    logDataEx("L3-App", "", "\t############# Issuer Application Data (IAD) ##############");
     /* Issuer Application Data (IAD) */
     tlv_obj = tlv_find(tlv_data_record, EMV_ID_ISSUER_APPLICATION_DATA);
     buffer_len = sizeof(buffer);
     tlv_encode_value(tlv_obj, buffer, &buffer_len);
     print_iad(buffer, buffer_len);
-    logData("\t##########################################################");
+    logDataEx("L3-App", "", "\t##########################################################");
 
     tlv_free(tlv_data_record);
     return;
@@ -1278,7 +1387,7 @@ static void print_data_record(uint8_t *data_record, size_t data_record_len)
 
 static void print_discretionary_data(uint8_t *data_record, size_t data_record_len)
 {
-    logData("Discretionary record to be printed");
+    logDataEx("L3-App", "", "Discretionary record to be printed");
 }
 
 void processOutcome(const void *outcome, size_t outcomeLen)
@@ -1311,7 +1420,7 @@ void processOutcome(const void *outcome, size_t outcomeLen)
     rc = tlv_parse(outcome, outcomeLen, &tlv_outcome);
     if (TLV_RC_OK != rc)
     {
-        logData("%s: outcome format is corrupted", __func__);
+        logDataEx("L3-App", "", "%s: outcome format is corrupted", __func__);
         return;
     }
 

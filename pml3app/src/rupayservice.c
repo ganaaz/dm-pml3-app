@@ -85,6 +85,9 @@ extern long long deAzCompletedTime;
 extern long long deEvent;
 extern pthread_mutex_t lockRupayService;
 
+extern char currentTrxType[100];
+extern char lastPanDigit[10];
+
 struct service_trx_data
 {
     uint8_t serviceLimit;
@@ -159,24 +162,24 @@ void updateServiceType(uint8_t trx_type,
     }
     memcpy(serviceTrxData.balance, service_balance_limit, 6);
 
-    logData("Selected service settings:");
+    logDataEx(currentTrxType, lastPanDigit, "Selected service settings:");
 
     libtlv_bin_to_hex(&serviceTrxData.trxType, 1, tempData);
-    logData("Transaction Type: %s", tempData);
+    logDataEx(currentTrxType, lastPanDigit, "Transaction Type: %s", tempData);
 
     libtlv_bin_to_hex(serviceTrxData.currencyCode, 2, tempData);
-    logData("Currency Code: %s", tempData);
+    logDataEx(currentTrxType, lastPanDigit, "Currency Code: %s", tempData);
 
     libtlv_bin_to_hex(serviceTrxData.balance, 6, tempData);
 
     if (serviceTrxData.trxType == 0x83)
     {
         libtlv_bin_to_hex(&serviceTrxData.PRMacqKeyIndex, 1, tempData);
-        logData("PRMacq Key Index: %s", tempData);
+        logDataEx(currentTrxType, lastPanDigit, "PRMacq Key Index: %s", tempData);
     }
 
     serviceTrxData.serviceLimit = 0;
-    logData("");
+    logDataEx(currentTrxType, lastPanDigit, "");
 }
 
 /*
@@ -230,19 +233,19 @@ int c13_service_signal_req_pre_gpo_handling(struct tlv *tlv_req, struct tlv **tl
 
     if (currentTxnData.cardPresentedSent && isSecondTap == false)
     {
-        logError("ALREADY CARD PRESENTED, DECLINING IT");
+        logErrorEx(currentTrxType, lastPanDigit, "ALREADY CARD PRESENTED, DECLINING IT");
         return EMVCO_RC_FAIL;
     }
 
     if (strcmp(currentTxnData.trxType, TRXTYPE_SERVICE_CREATE) == 0)
     {
-        logData("Service creation requested with the service id : %s", appData.createServiceId);
+        logDataEx(currentTrxType, lastPanDigit, "Service creation requested with the service id : %s", appData.createServiceId);
         uint8_t newId[2];
         size_t dataLen = 2;
         libtlv_hex_to_bin(appData.createServiceId, newId, &dataLen);
 
-        logData("Service Id 0 : %02x", newId[0]);
-        logData("Service Id 1 : %02x", newId[1]);
+        logDataEx(currentTrxType, lastPanDigit, "Service Id 0 : %02x", newId[0]);
+        logDataEx(currentTrxType, lastPanDigit, "Service Id 1 : %02x", newId[1]);
 
         *tlv_reply = tlv_new(C13_ID_SERVICE_ID, 2, newId);
 
@@ -369,9 +372,9 @@ int c13_service_signal_req_pre_gpo_handling(struct tlv *tlv_req, struct tlv **tl
         *tlv_reply = NULL;
         return EMVCO_RC_FAIL;
     }
-    logData("Printing card service data");
+    logDataEx(currentTrxType, lastPanDigit, "Printing card service data");
     printServiceDirectory(service_directory, service_directory_len);
-    logData("Card service data printed");
+    logDataEx(currentTrxType, lastPanDigit, "Card service data printed");
 
     /* Read Service Related Data of all available services */
     uint8_t serviceSFI = service_directory[14] & 0x0F;
@@ -395,7 +398,7 @@ int c13_service_signal_req_pre_gpo_handling(struct tlv *tlv_req, struct tlv **tl
     if (NULL == tlv_service_qualifier)
     {
         /* No Service Qualifier available */
-        logData("No Service Qualifier available!\n");
+        logDataEx(currentTrxType, lastPanDigit, "No Service Qualifier available!\n");
         *tlv_reply = tlv_new(C13_ID_SERVICE_ID, 2, no_service_id);
         return EMVCO_RC_OK;
     }
@@ -417,13 +420,13 @@ int c13_service_signal_req_pre_gpo_handling(struct tlv *tlv_req, struct tlv **tl
     size_t num_card_services;
     num_card_services = service_card_list_len / 4;
 
-    logData("Total card services : %d", num_card_services);
+    logDataEx(currentTrxType, lastPanDigit, "Total card services : %d", num_card_services);
 
     /* Number of terminal supported services */
     size_t num_terminal_services;
     num_terminal_services = service_qualifier_list_len / 5;
 
-    logData("Total terminal services : %d", num_terminal_services);
+    logDataEx(currentTrxType, lastPanDigit, "Total terminal services : %d", num_terminal_services);
 
     if (num_terminal_services == 0)
     {
@@ -445,15 +448,15 @@ int c13_service_signal_req_pre_gpo_handling(struct tlv *tlv_req, struct tlv **tl
         {
             current_card_serv = &service_card_list[c * 4];
 
-            logData("Comparing");
-            logData("Card service : %02X %02X ", current_card_serv[0], current_card_serv[1]);
-            logData("Terminal service : %02X %02X ", current_term_serv[1], current_term_serv[2]);
+            logDataEx(currentTrxType, lastPanDigit, "Comparing");
+            logDataEx(currentTrxType, lastPanDigit, "Card service : %02X %02X ", current_card_serv[0], current_card_serv[1]);
+            logDataEx(currentTrxType, lastPanDigit, "Terminal service : %02X %02X ", current_term_serv[1], current_term_serv[2]);
 
             /* Compare card and terminal service IDs */
             /* Terminal support service and Card support service? */
             if (0 == memcmp(&current_term_serv[1], current_card_serv, 2))
             {
-                logData("Service supported");
+                logDataEx(currentTrxType, lastPanDigit, "Service supported");
                 serv_supported_by_card = true;
                 break;
             }
@@ -465,7 +468,7 @@ int c13_service_signal_req_pre_gpo_handling(struct tlv *tlv_req, struct tlv **tl
             if (!isServiceCreation(&current_term_serv[3]) &&
                 serviceTrxData.trxType != 0x83)
             {
-                logData("adding to the candidate list");
+                logDataEx(currentTrxType, lastPanDigit, "adding to the candidate list");
                 /* Only add as candidate if it is NOT a key plant */
                 is_candidate = true;
             }
@@ -481,7 +484,7 @@ int c13_service_signal_req_pre_gpo_handling(struct tlv *tlv_req, struct tlv **tl
         }
         if (is_candidate)
         {
-            logData("Candidate list added : %02X %02X", current_term_serv[1], current_term_serv[2]);
+            logDataEx(currentTrxType, lastPanDigit, "Candidate list added : %02X %02X", current_term_serv[1], current_term_serv[2]);
             addCandidate(current_term_serv, &current_card_serv[2]);
         }
     }
@@ -489,7 +492,7 @@ int c13_service_signal_req_pre_gpo_handling(struct tlv *tlv_req, struct tlv **tl
     {
         selectedService = NULL;
         *tlv_reply = tlv_new(C13_ID_SERVICE_ID, 2, no_service_id);
-        logWarn("NO SERVICE AVAILABLE HERE, Transaction to be rejected");
+        logWarnEx(currentTrxType, lastPanDigit, "NO SERVICE AVAILABLE HERE, Transaction to be rejected");
         safe_strcpy(currentTxnData.trxIssueDetail, sizeof(currentTxnData.trxIssueDetail),
                     "No Mutal Service Available");
 
@@ -531,7 +534,7 @@ int c13_service_signal_req_pre_gpo_handling(struct tlv *tlv_req, struct tlv **tl
     }
     else
     {
-        logWarn("Manual selection requested, but not supported in this reader.");
+        logWarnEx(currentTrxType, lastPanDigit, "Manual selection requested, but not supported in this reader.");
         selectedService = NULL;
         *tlv_reply = tlv_new(C13_ID_SERVICE_ID, 2, no_service_id);
         return EMVCO_RC_OK;
@@ -585,8 +588,8 @@ int c13_service_signal_req_pre_gpo_handling(struct tlv *tlv_req, struct tlv **tl
     if (NULL != selectedService)
     {
         logHexData("Selected Service", &selectedService->serviceQualifier[1], 2);
-        logInfo("Selected Service : %02X %02X",
-                selectedService->serviceQualifier[1], selectedService->serviceQualifier[2]);
+        logInfoEx(currentTrxType, lastPanDigit, "Selected Service : %02X %02X",
+                  selectedService->serviceQualifier[1], selectedService->serviceQualifier[2]);
         printServiceQualifier(selectedService->serviceQualifier, 5);
         printServiceControl(selectedService->serviceControl, 2);
 
@@ -596,8 +599,8 @@ int c13_service_signal_req_pre_gpo_handling(struct tlv *tlv_req, struct tlv **tl
         sprintf(currentTxnData.serviceId, "%02X%02X",
                 selectedService->serviceQualifier[1], selectedService->serviceQualifier[2]);
 
-        logData("Service Selected Control : %s", currentTxnData.serviceControl);
-        logData("Service Selected Qualifier : %s", currentTxnData.serviceId);
+        logDataEx(currentTrxType, lastPanDigit, "Service Selected Control : %s", currentTxnData.serviceControl);
+        logDataEx(currentTrxType, lastPanDigit, "Service Selected Qualifier : %s", currentTxnData.serviceId);
     }
 
     if (NULL != selectedService)
@@ -643,7 +646,7 @@ int c13_service_signal_req_post_gpo_handling(struct tlv *tlv_req, struct tlv **t
     if (appConfig.isTimingEnabled)
         logTimeWarnData("DE, Post GPO Handling");
 
-    logData("%s()\n", __func__);
+    logDataEx(currentTrxType, lastPanDigit, "%s()\n", __func__);
 
     // Could be used for triggering time critical Service Data Update processing
     if (appConfig.isDebugEnabled == 1)
@@ -685,7 +688,7 @@ int c13_service_signal_req_rr_handling(struct tlv *tlv_req, struct tlv **tlv_rep
     if (appConfig.isTimingEnabled)
         logTimeWarnData("DE, Read Record Handling");
 
-    logData("%s()\n", __func__);
+    logDataEx(currentTrxType, lastPanDigit, "%s()\n", __func__);
 
     if (appConfig.isDebugEnabled == 1)
     {
@@ -732,13 +735,13 @@ else Service ID is not available on card:
 */
 int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_req, struct tlv **tlv_reply)
 {
-    logData("%s:%s()[%d]\n", __FILE__, __func__, __LINE__);
+    logDataEx(currentTrxType, lastPanDigit, "%s:%s()[%d]\n", __FILE__, __func__, __LINE__);
     if (appConfig.isTimingEnabled)
         logTimeWarnData("DE, GAC Handling");
 
     if (currentTxnData.cardPresentedSent && isSecondTap == false)
     {
-        logError("ALREADY CARD PRESENTED, DECLINING IT");
+        logErrorEx(currentTrxType, lastPanDigit, "ALREADY CARD PRESENTED, DECLINING IT");
         return EMVCO_RC_FAIL;
     }
 
@@ -796,13 +799,17 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
         {
             if (tag[0] == 0x5A)
             {
-                logHexData("Plain PAN : ", value, value_sz); // TODO : Remove
+                // logHexData("Plain PAN : ", value, value_sz); // TODO : Remove
                 char pan[21];
                 byteToHex(value, value_sz, pan);
                 sprintf(currentTxnData.maskPan, "%s", maskPan(pan));
+
+                safe_strcpy(lastPanDigit, sizeof(lastPanDigit),
+                            currentTxnData.maskPan + strlen(currentTxnData.maskPan) - 4);
+
                 char sha[65];
                 generatePanToken(pan, currentTxnData.plainTrack2, sha);
-                logData("SHA Generated for Pan : %s\n", sha);
+                logDataEx(currentTrxType, lastPanDigit, "SHA Generated for Pan : %s\n", sha);
                 safe_strcpy(currentTxnData.plainPan, sizeof(currentTxnData.plainPan), pan);
                 safe_strcpy(currentTxnData.token, sizeof(currentTxnData.token), sha);
             }
@@ -890,7 +897,7 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
         {
             memcpy(serviceRelatedData_DF33, value, value_sz);
             serviceRelatedData_DF33_len = value_sz;
-            logData("Selected Service Related Data:");
+            logDataEx(currentTrxType, lastPanDigit, "Selected Service Related Data:");
             printServiceRelatedData(value, value_sz);
 
             sprintf(currentTxnData.serviceIndex, "%02X", value[0]);
@@ -900,7 +907,7 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
         }
         else
         {
-            logData(" UNHANDLED tag");
+            logDataEx(currentTrxType, lastPanDigit, " UNHANDLED tag");
         }
     }
 
@@ -912,9 +919,9 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
     handleServiceData();
 
     /* Read data of all service records */
-    // logData("SERVICE LIMIT BEFORE RR : %02X", serviceTrxData.serviceLimit);
+    // logDataEx(currentTrxType, lastPanDigit, "SERVICE LIMIT BEFORE RR : %02X", serviceTrxData.serviceLimit);
     // readServiceRecords(client, serviceTrxData.serviceLimit);
-    // logData("Service data is read");
+    // logDataEx(currentTrxType, lastPanDigit, "Service data is read");
 
     uint8_t *serviceID = &selectedService->serviceQualifier[1];
     uint8_t *defaultSMI = &selectedService->serviceQualifier[3];
@@ -931,7 +938,7 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
         printf("No service data format (DF44) available\n");
     }
 
-    logData("Going to check the type of service change");
+    logDataEx(currentTrxType, lastPanDigit, "Going to check the type of service change");
 
     /* Check if Service Space for a Key Plant is available */
     if (isServiceCreation(defaultSMI))
@@ -982,8 +989,8 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
             // Verify the contactless CVM limit here
             if (currentTxnData.amount > appConfig.moneyAddLimitAmount)
             {
-                logError("User provided amount is more than the Money Add limit");
-                logError("Rejecting the transaction");
+                logErrorEx(currentTrxType, lastPanDigit, "User provided amount is more than the Money Add limit");
+                logErrorEx(currentTrxType, lastPanDigit, "Rejecting the transaction");
 
                 return buildDeclineReply(amountAuthorised_9F02, tlv_reply);
             }
@@ -1002,8 +1009,8 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
         // If the trx type is purchase then get the amount from the socket
         if (appData.trxTypeBin == 0x00 && appData.amountKnownAtStart == 0)
         {
-            logInfo("Amount to be updated here, wait for the write card");
-            logInfo("Going to wait for write command for : %d ms", appData.writeCardWaitTimeMs);
+            logInfoEx(currentTrxType, lastPanDigit, "Amount to be updated here, wait for the write card");
+            logInfoEx(currentTrxType, lastPanDigit, "Going to wait for write command for : %d ms", appData.writeCardWaitTimeMs);
 
             int msec = 0, trigger = appData.writeCardWaitTimeMs; // ms
             clock_t before = clock();
@@ -1025,7 +1032,7 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
                 if (writeCommand == 1)
                 {
                     displayLight(LED_ST_WRITE_SUCCESS);
-                    logInfo("Write command received, so breaking the waiting");
+                    logInfoEx(currentTrxType, lastPanDigit, "Write command received, so breaking the waiting");
                     break;
                 }
 
@@ -1038,14 +1045,14 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
                 logTimeWarnData("GAC, Waiting for Amount Time took: %lld", eventAmountEnd - eventAmount);
             }
 
-            logData("Write Card command : %d", writeCommand);
-            logData("Write Card amount : %s", writeCardAmount);
-            logData("Write card service Data : %s", writeCardServiceData);
+            logDataEx(currentTrxType, lastPanDigit, "Write Card command : %d", writeCommand);
+            logDataEx(currentTrxType, lastPanDigit, "Write Card amount : %s", writeCardAmount);
+            logDataEx(currentTrxType, lastPanDigit, "Write card service Data : %s", writeCardServiceData);
 
             if (writeCommand == 0)
             {
                 displayLight(LED_ST_WRITE_FAILED);
-                logWarn("No write card command received, abort transaction");
+                logWarnEx(currentTrxType, lastPanDigit, "No write card command received, abort transaction");
                 // Set Transaction Certificate Type to 0x00 to decline Transaction -> AAC
                 transactionCertificateType[0] = 0x00;
                 *tlv_reply = tlv_new(FEIG_C13_ID_TRANSACTION_CERTIFICATE_TYPE, 1, transactionCertificateType);
@@ -1059,8 +1066,8 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
 
             // Copy the amount
             uint64_t userAmount = strtol(writeCardAmount, NULL, 10);
-            logData("Amount by User = %llu.%02llu", userAmount / 100, userAmount % 100);
-            logData("Contactless Limit : %llu.%02llu", appConfig.purchaseLimitAmount / 100, appConfig.purchaseLimitAmount % 100);
+            logDataEx(currentTrxType, lastPanDigit, "Amount by User = %llu.%02llu", userAmount / 100, userAmount % 100);
+            logDataEx(currentTrxType, lastPanDigit, "Contactless Limit : %llu.%02llu", appConfig.purchaseLimitAmount / 100, appConfig.purchaseLimitAmount % 100);
 
             currentTxnData.amount = userAmount;
             char sAmount[13];
@@ -1074,8 +1081,8 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
             // Verify the contactless CVM limit here
             if (userAmount > appConfig.purchaseLimitAmount)
             {
-                logError("User provided amount is more than the purchase limit");
-                logError("Rejecting the transaction");
+                logErrorEx(currentTrxType, lastPanDigit, "User provided amount is more than the purchase limit");
+                logErrorEx(currentTrxType, lastPanDigit, "Rejecting the transaction");
 
                 return buildDeclineReply(amountAuthorised_9F02, tlv_reply);
             }
@@ -1091,22 +1098,22 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
             }
             */
 
-            logData("Rupay Service, Service Data Received : %s", writeCardServiceData);
+            logDataEx(currentTrxType, lastPanDigit, "Rupay Service, Service Data Received : %s", writeCardServiceData);
             if (isServiceDataAvailable == 1)
             {
-                logData("Service data available");
+                logDataEx(currentTrxType, lastPanDigit, "Service data available");
                 hexToByte(writeCardServiceData, serviceTerminalData);
             }
             else
             {
-                logData("No data provided to write");
+                logDataEx(currentTrxType, lastPanDigit, "No data provided to write");
             }
             /*
             if (serviceTerminalData_len > 84) {
                 uint64_t lastFromStation = bin2uint64(&serviceTerminalData[75]);
-                //logData("Station before : %02X", lastFromStation);
+                //logDataEx(currentTrxType, lastPanDigit, "Station before : %02X", lastFromStation);
                 lastFromStation++;
-                //logData("Station after : %02X", lastFromStation);
+                //logDataEx(currentTrxType, lastPanDigit, "Station after : %02X", lastFromStation);
                 uint642bin(lastFromStation, &serviceTerminalData[75]);
             }*/
         }
@@ -1166,15 +1173,15 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
         input.keyPlant.PRMacqKeyIndex = serviceTrxData.PRMacqKeyIndex;
         input.keyPlant.serviceCurrencyCode = serviceTrxData.currencyCode;
 
-        logData("Service creation input data");
-        logData("Input service id : %02x %02x", input.keyPlant.serviceID[0], input.keyPlant.serviceID[1]);
-        logData("PRM ACQ : %02X", input.keyPlant.PRMacqKeyIndex[0]);
-        logData("Current code : %02X %02X", input.keyPlant.serviceCurrencyCode[0], input.keyPlant.serviceCurrencyCode[1]);
+        logDataEx(currentTrxType, lastPanDigit, "Service creation input data");
+        logDataEx(currentTrxType, lastPanDigit, "Input service id : %02x %02x", input.keyPlant.serviceID[0], input.keyPlant.serviceID[1]);
+        logDataEx(currentTrxType, lastPanDigit, "PRM ACQ : %02X", input.keyPlant.PRMacqKeyIndex[0]);
+        logDataEx(currentTrxType, lastPanDigit, "Current code : %02X %02X", input.keyPlant.serviceCurrencyCode[0], input.keyPlant.serviceCurrencyCode[1]);
     }
     else if (isServiceBalanceLimitUpdate(defaultSMI))
     {
 
-        logData("SERVICE BALANCE LIMIT UPDATE CALLED");
+        logDataEx(currentTrxType, lastPanDigit, "SERVICE BALANCE LIMIT UPDATE CALLED");
 
         /* Service Balance Limit Update */
         input.update.serviceRelatedData_DF33 = serviceRelatedData_DF33;
@@ -1219,7 +1226,7 @@ int c13_service_signal_req_gac_handling(struct fetpf *client, struct tlv *tlv_re
     {
         safe_strcpy(currentTxnData.trxIssueDetail, sizeof(currentTxnData.trxIssueDetail),
                     "Key not injected or its wrong");
-        logError("Key not injected or its wrong, rupay_sbt_finalize failed!!!. RC : %d", rc);
+        logErrorEx(currentTrxType, lastPanDigit, "Key not injected or its wrong, rupay_sbt_finalize failed!!!. RC : %d", rc);
         // Set Transaction Certificate Type to 0x00 to decline Transaction -> AAC
         transactionCertificateType[0] = 0x00;
         *tlv_reply = tlv_new(FEIG_C13_ID_TRANSACTION_CERTIFICATE_TYPE, 1, transactionCertificateType);
@@ -1259,7 +1266,7 @@ int buildDeclineReply(
     const uint8_t amount_authorized[6],
     struct tlv **tlv_reply)
 {
-    logData("%s()\n", __func__);
+    logDataEx(currentTrxType, lastPanDigit, "%s()\n", __func__);
     uint8_t transactionCertificateType[1] = {0};
 
     struct tlv *tlv_attr = NULL;
@@ -1283,7 +1290,7 @@ int buildReply(const uint8_t managementInfo[2],
                const uint8_t amount_other[6],
                struct tlv **tlv_reply)
 {
-    logData("%s()\n", __func__);
+    logDataEx(currentTrxType, lastPanDigit, "%s()\n", __func__);
 
     struct tlv *tlv_tail = NULL;
     struct tlv *tlv_attr = NULL;
@@ -1311,7 +1318,7 @@ int buildReply(const uint8_t managementInfo[2],
 /* Read all service records from card */
 void readServiceRecords(struct fetpf *client, uint8_t service_limit)
 {
-    logData("%s:%s()[%d]\n", __FILE__, __func__, __LINE__);
+    logDataEx(currentTrxType, lastPanDigit, "%s:%s()[%d]\n", __FILE__, __func__, __LINE__);
     /*
     int rc = EMVCO_RC_OK;
     int fd_feclr = -1;
@@ -1387,17 +1394,17 @@ void handleServiceData()
 {
     if (isSecondTap == false)
     {
-        logInfo("First Tap");
+        logInfoEx(currentTrxType, lastPanDigit, "First Tap");
         char *transactionId = malloc(UUID_STR_LEN);
         generateUUID(transactionId);
-        logInfo("Unique Transaction Id generated : %s", transactionId);
+        logInfoEx(currentTrxType, lastPanDigit, "Unique Transaction Id generated : %s", transactionId);
         safe_strcpy(currentTxnData.transactionId, sizeof(currentTxnData.transactionId), transactionId);
         free(transactionId);
     }
     else
     {
-        logInfo("Second Tap, not generating trx id");
-        logInfo("Current Transaction Id : %s", currentTxnData.transactionId);
+        logInfoEx(currentTrxType, lastPanDigit, "Second Tap, not generating trx id");
+        logInfoEx(currentTrxType, lastPanDigit, "Current Transaction Id : %s", currentTxnData.transactionId);
     }
 
     if (appConfig.beepOnCardFound)
@@ -1415,11 +1422,11 @@ void handleServiceData()
         return;
     }
 
-    logInfo("Service Information");
-    logInfo("Service Index : %s", currentTxnData.serviceIndex);
-    logInfo("Service Id : %s", currentTxnData.serviceId);
-    logInfo("Service Balance : %s", currentTxnData.serviceBalance);
-    logInfo("Service Data : %s", currentTxnData.serviceData);
+    logInfoEx(currentTrxType, lastPanDigit, "Service Information");
+    logInfoEx(currentTrxType, lastPanDigit, "Service Index : %s", currentTxnData.serviceIndex);
+    logInfoEx(currentTrxType, lastPanDigit, "Service Id : %s", currentTxnData.serviceId);
+    logInfoEx(currentTrxType, lastPanDigit, "Service Balance : %s", currentTxnData.serviceBalance);
+    logInfoEx(currentTrxType, lastPanDigit, "Service Data : %s", currentTxnData.serviceData);
 }
 
 void addCandidate(uint8_t service_qualifier[5], uint8_t service_control[2])
@@ -1437,10 +1444,10 @@ void addCandidate(uint8_t service_qualifier[5], uint8_t service_control[2])
 void printCandidateList()
 {
     printf("| DF16 |");
-    logData(" DF15 | DF52 | Priority Number |");
+    logDataEx(currentTrxType, lastPanDigit, " DF15 | DF52 | Priority Number |");
     printf("\n");
     printf("--------");
-    logData("--------------------------------");
+    logDataEx(currentTrxType, lastPanDigit, "--------------------------------");
     printf("\n");
     for (size_t j = 0; j < serviceCandidatelist_len; j++)
     {
@@ -1448,11 +1455,11 @@ void printCandidateList()
         {
             printf("| %02X%02X |", serviceCandidatelist[j]->serviceQualifier[1],
                    serviceCandidatelist[j]->serviceQualifier[2]);
-            logData(" %02X%02X |", serviceCandidatelist[j]->serviceQualifier[3],
-                    serviceCandidatelist[j]->serviceQualifier[4]);
-            logData(" %02X%02X |", serviceCandidatelist[j]->serviceControl[0],
-                    serviceCandidatelist[j]->serviceControl[1]);
-            logData("              %02X |", (serviceCandidatelist[j]->serviceQualifier[0] & 0xFE));
+            logDataEx(currentTrxType, lastPanDigit, " %02X%02X |", serviceCandidatelist[j]->serviceQualifier[3],
+                      serviceCandidatelist[j]->serviceQualifier[4]);
+            logDataEx(currentTrxType, lastPanDigit, " %02X%02X |", serviceCandidatelist[j]->serviceControl[0],
+                      serviceCandidatelist[j]->serviceControl[1]);
+            logDataEx(currentTrxType, lastPanDigit, "              %02X |", (serviceCandidatelist[j]->serviceQualifier[0] & 0xFE));
             printf("\n");
         }
     }
@@ -1474,85 +1481,85 @@ void sortCandidateList()
 
 bool isServiceCreation(const uint8_t smi[2])
 {
-    logData("%s(): ", __func__);
+    logDataEx(currentTrxType, lastPanDigit, "%s(): ", __func__);
     /* Check if Service Creation should be executed */
     if (DF15_SERVICE_MANAGEMENT_INFO_SERVICE_KEY_PLANT ==
         (smi[0] &
          (DF15_SERVICE_MANAGEMENT_INFO_SERVICE_KEY_PLANT |
           DF15_SERVICE_MANAGEMENT_INFO_SERVICE_BALANCE_LIMIT_UPDATE)))
     {
-        logData("yes\n");
+        logDataEx(currentTrxType, lastPanDigit, "yes\n");
         return TRUE;
     }
-    logData("no\n");
+    logDataEx(currentTrxType, lastPanDigit, "no\n");
     return FALSE;
 }
 
 bool isServiceBalanceLimitUpdate(const uint8_t smi[2])
 {
-    logData("%s(): ", __func__);
+    logDataEx(currentTrxType, lastPanDigit, "%s(): ", __func__);
     /* Check if Service Balance Limit should be updated */
     if (DF15_SERVICE_MANAGEMENT_INFO_SERVICE_BALANCE_LIMIT_UPDATE ==
         (smi[0] &
          (DF15_SERVICE_MANAGEMENT_INFO_SERVICE_KEY_PLANT |
           DF15_SERVICE_MANAGEMENT_INFO_SERVICE_BALANCE_LIMIT_UPDATE)))
     {
-        logData("yes\n");
+        logDataEx(currentTrxType, lastPanDigit, "yes\n");
         return TRUE;
     }
-    logData("no\n");
+    logDataEx(currentTrxType, lastPanDigit, "no\n");
     return FALSE;
 }
 
 bool isLegacy(const uint8_t avn[2])
 {
-    logData("%s(): ", __func__);
+    logDataEx(currentTrxType, lastPanDigit, "%s(): ", __func__);
 
     /* Check if it is a legacy card */
     assert(NULL != avn);
     if (avn[0] == 0x00 &&
         avn[1] < 0x02)
     {
-        logData("yes\n");
+        logDataEx(currentTrxType, lastPanDigit, "yes\n");
         return TRUE;
     }
-    logData("no\n");
+    logDataEx(currentTrxType, lastPanDigit, "no\n");
     return FALSE;
 }
 
 bool isServiceDataUpdate(const uint8_t smi[2])
 {
-    logData("%s(): ", __func__);
+    logDataEx(currentTrxType, lastPanDigit, "%s(): ", __func__);
     /* Check if Service Balance Limit should be updated */
     if (DF15_SERVICE_MANAGEMENT_INFO_SERVICE_SPECIFIC_DATA ==
         (smi[0] &
          (DF15_SERVICE_MANAGEMENT_INFO_SERVICE_KEY_PLANT |
           DF15_SERVICE_MANAGEMENT_INFO_SERVICE_BALANCE_LIMIT_UPDATE)))
     {
-        logData("yes\n");
+        logDataEx(currentTrxType, lastPanDigit, "yes\n");
         return TRUE;
     }
-    logData("no\n");
+    logDataEx(currentTrxType, lastPanDigit, "no\n");
     return FALSE;
 }
 
 bool isPermanentService(const uint8_t smi[2])
 {
-    logData("%s(): ", __func__);
+    logDataEx(currentTrxType, lastPanDigit, "%s(): ", __func__);
     /* Check if a permanent service should be created */
     assert(NULL != smi);
     if (smi[0] & DF15_SERVICE_MANAGEMENT_INFO_PERMANENT_SERVICE)
     {
-        logData("yes\n");
+        logDataEx(currentTrxType, lastPanDigit, "yes\n");
         return TRUE;
     }
-    logData("no\n");
+    logDataEx(currentTrxType, lastPanDigit, "no\n");
     return FALSE;
 }
 
 bool isServiceSpaceAvailable(const uint8_t smi[2], const uint8_t serviceAvailabilityInfo_DF03[1])
 {
-    logData("%s(): ", __func__);
+    logDataEx(currentTrxType, lastPanDigit, "%s(): ", __func__);
     /* Check if space is available for service creation */
     assert(NULL != smi);
     assert(NULL != serviceAvailabilityInfo_DF03);
@@ -1560,7 +1567,7 @@ bool isServiceSpaceAvailable(const uint8_t smi[2], const uint8_t serviceAvailabi
     {
         if (DF03_SERVICE_AVAILABILITY_INFO_PERMANENT_SERVICE_SPACE_AVAILABLE & serviceAvailabilityInfo_DF03[0])
         {
-            logData("yes\n");
+            logDataEx(currentTrxType, lastPanDigit, "yes\n");
             return TRUE;
         }
     }
@@ -1568,10 +1575,10 @@ bool isServiceSpaceAvailable(const uint8_t smi[2], const uint8_t serviceAvailabi
     {
         if (DF03_SERVICE_AVAILABILITY_INFO_TEMPORARY_SERVICE_SPACE_AVAILABLE & serviceAvailabilityInfo_DF03[0])
         {
-            logData("yes\n");
+            logDataEx(currentTrxType, lastPanDigit, "yes\n");
             return TRUE;
         }
     }
-    logData("no\n");
+    logDataEx(currentTrxType, lastPanDigit, "no\n");
     return FALSE;
 }

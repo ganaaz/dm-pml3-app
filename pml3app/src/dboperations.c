@@ -37,6 +37,9 @@ int fetchedCount = 0;
 
 FetchTrxId fetchTransactionIdList[MAX_FETCH_COUNT];
 
+extern char currentTrxType[100];
+extern char lastPanDigit[10];
+
 /**
  * To check if the column exists
  */
@@ -76,7 +79,7 @@ int addColumnIfNotExists(sqlite3 *db,
 {
     if (columnExists(db, tableName, columnName))
     {
-        logData("Column %s already exists", columnName);
+        logDataEx(currentTrxType, lastPanDigit, "Column %s already exists", columnName);
         return SQLITE_OK;
     }
 
@@ -90,12 +93,12 @@ int addColumnIfNotExists(sqlite3 *db,
 
     if (rc != SQLITE_OK)
     {
-        logData("Failed to add column %s: %s", columnName, errMsg);
+        logDataEx(currentTrxType, lastPanDigit, "Failed to add column %s: %s", columnName, errMsg);
         sqlite3_free(errMsg);
         return rc;
     }
 
-    logData("Column %s added successfully", columnName);
+    logDataEx(currentTrxType, lastPanDigit, "Column %s added successfully", columnName);
     return SQLITE_OK;
 }
 
@@ -108,11 +111,11 @@ void checkRecordCount()
     sqlite3_stmt *statement;
     int count = 0;
 
-    logInfo("Going to get the transaction record count with query : %s", query);
+    logInfoEx(currentTrxType, lastPanDigit, "Going to get the transaction record count with query : %s", query);
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare checkRecordCount query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare checkRecordCount query !!!");
         return;
     }
 
@@ -124,7 +127,7 @@ void checkRecordCount()
 
     sqlite3_finalize(statement);
 
-    logInfo("Total Transaction records available are : %d", count);
+    logInfoEx(currentTrxType, lastPanDigit, "Total Transaction records available are : %d", count);
 }
 
 /**
@@ -181,7 +184,7 @@ void createTransactionData(struct transactionData *trxData)
         &statement,
         NULL);
 
-    logData("Transaction Status : %s", trxData->txnStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Transaction Status : %s", trxData->txnStatus);
     char trxBin[3];
     sprintf(trxBin, "%02X", trxData->trxTypeBin);
 
@@ -227,23 +230,23 @@ void createTransactionData(struct transactionData *trxData)
         sqlite3_bind_text(statement, 35, trxData->acqTransactionId, -1, SQLITE_STATIC);       // Acq Trx Id
         sqlite3_bind_text(statement, 36, trxData->acqUniqueTransactionId, -1, SQLITE_STATIC); // Acq Unit trx id
 
-        logData("Going to perform the insert of offline transaction date");
+        logDataEx(currentTrxType, lastPanDigit, "Going to perform the insert of offline transaction date");
         int result = sqlite3_step(statement);
         sqlite3_finalize(statement);
-        logData("Insert result : %d", result);
+        logDataEx(currentTrxType, lastPanDigit, "Insert result : %d", result);
 
         if (result == SQLITE_DONE)
         {
-            logInfo("Transaction data inserted successfully : %s", trxData->transactionId);
+            logInfoEx(currentTrxType, lastPanDigit, "Transaction data inserted successfully : %s", trxData->transactionId);
         }
         else
         {
-            logWarn("Insert data failed !!!");
+            logWarnEx(currentTrxType, lastPanDigit, "Insert data failed !!!");
         }
     }
     else
     {
-        logWarn("Unable to prepare the insert query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Unable to prepare the insert query !!!");
     }
 }
 
@@ -306,7 +309,7 @@ void createTxnDataForOnline(struct transactionData trxData)
         &statement,
         NULL);
 
-    logData("Transaction Status : %s", trxData.txnStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Transaction Status : %s", trxData.txnStatus);
     char trxBin[3];
     sprintf(trxBin, "%02X", trxData.trxTypeBin);
 
@@ -355,24 +358,24 @@ void createTxnDataForOnline(struct transactionData trxData)
         sqlite3_bind_text(statement, 40, trxData.acqTransactionId, -1, SQLITE_STATIC);       // Acq Trx Id
         sqlite3_bind_text(statement, 41, trxData.acqUniqueTransactionId, -1, SQLITE_STATIC); // Acq Unit trx id
 
-        logData("Going to perform insert of transaction for online");
+        logDataEx(currentTrxType, lastPanDigit, "Going to perform insert of transaction for online");
         int result = sqlite3_step(statement);
         sqlite3_finalize(statement);
-        logData("Insert result : %d", result);
+        logDataEx(currentTrxType, lastPanDigit, "Insert result : %d", result);
 
         if (result == SQLITE_DONE)
         {
-            logInfo("Transaction data for online is inserted successfully : %s",
-                    trxData.transactionId);
+            logInfoEx(currentTrxType, lastPanDigit, "Transaction data for online is inserted successfully : %s",
+                      trxData.transactionId);
         }
         else
         {
-            logWarn("Insert data failed for online txn !!!");
+            logWarnEx(currentTrxType, lastPanDigit, "Insert data failed for online txn !!!");
         }
     }
     else
     {
-        logWarn("Unable to prepare the insert query for online txn !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Unable to prepare the insert query for online txn !!!");
     }
 }
 
@@ -385,11 +388,11 @@ int getActivePendingTransactions()
     sqlite3_stmt *statement;
     int count = 0;
 
-    logInfo("Going to get the active pending transactions with host");
+    logInfoEx(currentTrxType, lastPanDigit, "Going to get the active pending transactions with host");
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare getActivePendingTransactions query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare getActivePendingTransactions query !!!");
         return -1;
     }
 
@@ -401,7 +404,7 @@ int getActivePendingTransactions()
 
     sqlite3_finalize(statement);
 
-    logInfo("Total active pending transactions found are : %d", count);
+    logInfoEx(currentTrxType, lastPanDigit, "Total active pending transactions found are : %d", count);
     return count;
 }
 
@@ -414,11 +417,11 @@ double getActivePendingTransactionsAmount()
     sqlite3_stmt *statement;
     double total = 0;
 
-    logInfo("Going to get the active pending transactions amount with host");
+    logInfoEx(currentTrxType, lastPanDigit, "Going to get the active pending transactions amount with host");
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare getActivePendingTransactionsAmount query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare getActivePendingTransactionsAmount query !!!");
         return -1;
     }
 
@@ -430,7 +433,7 @@ double getActivePendingTransactionsAmount()
 
     sqlite3_finalize(statement);
 
-    logInfo("Total Amount of active pending transactions found are : %f", total);
+    logInfoEx(currentTrxType, lastPanDigit, "Total Amount of active pending transactions found are : %f", total);
     return total;
 }
 
@@ -444,11 +447,11 @@ int getActivePendingHostErrorCategoryTransactions(const char *errorCategory)
     sqlite3_stmt *statement;
     int count = 0;
 
-    logInfo("Going to getActivePendingHostErrorCategoryTransactions with host");
+    logInfoEx(currentTrxType, lastPanDigit, "Going to getActivePendingHostErrorCategoryTransactions with host");
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare getActivePendingTransactions query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare getActivePendingTransactions query !!!");
         return -1;
     }
 
@@ -462,7 +465,7 @@ int getActivePendingHostErrorCategoryTransactions(const char *errorCategory)
 
     sqlite3_finalize(statement);
 
-    logInfo("Total getActivePendingHostErrorCategoryTransactions found are : %d", count);
+    logInfoEx(currentTrxType, lastPanDigit, "Total getActivePendingHostErrorCategoryTransactions found are : %d", count);
     return count;
 }
 
@@ -476,11 +479,11 @@ double getActivePendingHostErrorCategoryTransactionsAmount(const char *errorCate
     sqlite3_stmt *statement;
     double total = 0;
 
-    logInfo("Going to getActivePendingHostErrorCategoryTransactionsAmount with host");
+    logInfoEx(currentTrxType, lastPanDigit, "Going to getActivePendingHostErrorCategoryTransactionsAmount with host");
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare getActivePendingHostErrorCategoryTransactionsAmount query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare getActivePendingHostErrorCategoryTransactionsAmount query !!!");
         return -1;
     }
 
@@ -494,7 +497,7 @@ double getActivePendingHostErrorCategoryTransactionsAmount(const char *errorCate
 
     sqlite3_finalize(statement);
 
-    logInfo("Total getActivePendingHostErrorCategoryTransactionsAmount found are : %f", total);
+    logInfoEx(currentTrxType, lastPanDigit, "Total getActivePendingHostErrorCategoryTransactionsAmount found are : %f", total);
     return total;
 }
 
@@ -509,11 +512,11 @@ int getOfflinePendingTrxCount()
                         "and TxnStatus = 'Success' order by RowId asc";
 
     sqlite3_stmt *statement;
-    logData("Going to get the count for %s", query);
+    logDataEx(currentTrxType, lastPanDigit, "Going to get the count for %s", query);
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare getOfflinePendingTrxCount query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare getOfflinePendingTrxCount query !!!");
         return 0;
     }
 
@@ -526,7 +529,7 @@ int getOfflinePendingTrxCount()
     }
 
     sqlite3_finalize(statement);
-    logData("Count received : %d", count);
+    logDataEx(currentTrxType, lastPanDigit, "Count received : %d", count);
     return count;
 }
 
@@ -536,7 +539,7 @@ int getOfflinePendingTrxCount()
 void processHostPendingTransactions()
 {
     int trxDataCount = getOfflinePendingTrxCount();
-    logData("Total pending offline transaction count received : %d", trxDataCount);
+    logDataEx(currentTrxType, lastPanDigit, "Total pending offline transaction count received : %d", trxDataCount);
 
     const char *query = "SELECT * FROM Transactions WHERE "
                         "HostStatus = 'Pending' "
@@ -546,7 +549,7 @@ void processHostPendingTransactions()
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, 0) != SQLITE_OK)
     {
-        logWarn("Failed to prepare read query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare read query !!!");
         return;
     }
 
@@ -556,7 +559,8 @@ void processHostPendingTransactions()
     {
         if (index > trxDataCount)
         {
-            logError("Extra data found on getting offline transactions, ignoring and picked up next.");
+            logErrorEx("Offline", "processHostPendingTransactions",
+                       "Extra data found on getting offline transactions, ignoring and picked up next.");
             break;
         }
         TransactionTable trxData = populateTableData(statement);
@@ -566,22 +570,22 @@ void processHostPendingTransactions()
 
     sqlite3_finalize(statement);
 
-    logData("Total transactions available : %d", trxDataCount);
+    logDataEx(currentTrxType, lastPanDigit, "Total transactions available : %d", trxDataCount);
     for (int i = 0; i < trxDataCount; i++)
     {
-        logData("======================================================");
+        logDataEx(currentTrxType, lastPanDigit, "======================================================");
         printTransactionRow(trxDataList[i]);
     }
 
     if (trxDataCount == 0)
     {
-        logInfo("There are no offline transactions available to send to host");
+        logInfoEx(currentTrxType, lastPanDigit, "There are no offline transactions available to send to host");
     }
     else
     {
         if (appConfig.useISOHost)
         {
-            logData("Using ISO Host for sending offline transactions");
+            logDataEx(currentTrxType, lastPanDigit, "Using ISO Host for sending offline transactions");
             for (int index = 0; index < trxDataCount; index++)
             {
                 TransactionTable trxData = trxDataList[index];
@@ -591,7 +595,7 @@ void processHostPendingTransactions()
         }
         else
         {
-            logData("Not supported");
+            logDataEx(currentTrxType, lastPanDigit, "Not supported");
         }
     }
 }
@@ -601,15 +605,15 @@ void processHostPendingTransactions()
  */
 void saveOfflineResponseToDb(OfflineSaleResponse offlineResponses[], int count)
 {
-    logData("-------------------------------------------");
+    logDataEx(currentTrxType, lastPanDigit, "-------------------------------------------");
     for (int i = 0; i < count; i++)
     {
-        logData("Processing offline response : %d", i);
+        logDataEx(currentTrxType, lastPanDigit, "Processing offline response : %d", i);
         printOfflineResponse(offlineResponses[i]);
         char transactionId[40];
         if (strlen(offlineResponses[i].orderId) == 0)
         {
-            logData("Order id not received, cannot update status. Stan might be 0");
+            logDataEx(currentTrxType, lastPanDigit, "Order id not received, cannot update status. Stan might be 0");
         }
         else
         {
@@ -617,12 +621,12 @@ void saveOfflineResponseToDb(OfflineSaleResponse offlineResponses[], int count)
                                                 offlineResponses[i].stan, "00", STATUS_SUCCESS, STATUS_PENDING, transactionId);
             if (trxCount == 1)
             {
-                logData("Found 1 item as expected. Going to update");
-                logData("Found transaction id : %s", transactionId);
+                logDataEx(currentTrxType, lastPanDigit, "Found 1 item as expected. Going to update");
+                logDataEx(currentTrxType, lastPanDigit, "Found transaction id : %s", transactionId);
                 updateOfflineTransactionStatus(transactionId, offlineResponses[i]);
             }
         }
-        logData("-------------------------------------------");
+        logDataEx(currentTrxType, lastPanDigit, "-------------------------------------------");
     }
 }
 
@@ -631,15 +635,15 @@ void saveOfflineResponseToDb(OfflineSaleResponse offlineResponses[], int count)
  **/
 void printOfflineResponse(OfflineSaleResponse offlineResponse)
 {
-    logData("Order Id : %s", offlineResponse.orderId);
-    logData("Stan : %s", offlineResponse.stan);
-    logData("Response Time Stamp : %s", offlineResponse.responseTimeStamp);
-    logData("Result Code : %s", offlineResponse.resultCode);
-    logData("Result Code Id : %s", offlineResponse.resultCodeId);
-    logData("Result Message : %s", offlineResponse.resultMessage);
-    logData("Result Status : %s", offlineResponse.resultStatus);
-    logData("Airtel Txn Status : %d", offlineResponse.airtelTxnStatus);
-    logData("Airtel Txn Id : %s", offlineResponse.airtelTxnId);
+    logDataEx(currentTrxType, lastPanDigit, "Order Id : %s", offlineResponse.orderId);
+    logDataEx(currentTrxType, lastPanDigit, "Stan : %s", offlineResponse.stan);
+    logDataEx(currentTrxType, lastPanDigit, "Response Time Stamp : %s", offlineResponse.responseTimeStamp);
+    logDataEx(currentTrxType, lastPanDigit, "Result Code : %s", offlineResponse.resultCode);
+    logDataEx(currentTrxType, lastPanDigit, "Result Code Id : %s", offlineResponse.resultCodeId);
+    logDataEx(currentTrxType, lastPanDigit, "Result Message : %s", offlineResponse.resultMessage);
+    logDataEx(currentTrxType, lastPanDigit, "Result Status : %s", offlineResponse.resultStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Airtel Txn Status : %d", offlineResponse.airtelTxnStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Airtel Txn Id : %s", offlineResponse.airtelTxnId);
 }
 
 /**
@@ -647,7 +651,7 @@ void printOfflineResponse(OfflineSaleResponse offlineResponse)
  **/
 void updateOfflineTransactionStatus(const char *transactionId, OfflineSaleResponse offlineSaleResponse)
 {
-    logData("Going to update the transaction status for : %s", transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Going to update the transaction status for : %s", transactionId);
 
     const char *query = "UPDATE Transactions "
                         "SET TxnStatus = ? , "
@@ -664,7 +668,7 @@ void updateOfflineTransactionStatus(const char *transactionId, OfflineSaleRespon
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare updateOfflineTransactionStatus query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateOfflineTransactionStatus query !!!");
         return;
     }
 
@@ -673,11 +677,11 @@ void updateOfflineTransactionStatus(const char *transactionId, OfflineSaleRespon
     {
         doLock();
         activePendingTxnCount--;
-        logData("Offline trxn result is success");
-        logData("Active pending transaction count decreased and now is : %d", activePendingTxnCount);
+        logDataEx(currentTrxType, lastPanDigit, "Offline trxn result is success");
+        logDataEx(currentTrxType, lastPanDigit, "Active pending transaction count decreased and now is : %d", activePendingTxnCount);
         if (activePendingTxnCount < appConfig.minRequiredForOnline)
         {
-            logWarn("Now the transaction is below minRequiredForOnline, making the device online");
+            logWarnEx(currentTrxType, lastPanDigit, "Now the transaction is below minRequiredForOnline, making the device online");
             DEVICE_STATUS = STATUS_ONLINE;
         }
         printDeviceStatus();
@@ -702,10 +706,10 @@ void updateOfflineTransactionStatus(const char *transactionId, OfflineSaleRespon
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarn("Failed to update record : %d", result);
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
         return;
     }
-    logData("updateOfflineTransactionStatus success");
+    logDataEx(currentTrxType, lastPanDigit, "updateOfflineTransactionStatus success");
     sqlite3_finalize(statement);
 }
 
@@ -721,7 +725,7 @@ TransactionTable getTransactionTableData(const char *transactionId)
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare read query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare read query !!!");
         return trxData;
     }
 
@@ -731,7 +735,7 @@ TransactionTable getTransactionTableData(const char *transactionId)
     {
         trxData = populateTableData(statement);
         printTransactionRow(trxData);
-        logData("Data received from db for : %s", trxData.transactionId);
+        logDataEx(currentTrxType, lastPanDigit, "Data received from db for : %s", trxData.transactionId);
         break;
     }
 
@@ -752,11 +756,11 @@ int getTrxTableDataCount(const char *orderId, const char *stan, const char *trxB
                         "TxnStatus = ? and "
                         "HostStatus = ? ";
     sqlite3_stmt *statement;
-    logData("Going to get the count for %s", query);
+    logDataEx(currentTrxType, lastPanDigit, "Going to get the count for %s", query);
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare getTrxTableDataCount query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare getTrxTableDataCount query !!!");
         return 0;
     }
 
@@ -776,8 +780,8 @@ int getTrxTableDataCount(const char *orderId, const char *stan, const char *trxB
     }
 
     sqlite3_finalize(statement);
-    logData("Count received : %d", count);
-    logData("Transaction id : %s", transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Count received : %d", count);
+    logDataEx(currentTrxType, lastPanDigit, "Transaction id : %s", transactionId);
     return count;
 }
 
@@ -786,8 +790,8 @@ int getTrxTableDataCount(const char *orderId, const char *stan, const char *trxB
  */
 void updateHostErrorCategory(const char *transactionId, const char *hostErrorCategory)
 {
-    logData("Going to update the host error category for : %s", transactionId);
-    logData("HostError Category : %s", hostErrorCategory);
+    logDataEx(currentTrxType, lastPanDigit, "Going to update the host error category for : %s", transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "HostError Category : %s", hostErrorCategory);
 
     const char *query = "UPDATE Transactions "
                         "SET HostErrorCategory = ? "
@@ -797,7 +801,7 @@ void updateHostErrorCategory(const char *transactionId, const char *hostErrorCat
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare updateHostErrorCategory query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateHostErrorCategory query !!!");
         return;
     }
 
@@ -807,10 +811,10 @@ void updateHostErrorCategory(const char *transactionId, const char *hostErrorCat
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarn("Failed to update record : %d", result);
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
         return;
     }
-    logData("updateHostErrorCategory success");
+    logDataEx(currentTrxType, lastPanDigit, "updateHostErrorCategory success");
     sqlite3_finalize(statement);
 }
 
@@ -819,8 +823,8 @@ void updateHostErrorCategory(const char *transactionId, const char *hostErrorCat
  **/
 void updateTransactionStatus(const char *transactionId, const char *txnStatus, const char *updatedBalance)
 {
-    logData("Going to update the transaction status for : %s", transactionId);
-    logData("Status : %s", txnStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Going to update the transaction status for : %s", transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Status : %s", txnStatus);
 
     const char *query = "UPDATE Transactions "
                         "SET TxnStatus = ?, "
@@ -831,7 +835,7 @@ void updateTransactionStatus(const char *transactionId, const char *txnStatus, c
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare updateTransactionStatus query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateTransactionStatus query !!!");
         return;
     }
 
@@ -842,10 +846,10 @@ void updateTransactionStatus(const char *transactionId, const char *txnStatus, c
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarn("Failed to update record : %d", result);
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
         return;
     }
-    logData("updateTransactionStatus success");
+    logDataEx(currentTrxType, lastPanDigit, "updateTransactionStatus success");
     sqlite3_finalize(statement);
 }
 
@@ -854,8 +858,8 @@ void updateTransactionStatus(const char *transactionId, const char *txnStatus, c
  **/
 void updateReversalStatusOnly(const char *transactionId, const char *reversalStatus)
 {
-    logData("Going to update the reversal status for : %s", transactionId);
-    logData("Status : %s", reversalStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Going to update the reversal status for : %s", transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Status : %s", reversalStatus);
 
     const char *query = "UPDATE Transactions "
                         "SET ReversalStatus = ? "
@@ -865,7 +869,7 @@ void updateReversalStatusOnly(const char *transactionId, const char *reversalSta
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare updateReversalStatus only status query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateReversalStatus only status query !!!");
         return;
     }
 
@@ -875,10 +879,10 @@ void updateReversalStatusOnly(const char *transactionId, const char *reversalSta
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarn("Failed to update record : %d", result);
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
         return;
     }
-    logData("updateReversalStatus only status is success");
+    logDataEx(currentTrxType, lastPanDigit, "updateReversalStatus only status is success");
     sqlite3_finalize(statement);
 }
 
@@ -888,9 +892,9 @@ void updateReversalStatusOnly(const char *transactionId, const char *reversalSta
 void updateReversalStatus(const char *transactionId, const char *reversalStatus,
                           const char *txnStatus, const char *rrn, const char *authCode, const char *responseCode)
 {
-    logData("Going to update the reversal status for : %s", transactionId);
-    logData("Status : %s", reversalStatus);
-    logData("Txn Status : %s", txnStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Going to update the reversal status for : %s", transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Status : %s", reversalStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Txn Status : %s", txnStatus);
 
     const char *query = "UPDATE Transactions "
                         "SET ReversalStatus = ?, "
@@ -905,7 +909,7 @@ void updateReversalStatus(const char *transactionId, const char *reversalStatus,
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare updateReversalStatus query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateReversalStatus query !!!");
         return;
     }
 
@@ -920,10 +924,10 @@ void updateReversalStatus(const char *transactionId, const char *reversalStatus,
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarn("Failed to update record : %d", result);
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
         return;
     }
-    logData("updateReversalStatus success");
+    logDataEx(currentTrxType, lastPanDigit, "updateReversalStatus success");
     sqlite3_finalize(statement);
 }
 
@@ -932,7 +936,7 @@ void updateReversalStatus(const char *transactionId, const char *reversalStatus,
  **/
 void updateReversalResponse(ReversalResponse reversalResponse, const char *transactionId)
 {
-    logData("Going to update the updateReversalResponse for : %s", transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Going to update the updateReversalResponse for : %s", transactionId);
 
     const char *query = "UPDATE Transactions "
                         "SET ReversalStatus = ?, "
@@ -946,7 +950,7 @@ void updateReversalResponse(ReversalResponse reversalResponse, const char *trans
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare updateReversalResponse query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateReversalResponse query !!!");
         return;
     }
 
@@ -960,10 +964,10 @@ void updateReversalResponse(ReversalResponse reversalResponse, const char *trans
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarn("Failed to update record : %d", result);
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
         return;
     }
-    logData("updateReversalResponse success");
+    logDataEx(currentTrxType, lastPanDigit, "updateReversalResponse success");
     sqlite3_finalize(statement);
 }
 
@@ -972,7 +976,7 @@ void updateReversalResponse(ReversalResponse reversalResponse, const char *trans
  **/
 void resetReversalStatus(const char *status, const char *transactionId)
 {
-    logData("Going to update the reverstal status to empty for : %s", transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Going to update the reverstal status to empty for : %s", transactionId);
 
     const char *query = "UPDATE Transactions "
                         "SET ReversalStatus = ? "
@@ -982,7 +986,7 @@ void resetReversalStatus(const char *status, const char *transactionId)
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare resetReversalStatus query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare resetReversalStatus query !!!");
         return;
     }
 
@@ -992,10 +996,10 @@ void resetReversalStatus(const char *status, const char *transactionId)
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarn("Failed to update record : %d", result);
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
         return;
     }
-    logData("resetReversalStatus success");
+    logDataEx(currentTrxType, lastPanDigit, "resetReversalStatus success");
     sqlite3_finalize(statement);
 }
 
@@ -1004,7 +1008,7 @@ void resetReversalStatus(const char *status, const char *transactionId)
  **/
 void updateReversalPreData(TransactionTable trxTable)
 {
-    logData("Going to update the updateReversalPreData for : %s", trxTable.transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Going to update the updateReversalPreData for : %s", trxTable.transactionId);
 
     const char *query = "UPDATE Transactions "
                         "SET reversalStatus = ?, "
@@ -1019,7 +1023,7 @@ void updateReversalPreData(TransactionTable trxTable)
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare updateReversalPreData only status query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateReversalPreData only status query !!!");
         return;
     }
 
@@ -1034,10 +1038,10 @@ void updateReversalPreData(TransactionTable trxTable)
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarn("Failed to update record : %d", result);
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
         return;
     }
-    logData("updateReversalPreData success");
+    logDataEx(currentTrxType, lastPanDigit, "updateReversalPreData success");
     sqlite3_finalize(statement);
 }
 
@@ -1047,27 +1051,27 @@ void updateReversalPreData(TransactionTable trxTable)
 bool isTherePendingReversal(char *transactionId)
 {
     bool result = false;
-    logInfo("Going to check is there a pending reversal data");
+    logInfoEx(currentTrxType, lastPanDigit, "Going to check is there a pending reversal data");
 
     const char *query = "Select * from Transactions where ReversalStatus = 'Pending' ";
     sqlite3_stmt *statement;
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logData("Failed to prepare isTherePendingReversal query !!!");
+        logDataEx(currentTrxType, lastPanDigit, "Failed to prepare isTherePendingReversal query !!!");
         return false;
     }
 
     while (sqlite3_step(statement) != SQLITE_DONE)
     {
-        logInfo("Reversal pending transaction id found : %s", sqlite3_column_text(statement, 1));
+        logInfoEx(currentTrxType, lastPanDigit, "Reversal pending transaction id found : %s", sqlite3_column_text(statement, 1));
         sprintf(transactionId, "%s", sqlite3_column_text(statement, 1));
         result = true;
         break;
     }
 
     sqlite3_finalize(statement);
-    logInfo("Reversal pending result : %d", result);
+    logInfoEx(currentTrxType, lastPanDigit, "Reversal pending result : %d", result);
 
     return result;
 }
@@ -1111,16 +1115,16 @@ void clearReversalManual()
     char transactionId[38];
     if (isTherePendingReversal(transactionId) == true)
     {
-        logInfo("Transaction id for reversal to be cleared: %s", transactionId);
+        logInfoEx(currentTrxType, lastPanDigit, "Transaction id for reversal to be cleared: %s", transactionId);
     }
     else
     {
-        logWarn("No Reversal is there to be cleared");
+        logWarnEx(currentTrxType, lastPanDigit, "No Reversal is there to be cleared");
         return;
     }
 
-    logData("Going to update the reversal status for : %s", transactionId);
-    logData("Status : Failure");
+    logDataEx(currentTrxType, lastPanDigit, "Going to update the reversal status for : %s", transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Status : Failure");
 
     const char *query = "UPDATE Transactions "
                         "SET ReversalStatus = ?, "
@@ -1131,7 +1135,7 @@ void clearReversalManual()
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare clearReversalManual only status query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare clearReversalManual only status query !!!");
         return;
     }
 
@@ -1141,10 +1145,10 @@ void clearReversalManual()
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarn("Failed to update record : %d", result);
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
         return;
     }
-    logData("clearReversalManual status is success");
+    logDataEx(currentTrxType, lastPanDigit, "clearReversalManual status is success");
     sqlite3_finalize(statement);
 }
 
@@ -1153,7 +1157,7 @@ void clearReversalManual()
  **/
 void updateHostResponseInDb(HostResponse hostResponse, char transactionId[40])
 {
-    logData("Going to update the recevied host response for transaction : %s", transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Going to update the recevied host response for transaction : %s", transactionId);
     const char *query = "UPDATE Transactions "
                         "SET rrn = ?, "
                         "hostRetry = ?, "
@@ -1175,7 +1179,7 @@ void updateHostResponseInDb(HostResponse hostResponse, char transactionId[40])
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare updateHostResponseInDb query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateHostResponseInDb query !!!");
         return;
     }
 
@@ -1188,7 +1192,7 @@ void updateHostResponseInDb(HostResponse hostResponse, char transactionId[40])
         updateAmount[j++] = hostResponse.iccData[i];
     }
     updateAmount[j] = '\0';
-    logData("Updated amount received : %s", updateAmount);
+    logDataEx(currentTrxType, lastPanDigit, "Updated amount received : %s", updateAmount);
 
     sqlite3_bind_text(statement, 1, hostResponse.retrievalReferenceNumber, -1, SQLITE_STATIC);
     sqlite3_bind_int(statement, 2, 0);
@@ -1209,10 +1213,10 @@ void updateHostResponseInDb(HostResponse hostResponse, char transactionId[40])
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarn("Failed to update record : %d", result);
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
         return;
     }
-    logData("Update success");
+    logDataEx(currentTrxType, lastPanDigit, "Update success");
     sqlite3_finalize(statement);
 }
 
@@ -1221,9 +1225,9 @@ void updateHostResponseInDb(HostResponse hostResponse, char transactionId[40])
  **/
 void updateHostResponse(TransactionTable trxData)
 {
-    logData("Going to update the transaction : %s", trxData.transactionId);
-    logData("Host Status : %s", trxData.hostStatus);
-    logData("Transaction Id : %s", trxData.transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Going to update the transaction : %s", trxData.transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Host Status : %s", trxData.hostStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Transaction Id : %s", trxData.transactionId);
 
     const char *query = "UPDATE Transactions "
                         "SET RRN = ?, "
@@ -1241,7 +1245,7 @@ void updateHostResponse(TransactionTable trxData)
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare update query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare update query !!!");
         return;
     }
 
@@ -1259,10 +1263,10 @@ void updateHostResponse(TransactionTable trxData)
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarn("Failed to update record : %d", result);
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
         return;
     }
-    logData("Update success");
+    logDataEx(currentTrxType, lastPanDigit, "Update success");
     sqlite3_finalize(statement);
 }
 
@@ -1271,8 +1275,8 @@ void updateHostResponse(TransactionTable trxData)
  **/
 char *clearFetchedData()
 {
-    logInfo("Going to clear all the records for the Fetch Id %d", activeFetchId);
-    logData("Total records to be cleared :  %d", fetchedCount);
+    logInfoEx(currentTrxType, lastPanDigit, "Going to clear all the records for the Fetch Id %d", activeFetchId);
+    logDataEx(currentTrxType, lastPanDigit, "Total records to be cleared :  %d", fetchedCount);
 
     for (int i = 0; i < fetchedCount; i++)
     {
@@ -1281,25 +1285,25 @@ char *clearFetchedData()
 
         if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
         {
-            logError("Failed to prepare delete query !!!");
+            logErrorEx("FetchData", "Clear", "Failed to prepare delete query !!!");
             return buildResponseMessage(STATUS_ERROR, ERR_SQL_STATEMENT_PREPARE_FAILED);
         }
 
-        logData("Going to delete record with Id : %s", fetchTransactionIdList[i].trxId);
+        logDataEx(currentTrxType, lastPanDigit, "Going to delete record with Id : %s", fetchTransactionIdList[i].trxId);
         sqlite3_bind_text(statement, 1, fetchTransactionIdList[i].trxId, -1, SQLITE_STATIC);
 
         int result = sqlite3_step(statement);
         if (result != SQLITE_DONE)
         {
-            logError("Failed to delete record : %d", result);
+            logErrorEx("FetchData", "Clear", "Failed to delete record : %d", result);
             return buildResponseMessage(STATUS_ERROR, ERR_SQL_DELETE_FAILED);
         }
-        logInfo("Delete success");
+        logInfoEx(currentTrxType, lastPanDigit, "Delete success");
         sqlite3_finalize(statement);
     }
 
     activeFetchId = 0;
-    logInfo("Fetch id reseted");
+    logInfoEx(currentTrxType, lastPanDigit, "Fetch id reseted");
     for (int i = 0; i < MAX_FETCH_COUNT; i++)
     {
         memset(fetchTransactionIdList[i].trxId, 0, sizeof(fetchTransactionIdList[i].trxId));
@@ -1376,33 +1380,33 @@ char *fetchHostData(int maxRecordsRequested, enum fetch_mode fetchMode, bool isO
     json_object *jobj = json_object_new_object();
     json_object *jDataArrayObject = json_object_new_array();
 
-    logData("Active Fetch ID : %d", activeFetchId);
-    logData("Number of data requested : %d", maxRecordsRequested);
+    logDataEx(currentTrxType, lastPanDigit, "Active Fetch ID : %d", activeFetchId);
+    logDataEx(currentTrxType, lastPanDigit, "Number of data requested : %d", maxRecordsRequested);
 
     int maxRecords = maxRecordsRequested;
     if (maxRecords > MAX_FETCH_COUNT)
     {
-        logInfo("Maximum allowed records is : %d", MAX_FETCH_COUNT);
-        logInfo("Resetting to the above value");
+        logInfoEx(currentTrxType, lastPanDigit, "Maximum allowed records is : %d", MAX_FETCH_COUNT);
+        logInfoEx(currentTrxType, lastPanDigit, "Resetting to the above value");
         maxRecords = MAX_FETCH_COUNT;
     }
     fetchedCount = 0;
 
     if (fetchMode == FETCH_MODE_FAILURE)
-        logData("Failure transaction data requested");
+        logDataEx(currentTrxType, lastPanDigit, "Failure transaction data requested");
     else if (fetchMode == FETCH_MODE_PENDING)
-        logData("Pending transactions data requested");
+        logDataEx(currentTrxType, lastPanDigit, "Pending transactions data requested");
     else
-        logData("Success transaction data requested");
+        logDataEx(currentTrxType, lastPanDigit, "Success transaction data requested");
 
     char query[512];
     getFetchquery(fetchMode, isOnline, query, sizeof(query));
-    logData("Query prepared : %s", query);
+    logDataEx(currentTrxType, lastPanDigit, "Query prepared : %s", query);
     sqlite3_stmt *statement;
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logData("Failed to prepare read query !!!");
+        logDataEx(currentTrxType, lastPanDigit, "Failed to prepare read query !!!");
         return buildResponseMessage(STATUS_ERROR, ERR_SQL_STATEMENT_PREPARE_FAILED);
     }
 
@@ -1434,11 +1438,11 @@ char *fetchHostData(int maxRecordsRequested, enum fetch_mode fetchMode, bool isO
 
     sqlite3_finalize(statement);
 
-    logData("Max Records Requested : %d, and total fetched : %d", maxRecords, fetchedCount);
+    logDataEx(currentTrxType, lastPanDigit, "Max Records Requested : %d, and total fetched : %d", maxRecords, fetchedCount);
 
     for (int i = 0; i < fetchedCount; i++)
     {
-        logData("FETCHED ID : %s", fetchTransactionIdList[i].trxId);
+        logDataEx(currentTrxType, lastPanDigit, "FETCHED ID : %s", fetchTransactionIdList[i].trxId);
     }
 
     // Generate Json
@@ -1477,7 +1481,7 @@ void performMacRecalculation()
     // TxnStatus = Success, HostStatus = Pending
 
     int trxDataCount = getOfflinePendingTrxCount();
-    logData("Total pending offline transactions for mac recalc are : %d", trxDataCount);
+    logDataEx(currentTrxType, lastPanDigit, "Total pending offline transactions for mac recalc are : %d", trxDataCount);
 
     const char *query = "SELECT * FROM Transactions WHERE "
                         "HostStatus = 'Pending' "
@@ -1487,7 +1491,7 @@ void performMacRecalculation()
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, 0) != SQLITE_OK)
     {
-        logWarn("Failed to prepare read query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare read query !!!");
         return;
     }
 
@@ -1497,7 +1501,7 @@ void performMacRecalculation()
     {
         if (index > trxDataCount)
         {
-            logError("Extra data found on getting offline transactions, ignoring and picked up next.");
+            logErrorEx("L3-App", "MacRecalc", "Extra data found on getting offline transactions, ignoring and picked up next.");
             break;
         }
         TransactionTable trxData = populateTableData(statement);
@@ -1507,32 +1511,32 @@ void performMacRecalculation()
 
     sqlite3_finalize(statement);
 
-    logData("Total transactions loaded for mac recalc : %d", trxDataCount);
+    logDataEx(currentTrxType, lastPanDigit, "Total transactions loaded for mac recalc : %d", trxDataCount);
     for (int i = 0; i < trxDataCount; i++)
     {
-        logData("======================================================");
+        logDataEx(currentTrxType, lastPanDigit, "======================================================");
         printTransactionRow(trxDataList[i]);
     }
 
     if (trxDataCount == 0)
     {
-        logInfo("There are no pending transactions available for mac recalc");
+        logInfoEx(currentTrxType, lastPanDigit, "There are no pending transactions available for mac recalc");
     }
     else
     {
         for (int index = 0; index < trxDataCount; index++)
         {
-            logData("Doing recalculation of transaction : %d of %d", (index + 1), trxDataCount);
+            logDataEx(currentTrxType, lastPanDigit, "Doing recalculation of transaction : %d of %d", (index + 1), trxDataCount);
             TransactionTable trxTable = trxDataList[index];
-            logData("Processing transaction id : %s", trxTable.transactionId);
+            logDataEx(currentTrxType, lastPanDigit, "Processing transaction id : %s", trxTable.transactionId);
             resetTransactionData();
 
             // Set the values for recalc
             safe_strcpy(currentTxnData.transactionId, sizeof(currentTxnData.transactionId), trxTable.transactionId);
             safe_strcpy(currentTxnData.processingCode, sizeof(currentTxnData.processingCode), trxTable.processingCode);
-            logData("String amount : %s", trxTable.amount);
+            logDataEx(currentTrxType, lastPanDigit, "String amount : %s", trxTable.amount);
             currentTxnData.amount = strtoull(trxTable.amount, NULL, 10);
-            logData("Converted amount : %" PRIu64, currentTxnData.amount);
+            logDataEx(currentTrxType, lastPanDigit, "Converted amount : %" PRIu64, currentTxnData.amount);
             safe_strcpy(currentTxnData.sAmount, sizeof(currentTxnData.sAmount), trxTable.amount);
             safe_strcpy(currentTxnData.stan, sizeof(currentTxnData.stan), trxTable.stan);
             safe_strcpy(currentTxnData.expDateEnc, sizeof(currentTxnData.expDateEnc), trxTable.expDateEnc);
@@ -1545,15 +1549,15 @@ void performMacRecalculation()
             safe_strcpy(currentTxnData.iccData, sizeof(currentTxnData.iccData), trxTable.iccData);
             safe_strcpy(currentTxnData.orderId, sizeof(currentTxnData.orderId), trxTable.orderId);
 
-            logData("Generating mac data now");
-            logData("Mac data is generated, now updating the db");
+            logDataEx(currentTrxType, lastPanDigit, "Generating mac data now");
+            logDataEx(currentTrxType, lastPanDigit, "Mac data is generated, now updating the db");
 
             // Update the db back
             updateReCalcMacData(currentTxnData);
         }
     }
 
-    logData("Recalculation completed and changing status back to ready");
+    logDataEx(currentTrxType, lastPanDigit, "Recalculation completed and changing status back to ready");
     changeAppState(APP_STATUS_READY);
 }
 
@@ -1562,7 +1566,7 @@ void performMacRecalculation()
  */
 void updateReCalcMacData(struct transactionData trxData)
 {
-    logData("Going to update the updateReCalcMacData in db for : %s", trxData.transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Going to update the updateReCalcMacData in db for : %s", trxData.transactionId);
 
     const char *query = "UPDATE Transactions "
                         "SET mac = ?, "
@@ -1573,7 +1577,7 @@ void updateReCalcMacData(struct transactionData trxData)
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarn("Failed to prepare updateReversalPreData only status query !!!");
+        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateReversalPreData only status query !!!");
         return;
     }
 
@@ -1584,10 +1588,10 @@ void updateReCalcMacData(struct transactionData trxData)
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logError("Failed to update record for mac recalc: %d", result);
+        logErrorEx("L3-App", "MacRecalc", "Failed to update record for mac recalc: %d", result);
         return;
     }
-    logData("updateReCalcMacData success");
+    logDataEx(currentTrxType, lastPanDigit, "updateReCalcMacData success");
     sqlite3_finalize(statement);
 }
 
@@ -1897,7 +1901,7 @@ json_object *getJsonTxnData(TransactionTable trxData)
 {
     char dateYear[10];
     sprintf(dateYear, "%s%s", trxData.date, trxData.year);
-    logData("Transaction date to be returned in json : %s", dateYear);
+    logDataEx(currentTrxType, lastPanDigit, "Transaction date to be returned in json : %s", dateYear);
 
     json_object *jTuid = json_object_new_string(trxData.transactionId);
     json_object *jAid = json_object_new_string(trxData.aid);
@@ -2001,82 +2005,82 @@ json_object *getJsonTxnData(TransactionTable trxData)
  **/
 void printTransactionRow(TransactionTable trxTable)
 {
-    logData("===========================================");
+    logDataEx(currentTrxType, lastPanDigit, "===========================================");
 
-    logData("ID : %d", trxTable.id);
-    logData("Transaction Id : %s", trxTable.transactionId);
-    logData("Transaction Type : %s", trxTable.trxType);
-    logData("Transaction Bin : %s", trxTable.trxBin);
-    logData("Processing Code : %s", trxTable.processingCode);
-    logData("Transaction Counter : %d", trxTable.trxCounter);
-    logData("Stan : %s", trxTable.stan);
-    logData("Batch : %d", trxTable.batch);
-    logData("Amount : %s", trxTable.amount);
-    logData("Time : %s", trxTable.time);
-    logData("Date : %s", trxTable.date);
-    logData("Year : %s", trxTable.year);
-    logData("AID : %s", trxTable.aid);
-    logData("Mask PAN : %s", trxTable.maskPAN);
-    logData("Token : %s", trxTable.token);
-    logData("Effective Date : %s", trxTable.effectiveDate);
-    logData("Service Id : %s", trxTable.serviceId);
-    logData("Service Index : %s", trxTable.serviceIndex);
-    logData("Service Data : %s", trxTable.serviceData);
-    logData("Service Control : %s", trxTable.serviceControl);
-    logData("Service Balance : %s", trxTable.serviceBalance);
-    logData("ICC Data : %s", trxTable.iccData);
-    logData("ICC Data Len : %d", trxTable.iccDataLen);
-    logData("KSN : %s", trxTable.ksn);
-    logData("Pan Encrypted : %s", trxTable.panEncrypted);
-    logData("Track 2 Enc : %s", trxTable.track2Enc);
-    logData("Exp date encrypted : %s", trxTable.expDateEnc);
-    logData("Mac KSN : %s", trxTable.macKsn);
-    logData("Mac Value : %s", trxTable.mac);
-    logData("Order Id : %s", trxTable.orderId);
-    logData("Txn Status : %s", trxTable.txnStatus);
-    logData("Host Status : %s", trxTable.hostStatus);
-    logData("Update Amount : %s", trxTable.updateAmount);
-    logData("Updated Balance : %s", trxTable.updatedBalance);
-    logData("Terminal Id : %s", trxTable.terminalId);
-    logData("Merchant : %s", trxTable.merchantId);
-    logData("Host Retry : %d", trxTable.hostRetry);
-    logData("RRN : %s", trxTable.rrn);
-    logData("Auth Code : %s", trxTable.authCode);
-    logData("Host Response Time Stamp : %s", trxTable.hostResponseTimeStamp);
-    logData("Host Result Status : %s", trxTable.hostResultStatus);
-    logData("Host Result Message : %s", trxTable.hostResultMessage);
-    logData("Host Result Code : %s", trxTable.hostResultCode);
-    logData("Host Result Code Id : %s", trxTable.hostResultCodeId);
-    logData("Host ICCData : %s", trxTable.hostIccData);
-    logData("Host Error : %s", trxTable.hostError);
-    logData("Reversal Status : %s", trxTable.reversalStatus);
-    logData("Money Add Trx Type : %s", trxTable.moneyAddTrxType);
-    logData("Acquirement Id : %s", trxTable.acquirementId);
-    logData("Reversal Response Code : %s", trxTable.reversalResponsecode);
-    logData("Reversal RRN : %s", trxTable.reversalRRN);
-    logData("Reversal Auth Code : %s", trxTable.reversalAuthCode);
-    logData("Reversal Manual Cleared : %d", trxTable.reversalManualCleared);
-    logData("Reversal Ksn : %s", trxTable.reversalKsn);
-    logData("Reversal Mac : %s", trxTable.reversalMac);
-    logData("Echo Ksn : %s", trxTable.echoKsn);
-    logData("Echo Mac : %s", trxTable.echoMac);
-    logData("Reversal Input Code : %s", trxTable.reversalInputResponseCode);
-    logData("Host Error Category : %s", trxTable.hostErrorCategory);
-    logData("Host Airtel Txn Status : %d", trxTable.airtelTxnStatus);
-    logData("Host Airtel Txn Id : %s", trxTable.airtelTxnId);
-    logData("Host Airtel Request Data : %s", trxTable.airtelRequestData);
-    logData("Host Airtel Response Data : %s", trxTable.airtelResponseData);
-    logData("Host Airtel Response Code : %s", trxTable.airtelResponseCode);
-    logData("Host Airtel Response Desc : %s", trxTable.airtelResponseDesc);
-    logData("Host Airtel Response Switch Code : %s", trxTable.airtelSwitchResponseCode);
-    logData("Host Airtel Response Switch Terminal Id : %s", trxTable.airtelSwitchTerminalId);
-    logData("Host Airtel Response Switch Merchant Id : %s", trxTable.airtelSwichMerchantId);
-    logData("Acquirer Transaction Id : %s", trxTable.acqTransactionId);
-    logData("Acquirer Unique Transaction Id : %s", trxTable.acqUniqueTransactionId);
-    logData("Money Add TID : %s", trxTable.moneyAddTid);
-    logData("Mony Add RRN : %s", trxTable.moneyAddRRN);
+    logDataEx(currentTrxType, lastPanDigit, "ID : %d", trxTable.id);
+    logDataEx(currentTrxType, lastPanDigit, "Transaction Id : %s", trxTable.transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Transaction Type : %s", trxTable.trxType);
+    logDataEx(currentTrxType, lastPanDigit, "Transaction Bin : %s", trxTable.trxBin);
+    logDataEx(currentTrxType, lastPanDigit, "Processing Code : %s", trxTable.processingCode);
+    logDataEx(currentTrxType, lastPanDigit, "Transaction Counter : %d", trxTable.trxCounter);
+    logDataEx(currentTrxType, lastPanDigit, "Stan : %s", trxTable.stan);
+    logDataEx(currentTrxType, lastPanDigit, "Batch : %d", trxTable.batch);
+    logDataEx(currentTrxType, lastPanDigit, "Amount : %s", trxTable.amount);
+    logDataEx(currentTrxType, lastPanDigit, "Time : %s", trxTable.time);
+    logDataEx(currentTrxType, lastPanDigit, "Date : %s", trxTable.date);
+    logDataEx(currentTrxType, lastPanDigit, "Year : %s", trxTable.year);
+    logDataEx(currentTrxType, lastPanDigit, "AID : %s", trxTable.aid);
+    logDataEx(currentTrxType, lastPanDigit, "Mask PAN : %s", trxTable.maskPAN);
+    logDataEx(currentTrxType, lastPanDigit, "Token : %s", trxTable.token);
+    logDataEx(currentTrxType, lastPanDigit, "Effective Date : %s", trxTable.effectiveDate);
+    logDataEx(currentTrxType, lastPanDigit, "Service Id : %s", trxTable.serviceId);
+    logDataEx(currentTrxType, lastPanDigit, "Service Index : %s", trxTable.serviceIndex);
+    logDataEx(currentTrxType, lastPanDigit, "Service Data : %s", trxTable.serviceData);
+    logDataEx(currentTrxType, lastPanDigit, "Service Control : %s", trxTable.serviceControl);
+    logDataEx(currentTrxType, lastPanDigit, "Service Balance : %s", trxTable.serviceBalance);
+    logDataEx(currentTrxType, lastPanDigit, "ICC Data : %s", trxTable.iccData);
+    logDataEx(currentTrxType, lastPanDigit, "ICC Data Len : %d", trxTable.iccDataLen);
+    logDataEx(currentTrxType, lastPanDigit, "KSN : %s", trxTable.ksn);
+    logDataEx(currentTrxType, lastPanDigit, "Pan Encrypted : %s", trxTable.panEncrypted);
+    logDataEx(currentTrxType, lastPanDigit, "Track 2 Enc : %s", trxTable.track2Enc);
+    logDataEx(currentTrxType, lastPanDigit, "Exp date encrypted : %s", trxTable.expDateEnc);
+    logDataEx(currentTrxType, lastPanDigit, "Mac KSN : %s", trxTable.macKsn);
+    logDataEx(currentTrxType, lastPanDigit, "Mac Value : %s", trxTable.mac);
+    logDataEx(currentTrxType, lastPanDigit, "Order Id : %s", trxTable.orderId);
+    logDataEx(currentTrxType, lastPanDigit, "Txn Status : %s", trxTable.txnStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Host Status : %s", trxTable.hostStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Update Amount : %s", trxTable.updateAmount);
+    logDataEx(currentTrxType, lastPanDigit, "Updated Balance : %s", trxTable.updatedBalance);
+    logDataEx(currentTrxType, lastPanDigit, "Terminal Id : %s", trxTable.terminalId);
+    logDataEx(currentTrxType, lastPanDigit, "Merchant : %s", trxTable.merchantId);
+    logDataEx(currentTrxType, lastPanDigit, "Host Retry : %d", trxTable.hostRetry);
+    logDataEx(currentTrxType, lastPanDigit, "RRN : %s", trxTable.rrn);
+    logDataEx(currentTrxType, lastPanDigit, "Auth Code : %s", trxTable.authCode);
+    logDataEx(currentTrxType, lastPanDigit, "Host Response Time Stamp : %s", trxTable.hostResponseTimeStamp);
+    logDataEx(currentTrxType, lastPanDigit, "Host Result Status : %s", trxTable.hostResultStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Host Result Message : %s", trxTable.hostResultMessage);
+    logDataEx(currentTrxType, lastPanDigit, "Host Result Code : %s", trxTable.hostResultCode);
+    logDataEx(currentTrxType, lastPanDigit, "Host Result Code Id : %s", trxTable.hostResultCodeId);
+    logDataEx(currentTrxType, lastPanDigit, "Host ICCData : %s", trxTable.hostIccData);
+    logDataEx(currentTrxType, lastPanDigit, "Host Error : %s", trxTable.hostError);
+    logDataEx(currentTrxType, lastPanDigit, "Reversal Status : %s", trxTable.reversalStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Money Add Trx Type : %s", trxTable.moneyAddTrxType);
+    logDataEx(currentTrxType, lastPanDigit, "Acquirement Id : %s", trxTable.acquirementId);
+    logDataEx(currentTrxType, lastPanDigit, "Reversal Response Code : %s", trxTable.reversalResponsecode);
+    logDataEx(currentTrxType, lastPanDigit, "Reversal RRN : %s", trxTable.reversalRRN);
+    logDataEx(currentTrxType, lastPanDigit, "Reversal Auth Code : %s", trxTable.reversalAuthCode);
+    logDataEx(currentTrxType, lastPanDigit, "Reversal Manual Cleared : %d", trxTable.reversalManualCleared);
+    logDataEx(currentTrxType, lastPanDigit, "Reversal Ksn : %s", trxTable.reversalKsn);
+    logDataEx(currentTrxType, lastPanDigit, "Reversal Mac : %s", trxTable.reversalMac);
+    logDataEx(currentTrxType, lastPanDigit, "Echo Ksn : %s", trxTable.echoKsn);
+    logDataEx(currentTrxType, lastPanDigit, "Echo Mac : %s", trxTable.echoMac);
+    logDataEx(currentTrxType, lastPanDigit, "Reversal Input Code : %s", trxTable.reversalInputResponseCode);
+    logDataEx(currentTrxType, lastPanDigit, "Host Error Category : %s", trxTable.hostErrorCategory);
+    logDataEx(currentTrxType, lastPanDigit, "Host Airtel Txn Status : %d", trxTable.airtelTxnStatus);
+    logDataEx(currentTrxType, lastPanDigit, "Host Airtel Txn Id : %s", trxTable.airtelTxnId);
+    logDataEx(currentTrxType, lastPanDigit, "Host Airtel Request Data : %s", trxTable.airtelRequestData);
+    logDataEx(currentTrxType, lastPanDigit, "Host Airtel Response Data : %s", trxTable.airtelResponseData);
+    logDataEx(currentTrxType, lastPanDigit, "Host Airtel Response Code : %s", trxTable.airtelResponseCode);
+    logDataEx(currentTrxType, lastPanDigit, "Host Airtel Response Desc : %s", trxTable.airtelResponseDesc);
+    logDataEx(currentTrxType, lastPanDigit, "Host Airtel Response Switch Code : %s", trxTable.airtelSwitchResponseCode);
+    logDataEx(currentTrxType, lastPanDigit, "Host Airtel Response Switch Terminal Id : %s", trxTable.airtelSwitchTerminalId);
+    logDataEx(currentTrxType, lastPanDigit, "Host Airtel Response Switch Merchant Id : %s", trxTable.airtelSwichMerchantId);
+    logDataEx(currentTrxType, lastPanDigit, "Acquirer Transaction Id : %s", trxTable.acqTransactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Acquirer Unique Transaction Id : %s", trxTable.acqUniqueTransactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Money Add TID : %s", trxTable.moneyAddTid);
+    logDataEx(currentTrxType, lastPanDigit, "Mony Add RRN : %s", trxTable.moneyAddRRN);
 
-    logData("===========================================");
+    logDataEx(currentTrxType, lastPanDigit, "===========================================");
 }
 
 // /**
@@ -2139,7 +2143,7 @@ void printTransactionRow(TransactionTable trxTable)
 
 //       char *transactionId = malloc(UUID_STR_LEN);
 //       generateUUID(transactionId);
-//       logInfo("Unique Transaction Id : %s", transactionId);
+//       logInfoEx(currentTrxType, lastPanDigit, "Unique Transaction Id : %s", transactionId);
 
 //       if (result == SQLITE_OK)
 //       {
@@ -2178,50 +2182,24 @@ void printTransactionRow(TransactionTable trxTable)
 //           sqlite3_bind_int(statement, 33, 0); // Host Retry
 //           sqlite3_bind_int(statement, 34, 0); // Host Error
 
-//           logData("Going to perform the insert of offline transaction date");
+//           logDataEx(currentTrxType, lastPanDigit, "Going to perform the insert of offline transaction date");
 //           int result = sqlite3_step(statement);
 //           sqlite3_finalize(statement);
-//           logData("Insert result : %d", result);
+//           logDataEx(currentTrxType, lastPanDigit, "Insert result : %d", result);
 
 //           if (result == SQLITE_DONE)
 //           {
-//               logInfo("Transaction data inserted successfully : %d", i);
+//               logInfoEx(currentTrxType, lastPanDigit, "Transaction data inserted successfully : %d", i);
 //           }
 //           else
 //           {
-//               logWarn("Insert data failed !!! : %d", i);
+//               logWarnEx(currentTrxType, lastPanDigit, "Insert data failed !!! : %d", i);
 //           }
 //       }
 //       else
 //       {
-//           logWarn("Unable to prepare the insert query !!!");
+//           logWarnEx(currentTrxType, lastPanDigit, "Unable to prepare the insert query !!!");
 //       }
 //       free(transactionId);
 //     }
-// }
-
-// /**
-//  * To delete all the transactions
-//  */
-// void deleteAllTrx()
-// {
-//     logInfo("Going to clear all the records");
-
-//       const char *query = "DELETE FROM Transactions";
-//       sqlite3_stmt *statement;
-
-//       if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
-//       {
-//           logError("Failed to prepare delete query !!!");
-//           return;
-//       }
-
-//       int result = sqlite3_step(statement);
-//       if (result != SQLITE_DONE)
-//       {
-//           logError("Failed to delete record : %d", result);
-//           return;
-//       }
-//       logInfo("Delete success");
-//       sqlite3_finalize(statement);
 // }

@@ -25,6 +25,9 @@ extern _Atomic int activePendingTxnCount;
 extern _Atomic enum device_status DEVICE_STATUS;
 extern volatile __sig_atomic_t shutdown_requested;
 
+extern char currentTrxType[100];
+extern char lastPanDigit[10];
+
 bool isReversalOngoing = false;
 bool isOfflineTrxOngoing = false;
 
@@ -56,7 +59,7 @@ int initializeHostStaticData()
  **/
 TransactionTable processHostOfflineTxn(TransactionTable trxData)
 {
-    logInfo("Processing transaction : %s", trxData.transactionId);
+    logInfoEx(currentTrxType, lastPanDigit, "Processing transaction : %s", trxData.transactionId);
 
     char batch[7];
     sprintf(batch, "%06d", trxData.batch);
@@ -108,13 +111,13 @@ TransactionTable processHostOfflineTxn(TransactionTable trxData)
     safe_strcat(narration, trxData.acqTransactionId);
     safe_strcat(narration, trxData.acqUniqueTransactionId);
 
-    logData("Narration data generated : %s", narration);
-    logData("Narration length : %d", strlen(narration));
+    logDataEx(currentTrxType, lastPanDigit, "Narration data generated : %s", narration);
+    logDataEx(currentTrxType, lastPanDigit, "Narration length : %d", strlen(narration));
     */
 
     char narrationHex[125];
     string2hexString(narration, narrationHex, sizeof(narrationHex));
-    logData("Narration in hex : %s", narrationHex);
+    logDataEx(currentTrxType, lastPanDigit, "Narration in hex : %s", narrationHex);
 
     offline_sale_req.DE63_NARRATION_DATA.len = 124;
     offline_sale_req.DE63_NARRATION_DATA.value = (char *)malloc(124 + 1);
@@ -132,40 +135,40 @@ TransactionTable processHostOfflineTxn(TransactionTable trxData)
     if (ret == TXN_SUCCESS)
     {
         sprintf(trxData.hostErrorCategory, "%s", "");
-        logData("Amount Received : %s", offline_sale_resp.DE04_TXN_AMOUNT);
-        logData("Stan Received: %s", offline_sale_resp.DE11_STAN);
-        logData("Txn Time Received : %s", offline_sale_resp.DE12_TXN_TIME);
-        logData("Txn Date Received : %s", offline_sale_resp.DE13_TXN_DATE);
+        logDataEx(currentTrxType, lastPanDigit, "Amount Received : %s", offline_sale_resp.DE04_TXN_AMOUNT);
+        logDataEx(currentTrxType, lastPanDigit, "Stan Received: %s", offline_sale_resp.DE11_STAN);
+        logDataEx(currentTrxType, lastPanDigit, "Txn Time Received : %s", offline_sale_resp.DE12_TXN_TIME);
+        logDataEx(currentTrxType, lastPanDigit, "Txn Date Received : %s", offline_sale_resp.DE13_TXN_DATE);
 
         if (offline_sale_resp.DE37_RRN != NULL)
         {
-            logInfo("RRN Received : %s", offline_sale_resp.DE37_RRN);
+            logInfoEx(currentTrxType, lastPanDigit, "RRN Received : %s", offline_sale_resp.DE37_RRN);
             sprintf(trxData.rrn, "%s", offline_sale_resp.DE37_RRN);
         }
         else
         {
-            logWarn("RRN Not Received");
+            logWarnEx(currentTrxType, lastPanDigit, "RRN Not Received");
         }
 
         if (offline_sale_resp.DE38_AUTH_CODE != NULL)
         {
-            logInfo("Authcode Received : %s", offline_sale_resp.DE38_AUTH_CODE);
+            logInfoEx(currentTrxType, lastPanDigit, "Authcode Received : %s", offline_sale_resp.DE38_AUTH_CODE);
             sprintf(trxData.authCode, "%s", offline_sale_resp.DE38_AUTH_CODE);
         }
         else
         {
-            logWarn("Authcode Not Received %s.", "");
+            logWarnEx(currentTrxType, lastPanDigit, "Authcode Not Received %s.", "");
         }
 
         if (offline_sale_resp.DE39_RESPONSE_CODE != NULL)
         {
-            logInfo("Response Code Received : %s", offline_sale_resp.DE39_RESPONSE_CODE);
+            logInfoEx(currentTrxType, lastPanDigit, "Response Code Received : %s", offline_sale_resp.DE39_RESPONSE_CODE);
             sprintf(trxData.hostResultCode, "%s", offline_sale_resp.DE39_RESPONSE_CODE);
         }
         else
         {
             safe_strcpy(trxData.hostResultCode, sizeof(trxData.hostResultCode), "00");
-            logWarn("Response Code Not Received %s.", "");
+            logWarnEx(currentTrxType, lastPanDigit, "Response Code Not Received %s.", "");
         }
 
         if (strcmp(trxData.hostResultCode, "00") == 0)
@@ -175,11 +178,11 @@ TransactionTable processHostOfflineTxn(TransactionTable trxData)
 
             doLock();
             activePendingTxnCount--;
-            logData("Offline trxn result is success");
-            logData("Active pending transaction count decreased and now is : %d", activePendingTxnCount);
+            logDataEx(currentTrxType, lastPanDigit, "Offline trxn result is success");
+            logDataEx(currentTrxType, lastPanDigit, "Active pending transaction count decreased and now is : %d", activePendingTxnCount);
             if (activePendingTxnCount < appConfig.minRequiredForOnline)
             {
-                logWarn("Now the transaction is below minRequiredForOnline, making the device online");
+                logWarnEx(currentTrxType, lastPanDigit, "Now the transaction is below minRequiredForOnline, making the device online");
                 DEVICE_STATUS = STATUS_ONLINE;
             }
             printDeviceStatus();
@@ -187,33 +190,21 @@ TransactionTable processHostOfflineTxn(TransactionTable trxData)
         }
         else
         {
-            logWarn("Response code received : %s", trxData.hostResultCode);
-            logWarn("Response code received is not approved, so left it as in pending");
+            logWarnEx(currentTrxType, lastPanDigit, "Response code received : %s", trxData.hostResultCode);
+            logWarnEx(currentTrxType, lastPanDigit, "Response code received is not approved, so left it as in pending");
         }
     }
     else
     {
         sprintf(trxData.hostError, "%s", getHostErrorString(ret));
-        logWarn("Host error : %s", getHostErrorString(ret));
-        logWarn("Max Retry for failure : %d", appConfig.hostMaxRetry);
+        logWarnEx(currentTrxType, lastPanDigit, "Host error : %s", getHostErrorString(ret));
+        logWarnEx(currentTrxType, lastPanDigit, "Max Retry for failure : %d", appConfig.hostMaxRetry);
 
         if (ret == TXN_HOST_CONNECTION_TIMEOUT || ret == TXN_RECEIVE_FROM_HOST_TIMEOUT)
         {
             sprintf(trxData.hostErrorCategory, "%s", HOST_ERROR_CATEGORY_TIMEOUT);
         }
 
-        /*
-        // No check for retry as discussed
-        if (trxData.hostRetry == appConfig.hostMaxRetry)
-        {
-            sprintf(trxData.hostErrorCategory, "%s", HOST_ERROR_CATEGORY_FAILED);
-            sprintf(trxData.hostStatus, "%s", STATUS_FAILURE);
-            logError("Host Failed");
-        }
-        else
-        {
-            trxData.hostRetry++;
-        }*/
         trxData.hostRetry++;
     }
 
@@ -228,13 +219,13 @@ void *handleHostOfflineTransactions()
 {
     if (isOfflineTrxOngoing)
     {
-        logData("Host offline sale transaction thread already triggered");
+        logDataEx(currentTrxType, lastPanDigit, "Host offline sale transaction thread already triggered");
         return (void *)0;
     }
 
     isOfflineTrxOngoing = true;
-    logData("Host offline sale transaction thread triggered");
-    logData("Host process interval : %d", appConfig.hostProcessTimeInMinutes);
+    logDataEx(currentTrxType, lastPanDigit, "Host offline sale transaction thread triggered");
+    logDataEx(currentTrxType, lastPanDigit, "Host process interval : %d", appConfig.hostProcessTimeInMinutes);
     int waitTime = appConfig.hostProcessTimeInMinutes * 60;
     // waitTime = 0;
     int counter = 1;
@@ -242,21 +233,21 @@ void *handleHostOfflineTransactions()
     {
         if (shutdown_requested)
         {
-            logError("Shutting down the host pending transaction thread");
+            logErrorEx("L3-App", "HostOfflineTrx", "Shutting down the host pending transaction thread");
             isOfflineTrxOngoing = false;
             return NULL;
         }
 
-        logData("Initiating the host pending transaction, counter : %d", counter);
+        logDataEx(currentTrxType, lastPanDigit, "Initiating the host pending transaction, counter : %d", counter);
         processHostPendingTransactions();
-        logData("Host pending transaction process completed. Now sleeping for %d seconds.", waitTime);
+        logDataEx(currentTrxType, lastPanDigit, "Host pending transaction process completed. Now sleeping for %d seconds.", waitTime);
         counter++;
         // Sleep in 1-second intervals so shutdown is detected quickly
         for (int i = 0; i < waitTime; i++)
         {
             if (shutdown_requested)
             {
-                logError("Shutting down the host pending transaction");
+                logErrorEx("L3-App", "HostOfflineTrx", "Shutting down the host pending transaction");
                 isOfflineTrxOngoing = false;
                 return NULL;
             }
@@ -271,22 +262,22 @@ void *handleHostOfflineTransactions()
  */
 void *startReversalThread()
 {
-    logData("Reversal Thread Triggered");
-    logData("Reversal process interval : %d", appConfig.reversalTimeInMinutes);
+    logDataEx(currentTrxType, lastPanDigit, "Reversal Thread Triggered");
+    logDataEx(currentTrxType, lastPanDigit, "Reversal process interval : %d", appConfig.reversalTimeInMinutes);
     int waitTime = appConfig.reversalTimeInMinutes * 60;
     int counter = 1;
     while (1)
     {
-        logData("Initiating the reversal process, counter : %d", counter);
+        logDataEx(currentTrxType, lastPanDigit, "Initiating the reversal process, counter : %d", counter);
         verifyAndDoReversal();
-        logData("Reversal process done. Now sleeping for %d seconds.", waitTime);
+        logDataEx(currentTrxType, lastPanDigit, "Reversal process done. Now sleeping for %d seconds.", waitTime);
         counter++;
 
         for (int i = 0; i < waitTime; i++)
         {
             if (shutdown_requested)
             {
-                logError("Shutting down the reversal thread");
+                logErrorEx("L3-App", "Reversal", "Shutting down the reversal thread");
                 return NULL;
             }
             sleep(1);
@@ -302,13 +293,13 @@ void verifyAndDoReversal()
     char transactionId[38] = {0};
     if (isTherePendingReversal(transactionId) == true)
     {
-        logInfo("There is a pending reversal, trying to send to host");
-        logInfo("Transaction id for reversal : %s", transactionId);
+        logInfoEx(currentTrxType, lastPanDigit, "There is a pending reversal, trying to send to host");
+        logInfoEx(currentTrxType, lastPanDigit, "Transaction id for reversal : %s", transactionId);
         performReversal(transactionId, true, "E2");
 
         // if (isReversalOngoing == true)
         // {
-        //     logData("There is already ongoing reversal, so thread no need to do again.");
+        //     logDataEx(currentTrxType, lastPanDigit, "There is already ongoing reversal, so thread no need to do again.");
         //     return;
         // }
         // TransactionTable trxTable = getTransactionTableData(transactionId);
@@ -321,7 +312,7 @@ void verifyAndDoReversal()
         //     }
         //     else
         //     {
-        //         logData("There is no reversal mac present so generating it");
+        //         logDataEx(currentTrxType, lastPanDigit, "There is no reversal mac present so generating it");
         //         // trxTable = generateMacReversal(trxTable, REVERSAL_CODE_22);
         //         // trxTable = generateMacEcho(trxTable, REVERSAL_CODE_22);
         //     }
@@ -333,7 +324,7 @@ void verifyAndDoReversal()
     }
     else
     {
-        logData("There are no pending reversals");
+        logDataEx(currentTrxType, lastPanDigit, "There are no pending reversals");
     }
 }
 
@@ -342,11 +333,11 @@ void verifyAndDoReversal()
  **/
 void performReversal(const char *transactionId, bool isTimeOut, const char *responseCode)
 {
-    logInfo("Going to perform the reversal for transaction : %s", transactionId);
-    logInfo("Time out scenario : %d", isTimeOut);
+    logInfoEx(currentTrxType, lastPanDigit, "Going to perform the reversal for transaction : %s", transactionId);
+    logInfoEx(currentTrxType, lastPanDigit, "Time out scenario : %d", isTimeOut);
 
     TransactionTable trxTable = getTransactionTableData(transactionId);
-    logData("STAN : %s", trxTable.stan);
+    logDataEx(currentTrxType, lastPanDigit, "STAN : %s", trxTable.stan);
 
     REVERSAL_REQUEST reversal_request;
 
@@ -370,7 +361,7 @@ void performReversal(const char *transactionId, bool isTimeOut, const char *resp
     {
         // responseCode : E2 in general
         memcpy(reversal_request.DE39_RESPONSE_CODE, responseCode, sizeof(reversal_request.DE39_RESPONSE_CODE));
-        logInfo("Time out scenario so no RRN / Auth is sent to host only response code E2");
+        logInfoEx(currentTrxType, lastPanDigit, "Time out scenario so no RRN / Auth is sent to host only response code E2");
     }
 
     reversal_request.DE55_ICC_DATA.value = (char *)malloc(trxTable.iccDataLen + 1);
@@ -392,31 +383,31 @@ void performReversal(const char *transactionId, bool isTimeOut, const char *resp
 
     ISO8583_ERROR_CODES ret = process_reversal_transaction(&reversal_request, &reversal_response, txn);
 
-    logData("Reversal Return code : %d", ret);
+    logDataEx(currentTrxType, lastPanDigit, "Reversal Return code : %d", ret);
 
     free(reversal_request.DE55_ICC_DATA.value);
     free(reversal_request.DE63_PRIVATE_DATA.value);
 
     if (ret == TXN_SUCCESS)
     {
-        logData("Amount Received: %s", reversal_response.DE04_TXN_AMOUNT);
-        logData("Stan Received : %s", reversal_response.DE11_STAN);
-        logData("Txn Time Received : %s", reversal_response.DE12_TXN_TIME);
-        logData("Txn Date Received : %s", reversal_response.DE13_TXN_DATE);
-        logData("RRN Received : %s", reversal_response.DE37_RRN);
-        logData("Auth Code Received : %s", reversal_response.DE38_AUTH_CODE);
-        logData("Response Code Received : %s", reversal_response.DE39_RESPONSE_CODE);
+        logDataEx(currentTrxType, lastPanDigit, "Amount Received: %s", reversal_response.DE04_TXN_AMOUNT);
+        logDataEx(currentTrxType, lastPanDigit, "Stan Received : %s", reversal_response.DE11_STAN);
+        logDataEx(currentTrxType, lastPanDigit, "Txn Time Received : %s", reversal_response.DE12_TXN_TIME);
+        logDataEx(currentTrxType, lastPanDigit, "Txn Date Received : %s", reversal_response.DE13_TXN_DATE);
+        logDataEx(currentTrxType, lastPanDigit, "RRN Received : %s", reversal_response.DE37_RRN);
+        logDataEx(currentTrxType, lastPanDigit, "Auth Code Received : %s", reversal_response.DE38_AUTH_CODE);
+        logDataEx(currentTrxType, lastPanDigit, "Response Code Received : %s", reversal_response.DE39_RESPONSE_CODE);
 
         if (strcmp(reversal_response.DE39_RESPONSE_CODE, "00") == 0)
         {
             char txnStatus[50];
             safe_strcpy(txnStatus, sizeof(txnStatus), trxTable.txnStatus);
-            logData("Current transaction status : %s", txnStatus);
+            logDataEx(currentTrxType, lastPanDigit, "Current transaction status : %s", txnStatus);
             if (strcmp(trxTable.txnStatus, STATUS_PENDING) == 0)
             {
                 safe_strcpy(txnStatus, sizeof(txnStatus), STATUS_FAILURE);
             }
-            logData("Updated transaction status : %s", txnStatus);
+            logDataEx(currentTrxType, lastPanDigit, "Updated transaction status : %s", txnStatus);
 
             updateReversalStatus(transactionId, STATUS_SUCCESS, txnStatus,
                                  reversal_response.DE37_RRN, reversal_response.DE38_AUTH_CODE,
@@ -425,7 +416,7 @@ void performReversal(const char *transactionId, bool isTimeOut, const char *resp
     }
     else
     {
-        logData("Reversal Error  : %d", ret);
+        logDataEx(currentTrxType, lastPanDigit, "Reversal Error  : %d", ret);
     }
 }
 
@@ -480,11 +471,11 @@ void performHostBalanceUpdate(struct transactionData trxData, long batchCounter,
 {
     char stan[7];
     sprintf(stan, "%06ld", trxData.txnCounter);
-    logData("STAN : %s", stan);
+    logDataEx(currentTrxType, lastPanDigit, "STAN : %s", stan);
 
     char batch[7];
     sprintf(batch, "%06ld", batchCounter);
-    logData("Batch : %s", batch);
+    logDataEx(currentTrxType, lastPanDigit, "Batch : %s", batch);
 
     BALANCE_UPDATE_REQUEST bal_update_req;
     memcpy(bal_update_req.DE11_STAN, stan, sizeof(stan));
@@ -516,13 +507,13 @@ void performHostBalanceUpdate(struct transactionData trxData, long batchCounter,
 
     if (ret == TXN_SUCCESS)
     {
-        logData("Stan Received: %s", bal_update_resp.DE11_STAN);
-        logData("Txn Time Received : %s", bal_update_resp.DE12_TXN_TIME);
-        logData("Txn Date Received : %s", bal_update_resp.DE13_TXN_DATE);
-        logData("RRN Received : %s", bal_update_resp.DE37_RRN);
-        logData("Authcode Received : %s", bal_update_resp.DE38_AUTH_CODE);
-        logData("bal_update_response Code Received : %s", bal_update_resp.DE39_RESPONSE_CODE);
-        logData("Field 55 Received : %s", bal_update_resp.DE55_ICC_DATA.value);
+        logDataEx(currentTrxType, lastPanDigit, "Stan Received: %s", bal_update_resp.DE11_STAN);
+        logDataEx(currentTrxType, lastPanDigit, "Txn Time Received : %s", bal_update_resp.DE12_TXN_TIME);
+        logDataEx(currentTrxType, lastPanDigit, "Txn Date Received : %s", bal_update_resp.DE13_TXN_DATE);
+        logDataEx(currentTrxType, lastPanDigit, "RRN Received : %s", bal_update_resp.DE37_RRN);
+        logDataEx(currentTrxType, lastPanDigit, "Authcode Received : %s", bal_update_resp.DE38_AUTH_CODE);
+        logDataEx(currentTrxType, lastPanDigit, "bal_update_response Code Received : %s", bal_update_resp.DE39_RESPONSE_CODE);
+        logDataEx(currentTrxType, lastPanDigit, "Field 55 Received : %s", bal_update_resp.DE55_ICC_DATA.value);
 
         *response_len = 4;
         response[0] = 0x8A;
@@ -539,7 +530,7 @@ void performHostBalanceUpdate(struct transactionData trxData, long batchCounter,
             libtlv_hex_to_bin(bal_update_resp.DE55_ICC_DATA.value, issuer_authentication_data,
                               &issuer_authentication_data_len);
 
-            logData("91 Length : %d", issuer_authentication_data_len);
+            logDataEx(currentTrxType, lastPanDigit, "91 Length : %d", issuer_authentication_data_len);
             for (int i = 0; i < issuer_authentication_data_len; i++)
             {
                 response[i + 4] = issuer_authentication_data[i];
@@ -548,7 +539,7 @@ void performHostBalanceUpdate(struct transactionData trxData, long batchCounter,
     }
     else
     {
-        logError("Host data failed with error code : %d", ret);
+        logErrorEx(currentTrxType, lastPanDigit, "Host data failed with error code : %d", ret);
     }
 
     doBalanceUpdateHostResponseInDb(bal_update_resp, trxData.transactionId, ret);
@@ -561,7 +552,7 @@ void doBalanceUpdateHostResponseInDb(BALANCE_UPDATE_RESPONSE bal_update_resp,
                                      const char *transactionId, int hostResult)
 {
     TransactionTable trxTable = getTransactionTableData(transactionId);
-    logData("Transaction id received : %s", trxTable.transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Transaction id received : %s", trxTable.transactionId);
     sprintf(trxTable.reversalStatus, "%s", "");
     bool isReversal = false;
 
@@ -574,7 +565,7 @@ void doBalanceUpdateHostResponseInDb(BALANCE_UPDATE_RESPONSE bal_update_resp,
         else
         {
             memset(trxTable.rrn, 0, sizeof(trxTable.rrn));
-            logWarn("RRN Not Received");
+            logWarnEx(currentTrxType, lastPanDigit, "RRN Not Received");
         }
 
         if (bal_update_resp.DE38_AUTH_CODE != NULL)
@@ -584,7 +575,7 @@ void doBalanceUpdateHostResponseInDb(BALANCE_UPDATE_RESPONSE bal_update_resp,
         else
         {
             memset(trxTable.authCode, 0, sizeof(trxTable.authCode));
-            logWarn("Authcode Not Received %s.", "");
+            logWarnEx(currentTrxType, lastPanDigit, "Authcode Not Received %s.", "");
         }
 
         if (bal_update_resp.DE39_RESPONSE_CODE != NULL)
@@ -594,7 +585,7 @@ void doBalanceUpdateHostResponseInDb(BALANCE_UPDATE_RESPONSE bal_update_resp,
         else
         {
             memset(trxTable.hostResultCode, 0, sizeof(trxTable.hostResultCode));
-            logWarn("Response Code Not Received %s.", "");
+            logWarnEx(currentTrxType, lastPanDigit, "Response Code Not Received %s.", "");
         }
 
         if (bal_update_resp.DE55_ICC_DATA.value != NULL)
@@ -609,7 +600,7 @@ void doBalanceUpdateHostResponseInDb(BALANCE_UPDATE_RESPONSE bal_update_resp,
                 updateAmount[j++] = bal_update_resp.DE55_ICC_DATA.value[i];
             }
             updateAmount[j] = '\0';
-            logData("Updated amount received : %s", updateAmount);
+            logDataEx(currentTrxType, lastPanDigit, "Updated amount received : %s", updateAmount);
             sprintf(trxTable.updateAmount, "%s", updateAmount);
         }
         else
@@ -629,9 +620,9 @@ void doBalanceUpdateHostResponseInDb(BALANCE_UPDATE_RESPONSE bal_update_resp,
     else
     {
         sprintf(trxTable.hostError, "%s", getHostErrorString(hostResult));
-        logWarn("Host error : %s", getHostErrorString(hostResult));
+        logWarnEx(currentTrxType, lastPanDigit, "Host error : %s", getHostErrorString(hostResult));
         sprintf(trxTable.hostStatus, "%s", STATUS_FAILURE);
-        logError("Host Failed");
+        logErrorEx(currentTrxType, lastPanDigit, "Host Failed");
         trxTable.hostRetry++;
 
         memset(trxTable.rrn, 0, sizeof(trxTable.rrn));
@@ -641,7 +632,7 @@ void doBalanceUpdateHostResponseInDb(BALANCE_UPDATE_RESPONSE bal_update_resp,
         }
         else
         {
-            logWarn("RRN Not Received");
+            logWarnEx(currentTrxType, lastPanDigit, "RRN Not Received");
         }
 
         memset(trxTable.authCode, 0, sizeof(trxTable.authCode));
@@ -651,7 +642,7 @@ void doBalanceUpdateHostResponseInDb(BALANCE_UPDATE_RESPONSE bal_update_resp,
         }
         else
         {
-            logWarn("Authcode Not Received %s.", "");
+            logWarnEx(currentTrxType, lastPanDigit, "Authcode Not Received %s.", "");
         }
 
         memset(trxTable.hostResultCode, 0, sizeof(trxTable.hostResultCode));
@@ -661,7 +652,7 @@ void doBalanceUpdateHostResponseInDb(BALANCE_UPDATE_RESPONSE bal_update_resp,
         }
         else
         {
-            logWarn("Response Code Not Received %s.", "");
+            logWarnEx(currentTrxType, lastPanDigit, "Response Code Not Received %s.", "");
         }
 
         memset(trxTable.reversalStatus, 0, sizeof(trxTable.reversalStatus));
@@ -673,7 +664,7 @@ void doBalanceUpdateHostResponseInDb(BALANCE_UPDATE_RESPONSE bal_update_resp,
         }
         else
         {
-            logInfo("Host failed with error, No Reversal required");
+            logInfoEx(currentTrxType, lastPanDigit, "Host failed with error, No Reversal required");
         }
     }
 
@@ -693,11 +684,11 @@ void performHostServiceCreate(struct transactionData trxData, long batchCounter,
 {
     char stan[7];
     sprintf(stan, "%06ld", trxData.txnCounter);
-    logData("STAN : %s", stan);
+    logDataEx(currentTrxType, lastPanDigit, "STAN : %s", stan);
 
     char batch[7];
     sprintf(batch, "%06ld", batchCounter);
-    logData("Batch : %s", batch);
+    logDataEx(currentTrxType, lastPanDigit, "Batch : %s", batch);
 
     SERVICE_CREATE_REQUEST service_create_req;
     memcpy(service_create_req.DE11_STAN, stan, sizeof(stan));
@@ -706,13 +697,13 @@ void performHostServiceCreate(struct transactionData trxData, long batchCounter,
     memcpy(service_create_req.DE04_TXN_AMOUNT, "0", sizeof("0"));
 
     memcpy(service_create_req.DE35_TRACK_2_DATA, trxData.track2Enc, sizeof(trxData.track2Enc));
-    logData("Track 2 : %s", service_create_req.DE35_TRACK_2_DATA);
+    logDataEx(currentTrxType, lastPanDigit, "Track 2 : %s", service_create_req.DE35_TRACK_2_DATA);
 
     char ksn[45];
     safe_strcpy(ksn, sizeof(ksn), "0020");
     safe_strcat(ksn, sizeof(ksn), trxData.ksn);
     memcpy(service_create_req.DE53_SECURITY_DATA, ksn, sizeof(ksn));
-    logData("KSN : %s", service_create_req.DE53_SECURITY_DATA);
+    logDataEx(currentTrxType, lastPanDigit, "KSN : %s", service_create_req.DE53_SECURITY_DATA);
 
     service_create_req.DE55_ICC_DATA.value = (char *)malloc(trxData.iccDataLen + 1);
     memcpy(service_create_req.DE55_ICC_DATA.value, trxData.iccData, trxData.iccDataLen);
@@ -731,13 +722,13 @@ void performHostServiceCreate(struct transactionData trxData, long batchCounter,
 
     if (ret == TXN_SUCCESS)
     {
-        logData("Stan Received: %s", service_create_resp.DE11_STAN);
-        logData("Txn Time Received : %s", service_create_resp.DE12_TXN_TIME);
-        logData("Txn Date Received : %s", service_create_resp.DE13_TXN_DATE);
-        logData("RRN Received : %s", service_create_resp.DE37_RRN);
-        logData("Authcode Received : %s", service_create_resp.DE38_AUTH_CODE);
-        logData("Response Code Received : %s", service_create_resp.DE39_RESPONSE_CODE);
-        logData("Field 55 Received : %s", service_create_resp.DE55_ICC_DATA.value);
+        logDataEx(currentTrxType, lastPanDigit, "Stan Received: %s", service_create_resp.DE11_STAN);
+        logDataEx(currentTrxType, lastPanDigit, "Txn Time Received : %s", service_create_resp.DE12_TXN_TIME);
+        logDataEx(currentTrxType, lastPanDigit, "Txn Date Received : %s", service_create_resp.DE13_TXN_DATE);
+        logDataEx(currentTrxType, lastPanDigit, "RRN Received : %s", service_create_resp.DE37_RRN);
+        logDataEx(currentTrxType, lastPanDigit, "Authcode Received : %s", service_create_resp.DE38_AUTH_CODE);
+        logDataEx(currentTrxType, lastPanDigit, "Response Code Received : %s", service_create_resp.DE39_RESPONSE_CODE);
+        logDataEx(currentTrxType, lastPanDigit, "Field 55 Received : %s", service_create_resp.DE55_ICC_DATA.value);
 
         *response_len = 4;
         response[0] = 0x8A;
@@ -754,7 +745,7 @@ void performHostServiceCreate(struct transactionData trxData, long batchCounter,
             libtlv_hex_to_bin(service_create_resp.DE55_ICC_DATA.value, issuer_authentication_data,
                               &issuer_authentication_data_len);
 
-            logData("91 Length : %d", issuer_authentication_data_len);
+            logDataEx(currentTrxType, lastPanDigit, "91 Length : %d", issuer_authentication_data_len);
             for (int i = 0; i < issuer_authentication_data_len; i++)
             {
                 response[i + 4] = issuer_authentication_data[i];
@@ -763,7 +754,7 @@ void performHostServiceCreate(struct transactionData trxData, long batchCounter,
     }
     else
     {
-        logError("Service Create Host data failed with error code : %d", ret);
+        logErrorEx(currentTrxType, lastPanDigit, "Service Create Host data failed with error code : %d", ret);
     }
 
     doServiceCreateUpdateHostResponseInDb(service_create_resp, trxData.transactionId, ret);
@@ -776,7 +767,7 @@ void doServiceCreateUpdateHostResponseInDb(SERVICE_CREATE_RESPONSE service_creat
                                            const char *transactionId, int hostResult)
 {
     TransactionTable trxTable = getTransactionTableData(transactionId);
-    logData("Transaction id received : %s", trxTable.transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Transaction id received : %s", trxTable.transactionId);
     sprintf(trxTable.reversalStatus, "%s", "");
     bool isReversal = false;
 
@@ -789,7 +780,7 @@ void doServiceCreateUpdateHostResponseInDb(SERVICE_CREATE_RESPONSE service_creat
         else
         {
             memset(trxTable.rrn, 0, sizeof(trxTable.rrn));
-            logWarn("RRN Not Received");
+            logWarnEx(currentTrxType, lastPanDigit, "RRN Not Received");
         }
 
         if (service_create_resp.DE38_AUTH_CODE != NULL)
@@ -799,7 +790,7 @@ void doServiceCreateUpdateHostResponseInDb(SERVICE_CREATE_RESPONSE service_creat
         else
         {
             memset(trxTable.authCode, 0, sizeof(trxTable.authCode));
-            logWarn("Authcode Not Received %s.", "");
+            logWarnEx(currentTrxType, lastPanDigit, "Authcode Not Received %s.", "");
         }
 
         if (service_create_resp.DE39_RESPONSE_CODE != NULL)
@@ -809,7 +800,7 @@ void doServiceCreateUpdateHostResponseInDb(SERVICE_CREATE_RESPONSE service_creat
         else
         {
             memset(trxTable.hostResultCode, 0, sizeof(trxTable.hostResultCode));
-            logWarn("Response Code Not Received %s.", "");
+            logWarnEx(currentTrxType, lastPanDigit, "Response Code Not Received %s.", "");
         }
 
         memset(trxTable.updateAmount, 0, sizeof(trxTable.updateAmount));
@@ -826,9 +817,9 @@ void doServiceCreateUpdateHostResponseInDb(SERVICE_CREATE_RESPONSE service_creat
     else
     {
         sprintf(trxTable.hostError, "%s", getHostErrorString(hostResult));
-        logWarn("Host error : %s", getHostErrorString(hostResult));
+        logWarnEx(currentTrxType, lastPanDigit, "Host error : %s", getHostErrorString(hostResult));
         sprintf(trxTable.hostStatus, "%s", STATUS_FAILURE);
-        logError("Host Failed");
+        logErrorEx(currentTrxType, lastPanDigit, "Host Failed");
         trxTable.hostRetry++;
 
         memset(trxTable.rrn, 0, sizeof(trxTable.rrn));
@@ -838,7 +829,7 @@ void doServiceCreateUpdateHostResponseInDb(SERVICE_CREATE_RESPONSE service_creat
         }
         else
         {
-            logWarn("RRN Not Received");
+            logWarnEx(currentTrxType, lastPanDigit, "RRN Not Received");
         }
 
         memset(trxTable.authCode, 0, sizeof(trxTable.authCode));
@@ -848,7 +839,7 @@ void doServiceCreateUpdateHostResponseInDb(SERVICE_CREATE_RESPONSE service_creat
         }
         else
         {
-            logWarn("Authcode Not Received %s.", "");
+            logWarnEx(currentTrxType, lastPanDigit, "Authcode Not Received %s.", "");
         }
 
         memset(trxTable.hostResultCode, 0, sizeof(trxTable.hostResultCode));
@@ -858,20 +849,20 @@ void doServiceCreateUpdateHostResponseInDb(SERVICE_CREATE_RESPONSE service_creat
         }
         else
         {
-            logWarn("Response Code Not Received %s.", "");
+            logWarnEx(currentTrxType, lastPanDigit, "Response Code Not Received %s.", "");
         }
 
         memset(trxTable.reversalStatus, 0, sizeof(trxTable.reversalStatus));
         if (hostResult == TXN_RECEIVE_FROM_HOST_FAILED ||
             hostResult == TXN_RECEIVE_FROM_HOST_TIMEOUT)
         {
-            logInfo("Service create no need for reversal");
+            logInfoEx(currentTrxType, lastPanDigit, "Service create no need for reversal");
             // sprintf(trxTable.reversalStatus, STATUS_PENDING);
             // isReversal = true;
         }
         else
         {
-            logInfo("Host failed with error, No Reversal required");
+            logInfoEx(currentTrxType, lastPanDigit, "Host failed with error, No Reversal required");
         }
     }
 
@@ -891,11 +882,11 @@ void performHostMoneyAdd(struct transactionData trxData, long batchCounter,
 {
     char stan[7];
     sprintf(stan, "%06ld", trxData.txnCounter);
-    logData("STAN : %s", stan);
+    logDataEx(currentTrxType, lastPanDigit, "STAN : %s", stan);
 
     char batch[7];
     sprintf(batch, "%06ld", batchCounter);
-    logData("Batch : %s", batch);
+    logDataEx(currentTrxType, lastPanDigit, "Batch : %s", batch);
 
     MONEY_ADD_REQUEST money_add_req;
     memcpy(money_add_req.DE11_STAN, stan, sizeof(stan));
@@ -903,7 +894,7 @@ void performHostMoneyAdd(struct transactionData trxData, long batchCounter,
     char sAmount[13];
     convertAmount(trxData.amount, sAmount);
 
-    logData("Amount for money add : %s", sAmount);
+    logDataEx(currentTrxType, lastPanDigit, "Amount for money add : %s", sAmount);
     memcpy(money_add_req.DE04_TXN_AMOUNT, sAmount, sizeof(sAmount));
 
     memcpy(money_add_req.DE35_TRACK_2_DATA, trxData.track2Enc, sizeof(trxData.track2Enc));
@@ -937,11 +928,11 @@ void performHostMoneyAdd(struct transactionData trxData, long batchCounter,
         safe_strcat(de63StrData, sizeof(de63StrData), "000000000000"); // Empty RRN
     }
 
-    logData("Money add data for DE63 : %s", de63StrData);
+    logDataEx(currentTrxType, lastPanDigit, "Money add data for DE63 : %s", de63StrData);
 
     char de63Data[125];
     string2hexString(de63StrData, de63Data, sizeof(de63Data));
-    logData("Narration in hex : %s", de63Data);
+    logDataEx(currentTrxType, lastPanDigit, "Narration in hex : %s", de63Data);
 
     money_add_req.DE63_FUND_TYPE.len = 124;
     money_add_req.DE63_FUND_TYPE.value = (char *)malloc(124 + 1);
@@ -957,13 +948,13 @@ void performHostMoneyAdd(struct transactionData trxData, long batchCounter,
 
     if (ret == TXN_SUCCESS)
     {
-        logData("Stan Received: %s", money_add_resp.DE11_STAN);
-        logData("Txn Time Received : %s", money_add_resp.DE12_TXN_TIME);
-        logData("Txn Date Received : %s", money_add_resp.DE13_TXN_DATE);
-        logData("RRN Received : %s", money_add_resp.DE37_RRN);
-        logData("Authcode Received : %s", money_add_resp.DE38_AUTH_CODE);
-        logData("Money add Code Received : %s", money_add_resp.DE39_RESPONSE_CODE);
-        logData("Field 55 Received : %s", money_add_resp.DE55_ICC_DATA.value);
+        logDataEx(currentTrxType, lastPanDigit, "Stan Received: %s", money_add_resp.DE11_STAN);
+        logDataEx(currentTrxType, lastPanDigit, "Txn Time Received : %s", money_add_resp.DE12_TXN_TIME);
+        logDataEx(currentTrxType, lastPanDigit, "Txn Date Received : %s", money_add_resp.DE13_TXN_DATE);
+        logDataEx(currentTrxType, lastPanDigit, "RRN Received : %s", money_add_resp.DE37_RRN);
+        logDataEx(currentTrxType, lastPanDigit, "Authcode Received : %s", money_add_resp.DE38_AUTH_CODE);
+        logDataEx(currentTrxType, lastPanDigit, "Money add Code Received : %s", money_add_resp.DE39_RESPONSE_CODE);
+        logDataEx(currentTrxType, lastPanDigit, "Field 55 Received : %s", money_add_resp.DE55_ICC_DATA.value);
 
         *response_len = 4;
         response[0] = 0x8A;
@@ -980,7 +971,7 @@ void performHostMoneyAdd(struct transactionData trxData, long batchCounter,
             libtlv_hex_to_bin(money_add_resp.DE55_ICC_DATA.value, issuer_authentication_data,
                               &issuer_authentication_data_len);
 
-            logData("91 Length : %d", issuer_authentication_data_len);
+            logDataEx(currentTrxType, lastPanDigit, "91 Length : %d", issuer_authentication_data_len);
             for (int i = 0; i < issuer_authentication_data_len; i++)
             {
                 response[i + 4] = issuer_authentication_data[i];
@@ -989,7 +980,7 @@ void performHostMoneyAdd(struct transactionData trxData, long batchCounter,
     }
     else
     {
-        logError("Host data failed with error code : %d", ret);
+        logErrorEx(currentTrxType, lastPanDigit, "Host data failed with error code : %d", ret);
     }
 
     doMoneyAddHostResponseInDb(money_add_resp, trxData.transactionId, ret);
@@ -1002,7 +993,7 @@ void doMoneyAddHostResponseInDb(MONEY_ADD_RESPONSE money_add_resp,
                                 const char *transactionId, int hostResult)
 {
     TransactionTable trxTable = getTransactionTableData(transactionId);
-    logData("Transaction id received : %s", trxTable.transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Transaction id received : %s", trxTable.transactionId);
     sprintf(trxTable.reversalStatus, "%s", "");
     bool isReversal = false;
 
@@ -1015,7 +1006,7 @@ void doMoneyAddHostResponseInDb(MONEY_ADD_RESPONSE money_add_resp,
         else
         {
             memset(trxTable.rrn, 0, sizeof(trxTable.rrn));
-            logWarn("RRN Not Received");
+            logWarnEx(currentTrxType, lastPanDigit, "RRN Not Received");
         }
 
         if (money_add_resp.DE38_AUTH_CODE != NULL)
@@ -1025,7 +1016,7 @@ void doMoneyAddHostResponseInDb(MONEY_ADD_RESPONSE money_add_resp,
         else
         {
             memset(trxTable.authCode, 0, sizeof(trxTable.authCode));
-            logWarn("Authcode Not Received %s.", "");
+            logWarnEx(currentTrxType, lastPanDigit, "Authcode Not Received %s.", "");
         }
 
         if (money_add_resp.DE39_RESPONSE_CODE != NULL)
@@ -1035,7 +1026,7 @@ void doMoneyAddHostResponseInDb(MONEY_ADD_RESPONSE money_add_resp,
         else
         {
             memset(trxTable.hostResultCode, 0, sizeof(trxTable.hostResultCode));
-            logWarn("Response Code Not Received %s.", "");
+            logWarnEx(currentTrxType, lastPanDigit, "Response Code Not Received %s.", "");
         }
 
         if (money_add_resp.DE55_ICC_DATA.value != NULL)
@@ -1050,7 +1041,7 @@ void doMoneyAddHostResponseInDb(MONEY_ADD_RESPONSE money_add_resp,
                 updateAmount[j++] = money_add_resp.DE55_ICC_DATA.value[i];
             }
             updateAmount[j] = '\0';
-            logData("Updated amount received : %s", updateAmount);
+            logDataEx(currentTrxType, lastPanDigit, "Updated amount received : %s", updateAmount);
             sprintf(trxTable.updateAmount, "%s", updateAmount);
         }
         else
@@ -1070,9 +1061,9 @@ void doMoneyAddHostResponseInDb(MONEY_ADD_RESPONSE money_add_resp,
     else
     {
         sprintf(trxTable.hostError, "%s", getHostErrorString(hostResult));
-        logWarn("Host error : %s", getHostErrorString(hostResult));
+        logWarnEx(currentTrxType, lastPanDigit, "Host error : %s", getHostErrorString(hostResult));
         sprintf(trxTable.hostStatus, "%s", STATUS_FAILURE);
-        logError("Host Failed");
+        logErrorEx(currentTrxType, lastPanDigit, "Host Failed");
         trxTable.hostRetry++;
 
         memset(trxTable.rrn, 0, sizeof(trxTable.rrn));
@@ -1082,7 +1073,7 @@ void doMoneyAddHostResponseInDb(MONEY_ADD_RESPONSE money_add_resp,
         }
         else
         {
-            logWarn("RRN Not Received");
+            logWarnEx(currentTrxType, lastPanDigit, "RRN Not Received");
         }
 
         memset(trxTable.authCode, 0, sizeof(trxTable.authCode));
@@ -1092,7 +1083,7 @@ void doMoneyAddHostResponseInDb(MONEY_ADD_RESPONSE money_add_resp,
         }
         else
         {
-            logWarn("Authcode Not Received %s.", "");
+            logWarnEx(currentTrxType, lastPanDigit, "Authcode Not Received %s.", "");
         }
 
         memset(trxTable.hostResultCode, 0, sizeof(trxTable.hostResultCode));
@@ -1102,7 +1093,7 @@ void doMoneyAddHostResponseInDb(MONEY_ADD_RESPONSE money_add_resp,
         }
         else
         {
-            logWarn("Response Code Not Received %s.", "");
+            logWarnEx(currentTrxType, lastPanDigit, "Response Code Not Received %s.", "");
         }
 
         memset(trxTable.reversalStatus, 0, sizeof(trxTable.reversalStatus));
@@ -1114,7 +1105,7 @@ void doMoneyAddHostResponseInDb(MONEY_ADD_RESPONSE money_add_resp,
         }
         else
         {
-            logInfo("Host failed with error, No Reversal required");
+            logInfoEx(currentTrxType, lastPanDigit, "Host failed with error, No Reversal required");
         }
     }
 

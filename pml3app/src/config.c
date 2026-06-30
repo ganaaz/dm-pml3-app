@@ -20,8 +20,8 @@
 #include "ISO/utils.h"
 #include "include/abtinittable.h"
 
-#define VERSION "1.0.6"
-#define RELEASE_DATE "02-Jun-2026"
+#define VERSION "1.0.7"
+#define RELEASE_DATE "29-Jun-2026"
 
 struct applicationConfig appConfig;
 struct applicationData appData;
@@ -60,10 +60,10 @@ bool checkIsInSecondTap()
 void printDeviceStatus()
 {
     if (DEVICE_STATUS == STATUS_ONLINE)
-        logInfo("Device status is online");
+        logInfoEx("Config", "", "Device status is online");
 
     if (DEVICE_STATUS == STATUS_OFFLINE)
-        logInfo("Device status is offline");
+        logInfoEx("Config", "", "Device status is offline");
 }
 
 /**
@@ -103,7 +103,7 @@ void initTransactionTable()
 
     doVaccumTrxDb();
 
-    logData("Transactions database opened successfully");
+    logDataEx("L3-App", "Config", "Transactions database opened successfully");
 
     const char *createTableQuery = "CREATE TABLE IF NOT EXISTS Transactions("
                                    "ID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,"
@@ -199,7 +199,7 @@ void initTransactionTable()
         exit(-1);
     }
 
-    logInfo("Table created / avaialble success");
+    logInfoEx("Config", "", "Table created / avaialble success");
     if (errormsg)
     {
         free(errormsg);
@@ -211,11 +211,11 @@ void doVaccumTrxDb()
     int rc = sqlite3_exec(sqlite3Db, "VACUUM;", 0, 0, 0);
     if (rc != SQLITE_OK)
     {
-        logError("Error in VACUUM for database: %s", sqlite3_errmsg(sqlite3Db));
+        logErrorEx("ABT", "Vaccum", "Error in VACUUM for database: %s", sqlite3_errmsg(sqlite3Db));
     }
     else
     {
-        logInfo("VACUUM operation successful for NCRTC Trx Database.");
+        logInfoEx("Config", "", "VACUUM operation successful for NCRTC Trx Database.");
     }
 }
 
@@ -224,137 +224,137 @@ void doVaccumTrxDb()
  **/
 void printConfig()
 {
-    logWarn("Version : %s", appConfig.version);
-    logWarn("Release Date : %s", appConfig.releaseDate);
+    logWarnEx("L3-App", "", "Version : %s", appConfig.version);
+    logWarnEx("L3-App", "", "Release Date : %s", appConfig.releaseDate);
 
-    logInfo("============================================================");
-    logInfo("                     Version Info                           ");
-    logInfo("");
-    logInfo("Name : %s", appConfig.name);
-    logInfo("Version : %s", appConfig.version);
-    logInfo("Release Date : %s", appConfig.releaseDate);
-    logInfo("Currency Code : %s", appConfig.currencyCode);
-    logInfo("EMV Config File : %s", appConfig.emvConfigFile);
-    logInfo("Terminal Id : %s", appConfig.terminalId);
-    logInfo("Merchant Id : %s", appConfig.merchantId);
-    logInfo("Client Id : %s", appConfig.clientId);
-    logInfo("Client Name : %s", appConfig.clientName);
-    logInfo("Purchase Limit : %s", appConfig.purchaseLimit);
+    logInfoEx("Config", "", "============================================================");
+    logInfoEx("Config", "", "                     Version Info                           ");
+    logInfoEx("Config", "", "");
+    logInfoEx("Config", "", "Name : %s", appConfig.name);
+    logInfoEx("Config", "", "Version : %s", appConfig.version);
+    logInfoEx("Config", "", "Release Date : %s", appConfig.releaseDate);
+    logInfoEx("Config", "", "Currency Code : %s", appConfig.currencyCode);
+    logInfoEx("Config", "", "EMV Config File : %s", appConfig.emvConfigFile);
+    logInfoEx("Config", "", "Terminal Id : %s", appConfig.terminalId);
+    logInfoEx("Config", "", "Merchant Id : %s", appConfig.merchantId);
+    logInfoEx("Config", "", "Client Id : %s", appConfig.clientId);
+    logInfoEx("Config", "", "Client Name : %s", appConfig.clientName);
+    logInfoEx("Config", "", "Purchase Limit : %s", appConfig.purchaseLimit);
     uint64_t pAmount = strtol(appConfig.purchaseLimit, NULL, 10);
-    logData("Parsed Purchase Limit = %llu.%02llu", pAmount / 100, pAmount % 100);
-    logInfo("Money Add Limit : %s", appConfig.moneyAddLimit);
+    logDataEx("L3-App", "Config", "Parsed Purchase Limit = %llu.%02llu", pAmount / 100, pAmount % 100);
+    logInfoEx("Config", "", "Money Add Limit : %s", appConfig.moneyAddLimit);
     uint64_t mAmount = strtol(appConfig.moneyAddLimit, NULL, 10);
-    logData("Parsed Money Add Limit = %llu.%02llu", mAmount / 100, mAmount % 100);
-    logInfo("Host Version : %s", appConfig.hostVersion);
-    logInfo("Host IP : %s", appConfig.hostIP);
-    logInfo("Use ISO Host : %s", appConfig.useISOHost == true ? "true" : "false");
-    logInfo("NII : %s", appConfig.nii);
-    logInfo("TPDU : %s", appConfig.tpdu);
-    logInfo("Host Port : %d", appConfig.hostPort);
-    logInfo("Https Host Name : %s", appConfig.httpsHostName);
-    logInfo("Offline Url : %s", appConfig.offlineUrl);
-    logInfo("Service Creation : %s", appConfig.serviceCreationUrl);
-    logInfo("Money Load Url : %s", appConfig.moneyLoadUrl);
-    logInfo("Balance Update Url : %s", appConfig.balanceUpdateUrl);
-    logInfo("Verify Terminal Url : %s", appConfig.verifyTerminalUrl);
-    logInfo("Reversal Url : %s", appConfig.reversalUrl);
-    logInfo("Host Txn Timeout : %d", appConfig.hostTxnTimeout);
-    logInfo("Host Max Retry : %d", appConfig.hostMaxRetry);
-    logInfo("Host Process Thread Time : %d", appConfig.hostProcessTimeInMinutes);
-    logInfo("Reversal Process Check Time : %d", appConfig.reversalTimeInMinutes);
-    logInfo("Write Card Wait (ms) : %d", appConfig.writeCardWaitTimeMs);
-    logInfo("Max Transactions Before Device goes offline : %d", appConfig.maxOfflineTransactions);
-    logInfo("Min Txn for Device to be online : %d", appConfig.minRequiredForOnline);
-    logInfo("Force Key Injection : %s", appConfig.forceKeyInjection ? "true" : "false");
-    logInfo("Max Key Injection Try : %d", appConfig.maxKeyInjectionTry);
-    logInfo("Key Injection Retry Delay Sec : %d", appConfig.keyInjectRetryDelaySec);
-    logInfo("KLD IP : %s", appConfig.kldIP);
-    logInfo("Ignore zero value transaction : %d", appConfig.ignoreZeroValueTxn);
-    logInfo("Beep on card found : %s", appConfig.beepOnCardFound == true ? "true" : "false");
-    logInfo("Print Process outcome : %s", appConfig.printProcessOutcome == true ? "true" : "false");
-    logInfo("Enable Apdu Log : %s", appConfig.enableApduLog == true ? "true" : "false");
-    logInfo("Socket timeout : %d", appConfig.socketTimeout);
-    logInfo("Auto read card : %s", appConfig.autoReadCard == true ? "true" : "false");
+    logDataEx("L3-App", "Config", "Parsed Money Add Limit = %llu.%02llu", mAmount / 100, mAmount % 100);
+    logInfoEx("Config", "", "Host Version : %s", appConfig.hostVersion);
+    logInfoEx("Config", "", "Host IP : %s", appConfig.hostIP);
+    logInfoEx("Config", "", "Use ISO Host : %s", appConfig.useISOHost == true ? "true" : "false");
+    logInfoEx("Config", "", "NII : %s", appConfig.nii);
+    logInfoEx("Config", "", "TPDU : %s", appConfig.tpdu);
+    logInfoEx("Config", "", "Host Port : %d", appConfig.hostPort);
+    logInfoEx("Config", "", "Https Host Name : %s", appConfig.httpsHostName);
+    logInfoEx("Config", "", "Offline Url : %s", appConfig.offlineUrl);
+    logInfoEx("Config", "", "Service Creation : %s", appConfig.serviceCreationUrl);
+    logInfoEx("Config", "", "Money Load Url : %s", appConfig.moneyLoadUrl);
+    logInfoEx("Config", "", "Balance Update Url : %s", appConfig.balanceUpdateUrl);
+    logInfoEx("Config", "", "Verify Terminal Url : %s", appConfig.verifyTerminalUrl);
+    logInfoEx("Config", "", "Reversal Url : %s", appConfig.reversalUrl);
+    logInfoEx("Config", "", "Host Txn Timeout : %d", appConfig.hostTxnTimeout);
+    logInfoEx("Config", "", "Host Max Retry : %d", appConfig.hostMaxRetry);
+    logInfoEx("Config", "", "Host Process Thread Time : %d", appConfig.hostProcessTimeInMinutes);
+    logInfoEx("Config", "", "Reversal Process Check Time : %d", appConfig.reversalTimeInMinutes);
+    logInfoEx("Config", "", "Write Card Wait (ms) : %d", appConfig.writeCardWaitTimeMs);
+    logInfoEx("Config", "", "Max Transactions Before Device goes offline : %d", appConfig.maxOfflineTransactions);
+    logInfoEx("Config", "", "Min Txn for Device to be online : %d", appConfig.minRequiredForOnline);
+    logInfoEx("Config", "", "Force Key Injection : %s", appConfig.forceKeyInjection ? "true" : "false");
+    logInfoEx("Config", "", "Max Key Injection Try : %d", appConfig.maxKeyInjectionTry);
+    logInfoEx("Config", "", "Key Injection Retry Delay Sec : %d", appConfig.keyInjectRetryDelaySec);
+    logInfoEx("Config", "", "KLD IP : %s", appConfig.kldIP);
+    logInfoEx("Config", "", "Ignore zero value transaction : %d", appConfig.ignoreZeroValueTxn);
+    logInfoEx("Config", "", "Beep on card found : %s", appConfig.beepOnCardFound == true ? "true" : "false");
+    logInfoEx("Config", "", "Print Process outcome : %s", appConfig.printProcessOutcome == true ? "true" : "false");
+    logInfoEx("Config", "", "Enable Apdu Log : %s", appConfig.enableApduLog == true ? "true" : "false");
+    logInfoEx("Config", "", "Socket timeout : %d", appConfig.socketTimeout);
+    logInfoEx("Config", "", "Auto read card : %s", appConfig.autoReadCard == true ? "true" : "false");
 
-    logInfo("Device Code : %s", appConfig.deviceCode);
-    logInfo("Equipment Type : %s", appConfig.equipmentType);
-    logInfo("Equipment Code : %s", appConfig.equipmentCode);
-    logInfo("Station Id : %s", appConfig.stationId);
-    logInfo("Station Name : %s", appConfig.stationName);
+    logInfoEx("Config", "", "Device Code : %s", appConfig.deviceCode);
+    logInfoEx("Config", "", "Equipment Type : %s", appConfig.equipmentType);
+    logInfoEx("Config", "", "Equipment Code : %s", appConfig.equipmentCode);
+    logInfoEx("Config", "", "Station Id : %s", appConfig.stationId);
+    logInfoEx("Config", "", "Station Name : %s", appConfig.stationName);
 
-    logInfo("Enable Abt : %s", appConfig.enableAbt == true ? "true" : "false");
-    logInfo("Txn type code : %d", appConfig.txnTypeCode);
-    logInfo("Device Type : %d", appConfig.deviceType);
-    logInfo("Location Code : %d", appConfig.locationCode);
-    logInfo("Operator Code : %d", appConfig.operatorCode);
-    logInfo("Tariff Version : %d", appConfig.tariffVersion);
-    logInfo("Device Mode Code : %d", appConfig.deviceModeCode);
-    logInfo("Gate Open Wait time in ms : %d", appConfig.gateOpenWaitTimeInMs);
+    logInfoEx("Config", "", "Enable Abt : %s", appConfig.enableAbt == true ? "true" : "false");
+    logInfoEx("Config", "", "Txn type code : %d", appConfig.txnTypeCode);
+    logInfoEx("Config", "", "Device Type : %d", appConfig.deviceType);
+    logInfoEx("Config", "", "Location Code : %d", appConfig.locationCode);
+    logInfoEx("Config", "", "Operator Code : %d", appConfig.operatorCode);
+    logInfoEx("Config", "", "Tariff Version : %d", appConfig.tariffVersion);
+    logInfoEx("Config", "", "Device Mode Code : %d", appConfig.deviceModeCode);
+    logInfoEx("Config", "", "Gate Open Wait time in ms : %d", appConfig.gateOpenWaitTimeInMs);
 
-    logInfo("ABT Host IP : %s", appConfig.abtIP);
-    logInfo("ABT Host Name : %s", appConfig.abtHostName);
-    logInfo("ABT Host Port : %d", appConfig.abtPort);
-    logInfo("ABT Tap Url : %d", appConfig.abtTapUrl);
-    logInfo("ABT Host Process Wait Time in Minutes : %d", appConfig.abtHostProcessWaitTimeInMinutes);
-    logInfo("ABT Retention Period in days : %d", appConfig.abtDataRetentionPeriodInDays);
-    logInfo("ABT daily cleanup time : %s", appConfig.abtCleanupTimeHHMM);
-    logInfo("ABT Host Push Batch Count : %d", appConfig.abtHostPushBatchCount);
+    logInfoEx("Config", "", "ABT Host IP : %s", appConfig.abtIP);
+    logInfoEx("Config", "", "ABT Host Name : %s", appConfig.abtHostName);
+    logInfoEx("Config", "", "ABT Host Port : %d", appConfig.abtPort);
+    logInfoEx("Config", "", "ABT Tap Url : %d", appConfig.abtTapUrl);
+    logInfoEx("Config", "", "ABT Host Process Wait Time in Minutes : %d", appConfig.abtHostProcessWaitTimeInMinutes);
+    logInfoEx("Config", "", "ABT Retention Period in days : %d", appConfig.abtDataRetentionPeriodInDays);
+    logInfoEx("Config", "", "ABT daily cleanup time : %s", appConfig.abtCleanupTimeHHMM);
+    logInfoEx("Config", "", "ABT Host Push Batch Count : %d", appConfig.abtHostPushBatchCount);
 
-    logInfo("Paytm Max Log Count : %d", appConfig.paytmLogCount);
-    logInfo("Paytm Max Log Size : %d", appConfig.paytmMaxLogSizeKb);
-    logInfo("Use EMV Config json : %s", appConfig.useConfigJson == true ? "true" : "false");
+    logInfoEx("Config", "", "Paytm Max Log Count : %d", appConfig.paytmLogCount);
+    logInfoEx("Config", "", "Paytm Max Log Size : %d", appConfig.paytmMaxLogSizeKb);
+    logInfoEx("Config", "", "Use EMV Config json : %s", appConfig.useConfigJson == true ? "true" : "false");
 
-    logInfo("Use Airtel Host : %s", appConfig.useAirtelHost == true ? "true" : "false");
-    logInfo("Airtel Host IP : %s", appConfig.airtelHostIP);
-    logInfo("Airtel Host Port : %d", appConfig.airtelHostPort);
-    logInfo("Airtel Https Host Name : %s", appConfig.airtelHttpsHostName);
-    logInfo("Airtel Offline url : %s", appConfig.airtelOfflineUrl);
-    logInfo("Airtel Balance Update url : %s", appConfig.airtelBalanceUpdateUrl);
-    logInfo("Airtel Money Add url : %s", appConfig.airtelMoneyAddUrl);
-    logInfo("Airtel Sign Salt : %s", appConfig.airtelSignSalt);
-    logInfo("Latitude : %s", appConfig.latitude);
-    logInfo("Longitude : %s", appConfig.longitude);
+    logInfoEx("Config", "", "Use Airtel Host : %s", appConfig.useAirtelHost == true ? "true" : "false");
+    logInfoEx("Config", "", "Airtel Host IP : %s", appConfig.airtelHostIP);
+    logInfoEx("Config", "", "Airtel Host Port : %d", appConfig.airtelHostPort);
+    logInfoEx("Config", "", "Airtel Https Host Name : %s", appConfig.airtelHttpsHostName);
+    logInfoEx("Config", "", "Airtel Offline url : %s", appConfig.airtelOfflineUrl);
+    logInfoEx("Config", "", "Airtel Balance Update url : %s", appConfig.airtelBalanceUpdateUrl);
+    logInfoEx("Config", "", "Airtel Money Add url : %s", appConfig.airtelMoneyAddUrl);
+    logInfoEx("Config", "", "Airtel Sign Salt : %s", appConfig.airtelSignSalt);
+    logInfoEx("Config", "", "Latitude : %s", appConfig.latitude);
+    logInfoEx("Config", "", "Longitude : %s", appConfig.longitude);
 
-    logInfo("Total keys in config : %d", appConfig.keysLength);
+    logInfoEx("Config", "", "Total keys in config : %d", appConfig.keysLength);
 
     for (int i = 0; i < appConfig.keysLength; i++)
     {
-        logData("------------------------------------------------------------");
-        logData("Key : %d", (i + 1));
-        logData("Label : %s", appConfig.keyDataList[i]->label);
-        logData("MK Label : %s", appConfig.keyDataList[i]->mkLabel);
-        logData("Slot : %d", appConfig.keyDataList[i]->slot);
-        logData("MK Version : %d", appConfig.keyDataList[i]->mkVersion);
-        logData("AST Id : %s", appConfig.keyDataList[i]->astId);
-        logData("PKCS Id : %s", appConfig.keyDataList[i]->pkcsId);
-        logData("Type : %s", appConfig.keyDataList[i]->type);
-        logData("KeySet Identifier : %s", appConfig.keyDataList[i]->keySetIdentifier);
-        logData("IsMac : %d", appConfig.keyDataList[i]->isMac);
+        logDataEx("L3-App", "Config", "------------------------------------------------------------");
+        logDataEx("L3-App", "Config", "Key : %d", (i + 1));
+        logDataEx("L3-App", "Config", "Label : %s", appConfig.keyDataList[i]->label);
+        logDataEx("L3-App", "Config", "MK Label : %s", appConfig.keyDataList[i]->mkLabel);
+        logDataEx("L3-App", "Config", "Slot : %d", appConfig.keyDataList[i]->slot);
+        logDataEx("L3-App", "Config", "MK Version : %d", appConfig.keyDataList[i]->mkVersion);
+        logDataEx("L3-App", "Config", "AST Id : %s", appConfig.keyDataList[i]->astId);
+        logDataEx("L3-App", "Config", "PKCS Id : %s", appConfig.keyDataList[i]->pkcsId);
+        logDataEx("L3-App", "Config", "Type : %s", appConfig.keyDataList[i]->type);
+        logDataEx("L3-App", "Config", "KeySet Identifier : %s", appConfig.keyDataList[i]->keySetIdentifier);
+        logDataEx("L3-App", "Config", "IsMac : %d", appConfig.keyDataList[i]->isMac);
     }
 
-    logInfo("");
+    logInfoEx("Config", "", "");
 
-    logInfo("Total LED config length : %d", appConfig.ledLength);
+    logInfoEx("Config", "", "Total LED config length : %d", appConfig.ledLength);
     for (int i = 0; i < appConfig.ledLength; i++)
     {
-        logData("------------------------------------------------------------");
-        logData("State Name : %s", appConfig.ledDataList[i]->stateName);
-        logData("Mid Logo : %s", appConfig.ledDataList[i]->midLogo);
-        logData("LED 1 : %s", appConfig.ledDataList[i]->led1);
-        logData("LED 2 : %s", appConfig.ledDataList[i]->led2);
-        logData("LED 3 : %s", appConfig.ledDataList[i]->led3);
-        logData("LED 4 : %s", appConfig.ledDataList[i]->led4);
+        logDataEx("L3-App", "Config", "------------------------------------------------------------");
+        logDataEx("L3-App", "Config", "State Name : %s", appConfig.ledDataList[i]->stateName);
+        logDataEx("L3-App", "Config", "Mid Logo : %s", appConfig.ledDataList[i]->midLogo);
+        logDataEx("L3-App", "Config", "LED 1 : %s", appConfig.ledDataList[i]->led1);
+        logDataEx("L3-App", "Config", "LED 2 : %s", appConfig.ledDataList[i]->led2);
+        logDataEx("L3-App", "Config", "LED 3 : %s", appConfig.ledDataList[i]->led3);
+        logDataEx("L3-App", "Config", "LED 4 : %s", appConfig.ledDataList[i]->led4);
 
         // displayLight(appConfig.ledDataList[i]->stateName);
         // sleep(5);
     }
 
-    logInfo("");
-    logData("App Data Config values : ");
-    logInfo("Transaction Counter : %ld", appData.transactionCounter);
-    logInfo("Batch Counter : %ld", appData.batchCounter);
+    logInfoEx("Config", "", "");
+    logDataEx("L3-App", "Config", "App Data Config values : ");
+    logInfoEx("Config", "", "Transaction Counter : %ld", appData.transactionCounter);
+    logInfoEx("Config", "", "Batch Counter : %ld", appData.batchCounter);
 
-    logInfo("============================================================");
+    logInfoEx("Config", "", "============================================================");
 }
 
 KEYDATA *getDukptKey()
@@ -448,7 +448,7 @@ char *getStatusString()
  **/
 void loadAppConfig()
 {
-    logInfo("Going to read the file");
+    logInfoEx("Config", "", "Going to read the file");
     char *buffer;
     long length;
     FILE *file = fopen("config/app_config.json", "r");
@@ -1024,7 +1024,7 @@ void loadAppConfig()
     json_object_put(jObject); // Clear the json memory
     free(buffer);
 
-    logInfo("Config file read and updated successfully.");
+    logInfoEx("Config", "", "Config file read and updated successfully.");
 
     saveConfig();
 }
@@ -1034,7 +1034,7 @@ void loadAppConfig()
  **/
 void loadAppDataConfig()
 {
-    logInfo("Going to read the app data file");
+    logInfoEx("Config", "", "Going to read the app data file");
     char *buffer;
     long length;
     FILE *file = fopen("config/app_data.json", "r");
@@ -1056,7 +1056,7 @@ void loadAppDataConfig()
     json_object_put(jObject); // Clear the json memory
     free(buffer);
 
-    logInfo("Data file read and updated successfully.");
+    logInfoEx("Config", "", "Data file read and updated successfully.");
 }
 
 /**
@@ -1079,7 +1079,7 @@ void writeAppData()
     fclose(outputFile);
 
     json_object_put(jobj);
-    logInfo("App Data is successfully saved with new counters");
+    logInfoEx("Config", "", "App Data is successfully saved with new counters");
 }
 
 /**
@@ -1257,11 +1257,11 @@ void saveConfig()
     fclose(outputFile);
 
     json_object_put(jobj);
-    logInfo("Config is successfully saved");
+    logInfoEx("Config", "", "Config is successfully saved");
 
     if (strlen(appConfig.terminalId) == 0 || strlen(appConfig.merchantId) == 0)
     {
-        logInfo("Terminal id or Merchant id is empty");
+        logInfoEx("Config", "", "Terminal id or Merchant id is empty");
         changeAppState(APP_STATUS_TID_MID_EMPTY);
     }
     else
@@ -1278,7 +1278,7 @@ void saveConfig()
  **/
 int parseConfigAndUpdate(const char *data)
 {
-    logInfo("Going to parse the received config : %s", data);
+    logInfoEx("Config", "", "Going to parse the received config : %s", data);
     json_object *jObject = json_tokener_parse(data);
 
     json_object *jConfig = json_object_object_get(jObject, CONFIG_KEY);
@@ -1293,7 +1293,7 @@ int parseConfigAndUpdate(const char *data)
         if (json_object_object_get(jGeneral, CONFIG_KEY_WAIT_WRITE_CARD) != NULL)
         {
             int writeWaitTime = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_WAIT_WRITE_CARD));
-            logData("Updated Write Wait Time : %d", writeWaitTime);
+            logDataEx("L3-App", "Config", "Updated Write Wait Time : %d", writeWaitTime);
             doLock();
             appConfig.writeCardWaitTimeMs = writeWaitTime;
             appData.writeCardWaitTimeMs = writeWaitTime;
@@ -1304,20 +1304,20 @@ int parseConfigAndUpdate(const char *data)
         {
             safe_strcpy(appConfig.kldIP, sizeof(appConfig.kldIP),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_KLD_IP)));
-            logData("Updated KLD IP : %s", appConfig.kldIP);
+            logDataEx("L3-App", "Config", "Updated KLD IP : %s", appConfig.kldIP);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_MAX_KEY_INJECTION_TRY) != NULL)
         {
             int maxKeyInjTry = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_MAX_KEY_INJECTION_TRY));
-            logData("Updated Max Key Injection Try : %d", maxKeyInjTry);
+            logDataEx("L3-App", "Config", "Updated Max Key Injection Try : %d", maxKeyInjTry);
             appConfig.maxKeyInjectionTry = maxKeyInjTry;
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_KEYINJECT_RETRY_DELAY_SEC) != NULL)
         {
             int keyInjectDelay = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_KEYINJECT_RETRY_DELAY_SEC));
-            logData("Updated Key Injection Retry Delay : %d", keyInjectDelay);
+            logDataEx("L3-App", "Config", "Updated Key Injection Retry Delay : %d", keyInjectDelay);
             appConfig.keyInjectRetryDelaySec = keyInjectDelay;
         }
 
@@ -1325,7 +1325,7 @@ int parseConfigAndUpdate(const char *data)
         {
             safe_strcpy(appConfig.purchaseLimit, sizeof(appConfig.purchaseLimit),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_PURCHASE_LIMIT)));
-            logData("Updated Purchase Limit : %s", appConfig.purchaseLimit);
+            logDataEx("L3-App", "Config", "Updated Purchase Limit : %s", appConfig.purchaseLimit);
             appConfig.purchaseLimitAmount = strtol(appConfig.purchaseLimit, NULL, 10);
         }
 
@@ -1333,7 +1333,7 @@ int parseConfigAndUpdate(const char *data)
         {
             safe_strcpy(appConfig.moneyAddLimit, sizeof(appConfig.moneyAddLimit),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_MONEY_ADD_LIMIT)));
-            logData("Updated Money Add Limit : %s", appConfig.moneyAddLimit);
+            logDataEx("L3-App", "Config", "Updated Money Add Limit : %s", appConfig.moneyAddLimit);
             appConfig.moneyAddLimitAmount = strtol(appConfig.moneyAddLimit, NULL, 10);
         }
 
@@ -1380,7 +1380,7 @@ int parseConfigAndUpdate(const char *data)
         if (json_object_object_get(jGeneral, CONFIG_KEY_SOCKET_TIMEOUT) != NULL)
         {
             int timeout = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_SOCKET_TIMEOUT));
-            logData("Updating timeout to %d", timeout);
+            logDataEx("L3-App", "Config", "Updating timeout to %d", timeout);
             appConfig.socketTimeout = timeout;
         }
 
@@ -1388,48 +1388,48 @@ int parseConfigAndUpdate(const char *data)
         {
             safe_strcpy(appConfig.deviceCode, sizeof(appConfig.deviceCode),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_DEVICE_CODE)));
-            logData("Updated Device Code : %s", appConfig.deviceCode);
+            logDataEx("L3-App", "Config", "Updated Device Code : %s", appConfig.deviceCode);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_EQUIPMENT_TYPE) != NULL)
         {
             safe_strcpy(appConfig.equipmentType, sizeof(appConfig.equipmentType),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_EQUIPMENT_TYPE)));
-            logData("Updated equipment type : %s", appConfig.equipmentType);
+            logDataEx("L3-App", "Config", "Updated equipment type : %s", appConfig.equipmentType);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_EQUIPMENT_CODE) != NULL)
         {
             safe_strcpy(appConfig.equipmentCode, sizeof(appConfig.equipmentCode),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_EQUIPMENT_CODE)));
-            logData("Updated Equipment Code : %s", appConfig.equipmentCode);
+            logDataEx("L3-App", "Config", "Updated Equipment Code : %s", appConfig.equipmentCode);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_STATION_ID) != NULL)
         {
             safe_strcpy(appConfig.stationId, sizeof(appConfig.stationId),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_STATION_ID)));
-            logData("Updated Station Id : %s", appConfig.stationId);
+            logDataEx("L3-App", "Config", "Updated Station Id : %s", appConfig.stationId);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_STATION_NAME) != NULL)
         {
             safe_strcpy(appConfig.stationName, sizeof(appConfig.stationName),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_STATION_NAME)));
-            logData("Updated Station Name : %s", appConfig.stationName);
+            logDataEx("L3-App", "Config", "Updated Station Name : %s", appConfig.stationName);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_PAYTM_LOG_COUNT) != NULL)
         {
             int logCount = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_PAYTM_LOG_COUNT));
-            logData("Updating Paytm log count to %d", logCount);
+            logDataEx("L3-App", "Config", "Updating Paytm log count to %d", logCount);
             appConfig.paytmLogCount = logCount;
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_PAYTM_LOG_SIZE) != NULL)
         {
             int logSize = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_PAYTM_LOG_SIZE));
-            logData("Updating Paytm log size to %d", logSize);
+            logDataEx("L3-App", "Config", "Updating Paytm log size to %d", logSize);
             appConfig.paytmMaxLogSizeKb = logSize;
         }
 
@@ -1470,56 +1470,56 @@ int parseConfigAndUpdate(const char *data)
         if (json_object_object_get(jGeneral, CONFIG_KEY_TXN_TYPE_CODE) != NULL)
         {
             int val = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_TXN_TYPE_CODE));
-            logData("Updating txnTypeCode to %d", val);
+            logDataEx("L3-App", "Config", "Updating txnTypeCode to %d", val);
             appConfig.txnTypeCode = val;
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_DEVICE_TYPE) != NULL)
         {
             int val = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_DEVICE_TYPE));
-            logData("Updating deviceType to %d", val);
+            logDataEx("L3-App", "Config", "Updating deviceType to %d", val);
             appConfig.deviceType = val;
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_LOCATION_CODE) != NULL)
         {
             int val = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_LOCATION_CODE));
-            logData("Updating locationCode to %d", val);
+            logDataEx("L3-App", "Config", "Updating locationCode to %d", val);
             appConfig.locationCode = val;
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_OPERATOR_CODE) != NULL)
         {
             int val = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_OPERATOR_CODE));
-            logData("Updating operatorCode to %d", val);
+            logDataEx("L3-App", "Config", "Updating operatorCode to %d", val);
             appConfig.operatorCode = val;
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_TARIFF_VER) != NULL)
         {
             int val = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_TARIFF_VER));
-            logData("Updating tariffVersion to %d", val);
+            logDataEx("L3-App", "Config", "Updating tariffVersion to %d", val);
             appConfig.tariffVersion = val;
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_DEVICE_MODE_CODE) != NULL)
         {
             int val = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_DEVICE_MODE_CODE));
-            logData("Updating deviceModeCode to %d", val);
+            logDataEx("L3-App", "Config", "Updating deviceModeCode to %d", val);
             appConfig.deviceModeCode = val;
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_GATE_OPEN_WAIT) != NULL)
         {
             int val = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_GATE_OPEN_WAIT));
-            logData("Updating gateOpenWaitTimeInMs to %d", val);
+            logDataEx("L3-App", "Config", "Updating gateOpenWaitTimeInMs to %d", val);
             appConfig.gateOpenWaitTimeInMs = val;
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_ABT_HOST_PORT) != NULL)
         {
             int val = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_ABT_HOST_PORT));
-            logData("Updating abtPort to %d", val);
+            logDataEx("L3-App", "Config", "Updating abtPort to %d", val);
             appConfig.abtPort = val;
         }
 
@@ -1527,34 +1527,34 @@ int parseConfigAndUpdate(const char *data)
         {
             safe_strcpy(appConfig.abtIP, sizeof(appConfig.abtIP),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_ABT_HOST_IP)));
-            logData("Updated abtIP : %s", appConfig.abtIP);
+            logDataEx("L3-App", "Config", "Updated abtIP : %s", appConfig.abtIP);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_ABT_HOST_NAME) != NULL)
         {
             safe_strcpy(appConfig.abtHostName, sizeof(appConfig.abtHostName),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_ABT_HOST_NAME)));
-            logData("Updated abtHostName : %s", appConfig.abtHostName);
+            logDataEx("L3-App", "Config", "Updated abtHostName : %s", appConfig.abtHostName);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_ABT_TAP_URL) != NULL)
         {
             safe_strcpy(appConfig.abtTapUrl, sizeof(appConfig.abtTapUrl),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_ABT_TAP_URL)));
-            logData("Updated abtTapUrl : %s", appConfig.abtTapUrl);
+            logDataEx("L3-App", "Config", "Updated abtTapUrl : %s", appConfig.abtTapUrl);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_ABT_HOST_WAIT_TIME) != NULL)
         {
             int val = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_ABT_HOST_WAIT_TIME));
-            logData("Updating abtHostProcessWaitTimeInMinutes to %d", val);
+            logDataEx("L3-App", "Config", "Updating abtHostProcessWaitTimeInMinutes to %d", val);
             appConfig.abtHostProcessWaitTimeInMinutes = val;
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_ABT_RETENTION_DAYS) != NULL)
         {
             int val = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_ABT_RETENTION_DAYS));
-            logData("Updating abtDataRetentionPeriodInDays to %d", val);
+            logDataEx("L3-App", "Config", "Updating abtDataRetentionPeriodInDays to %d", val);
             appConfig.abtDataRetentionPeriodInDays = val;
         }
 
@@ -1562,13 +1562,13 @@ int parseConfigAndUpdate(const char *data)
         {
             safe_strcpy(appConfig.abtCleanupTimeHHMM, sizeof(appConfig.abtCleanupTimeHHMM),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_ABT_CLEANUP_TIME)));
-            logData("Updated abtCleanupTimeHHMM : %s", appConfig.abtCleanupTimeHHMM);
+            logDataEx("L3-App", "Config", "Updated abtCleanupTimeHHMM : %s", appConfig.abtCleanupTimeHHMM);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_ABT_HOST_PUSH_BATCH_COUNT) != NULL)
         {
             int val = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_ABT_HOST_PUSH_BATCH_COUNT));
-            logData("Updating abtHostPushBatchCount to %d", val);
+            logDataEx("L3-App", "Config", "Updating abtHostPushBatchCount to %d", val);
             appConfig.abtHostPushBatchCount = val;
         }
 
@@ -1586,13 +1586,13 @@ int parseConfigAndUpdate(const char *data)
         {
             safe_strcpy(appConfig.airtelHostIP, sizeof(appConfig.airtelHostIP),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_HOST_IP)));
-            logData("Updated airtelHostIP : %s", appConfig.airtelHostIP);
+            logDataEx("L3-App", "Config", "Updated airtelHostIP : %s", appConfig.airtelHostIP);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_HOST_PORT) != NULL)
         {
             int val = json_object_get_int(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_HOST_PORT));
-            logData("Updating airtelHostPort to %d", val);
+            logDataEx("L3-App", "Config", "Updating airtelHostPort to %d", val);
             appConfig.airtelHostPort = val;
         }
 
@@ -1600,77 +1600,77 @@ int parseConfigAndUpdate(const char *data)
         {
             safe_strcpy(appConfig.airtelHttpsHostName, sizeof(appConfig.airtelHttpsHostName),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_HTTPS_HOST_NAME)));
-            logData("Updated airtelHttpsHostName : %s", appConfig.airtelHttpsHostName);
+            logDataEx("L3-App", "Config", "Updated airtelHttpsHostName : %s", appConfig.airtelHttpsHostName);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_ARITEL_OFFLINE_URL) != NULL)
         {
             safe_strcpy(appConfig.airtelOfflineUrl, sizeof(appConfig.airtelOfflineUrl),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_ARITEL_OFFLINE_URL)));
-            logData("Updated airtelOfflineUrl : %s", appConfig.airtelOfflineUrl);
+            logDataEx("L3-App", "Config", "Updated airtelOfflineUrl : %s", appConfig.airtelOfflineUrl);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_BALANCE_UPDATE_URL) != NULL)
         {
             safe_strcpy(appConfig.airtelBalanceUpdateUrl, sizeof(appConfig.airtelBalanceUpdateUrl),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_BALANCE_UPDATE_URL)));
-            logData("Updated airtelBalanceUpdateUrl : %s", appConfig.airtelBalanceUpdateUrl);
+            logDataEx("L3-App", "Config", "Updated airtelBalanceUpdateUrl : %s", appConfig.airtelBalanceUpdateUrl);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_HEALTH_CHECK_URL) != NULL)
         {
             safe_strcpy(appConfig.airtelHealthCheckUrl, sizeof(appConfig.airtelHealthCheckUrl),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_HEALTH_CHECK_URL)));
-            logData("Updated airtelHealthCheckUrl : %s", appConfig.airtelHealthCheckUrl);
+            logDataEx("L3-App", "Config", "Updated airtelHealthCheckUrl : %s", appConfig.airtelHealthCheckUrl);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_VERIFY_TERMINAL_URL) != NULL)
         {
             safe_strcpy(appConfig.airtelVerifyTerminalUrl, sizeof(appConfig.airtelVerifyTerminalUrl),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_VERIFY_TERMINAL_URL)));
-            logData("Updated airtelVerifyTerminalUrl : %s", appConfig.airtelVerifyTerminalUrl);
+            logDataEx("L3-App", "Config", "Updated airtelVerifyTerminalUrl : %s", appConfig.airtelVerifyTerminalUrl);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_BALANCE_UPDATE_URL) != NULL)
         {
             safe_strcpy(appConfig.airtelReversalUrl, sizeof(appConfig.airtelReversalUrl),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_REVERSAL_URL)));
-            logData("Updated airtelReversalUrl : %s", appConfig.airtelReversalUrl);
+            logDataEx("L3-App", "Config", "Updated airtelReversalUrl : %s", appConfig.airtelReversalUrl);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_MONEY_ADD_URL) != NULL)
         {
             safe_strcpy(appConfig.airtelMoneyAddUrl, sizeof(appConfig.airtelMoneyAddUrl),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_MONEY_ADD_URL)));
-            logData("Updated airtelMoneyAddUrl : %s", appConfig.airtelMoneyAddUrl);
+            logDataEx("L3-App", "Config", "Updated airtelMoneyAddUrl : %s", appConfig.airtelMoneyAddUrl);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_SERVICE_CREATION_URL) != NULL)
         {
             safe_strcpy(appConfig.airtelServiceCreationUrl, sizeof(appConfig.airtelServiceCreationUrl),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_SERVICE_CREATION_URL)));
-            logData("Updated airtelServiceCreationUrl : %s", appConfig.airtelServiceCreationUrl);
+            logDataEx("L3-App", "Config", "Updated airtelServiceCreationUrl : %s", appConfig.airtelServiceCreationUrl);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_SIGN_SALT) != NULL)
         {
             safe_strcpy(appConfig.airtelSignSalt, sizeof(appConfig.airtelSignSalt),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_AIRTEL_SIGN_SALT)));
-            logData("Updated airtelSignSalt : %s", appConfig.airtelSignSalt);
+            logDataEx("L3-App", "Config", "Updated airtelSignSalt : %s", appConfig.airtelSignSalt);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_LATITUDE) != NULL)
         {
             safe_strcpy(appConfig.latitude, sizeof(appConfig.latitude),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_LATITUDE)));
-            logData("Updated latitude : %s", appConfig.latitude);
+            logDataEx("L3-App", "Config", "Updated latitude : %s", appConfig.latitude);
         }
 
         if (json_object_object_get(jGeneral, CONFIG_KEY_LONGITUDE) != NULL)
         {
             safe_strcpy(appConfig.longitude, sizeof(appConfig.longitude),
                         (char *)json_object_get_string(json_object_object_get(jGeneral, CONFIG_KEY_LONGITUDE)));
-            logData("Updated longitude : %s", appConfig.latitude);
+            logDataEx("L3-App", "Config", "Updated longitude : %s", appConfig.latitude);
         }
     }
 
@@ -1680,14 +1680,14 @@ int parseConfigAndUpdate(const char *data)
         if (json_object_object_get(jPsp, CONFIG_KEY_PORT) != NULL)
         {
             int port = json_object_get_int(json_object_object_get(jPsp, CONFIG_KEY_PORT));
-            logData("Updated Host Port : %d", port);
+            logDataEx("L3-App", "Config", "Updated Host Port : %d", port);
             appConfig.hostPort = port;
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_TXNTIMEOUT) != NULL)
         {
             int txnTimeOut = json_object_get_int(json_object_object_get(jPsp, CONFIG_KEY_TXNTIMEOUT));
-            logData("Updated Host txnTimeOut : %d", txnTimeOut);
+            logDataEx("L3-App", "Config", "Updated Host txnTimeOut : %d", txnTimeOut);
             appConfig.hostTxnTimeout = txnTimeOut;
         }
 
@@ -1695,139 +1695,139 @@ int parseConfigAndUpdate(const char *data)
         {
             safe_strcpy(appConfig.hostIP, sizeof(appConfig.hostIP),
                         (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_IP)));
-            logData("Updated Host IP : %s", appConfig.hostIP);
+            logDataEx("L3-App", "Config", "Updated Host IP : %s", appConfig.hostIP);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_NII) != NULL)
         {
             safe_strcpy(appConfig.nii, sizeof(appConfig.nii),
                         (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_NII)));
-            logData("Updated NII : %s", appConfig.nii);
+            logDataEx("L3-App", "Config", "Updated NII : %s", appConfig.nii);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_TPDU) != NULL)
         {
             safe_strcpy(appConfig.tpdu, sizeof(appConfig.tpdu),
                         (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_TPDU)));
-            logData("Updated TPDU : %s", appConfig.tpdu);
+            logDataEx("L3-App", "Config", "Updated TPDU : %s", appConfig.tpdu);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_HTTPS_HOST_NAME) != NULL)
         {
             safe_strcpy(appConfig.httpsHostName, sizeof(appConfig.httpsHostName),
                         (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_HTTPS_HOST_NAME)));
-            logData("Updated Https Host Name : %s", appConfig.httpsHostName);
+            logDataEx("L3-App", "Config", "Updated Https Host Name : %s", appConfig.httpsHostName);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_OFFLINE_URL) != NULL)
         {
             safe_strcpy(appConfig.offlineUrl, sizeof(appConfig.offlineUrl),
                         (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_OFFLINE_URL)));
-            logData("Updated Offline Url : %s", appConfig.offlineUrl);
+            logDataEx("L3-App", "Config", "Updated Offline Url : %s", appConfig.offlineUrl);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_SERVRICE_CREATION_URL) != NULL)
         {
             safe_strcpy(appConfig.serviceCreationUrl, sizeof(appConfig.serviceCreationUrl),
                         (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_SERVRICE_CREATION_URL)));
-            logData("Updated Service Creation Url : %s", appConfig.serviceCreationUrl);
+            logDataEx("L3-App", "Config", "Updated Service Creation Url : %s", appConfig.serviceCreationUrl);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_MONEY_LOAD_URL) != NULL)
         {
             safe_strcpy(appConfig.moneyLoadUrl, sizeof(appConfig.moneyLoadUrl),
                         (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_MONEY_LOAD_URL)));
-            logData("Updated Money Load Url : %s", appConfig.moneyLoadUrl);
+            logDataEx("L3-App", "Config", "Updated Money Load Url : %s", appConfig.moneyLoadUrl);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_BALANCE_UPDATE_URL) != NULL)
         {
             safe_strcpy(appConfig.balanceUpdateUrl, sizeof(appConfig.balanceUpdateUrl),
                         (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_BALANCE_UPDATE_URL)));
-            logData("Updated Balance Update Url : %s", appConfig.balanceUpdateUrl);
+            logDataEx("L3-App", "Config", "Updated Balance Update Url : %s", appConfig.balanceUpdateUrl);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_VERIFY_TERMINAL_URL) != NULL)
         {
             safe_strcpy(appConfig.verifyTerminalUrl, sizeof(appConfig.verifyTerminalUrl),
                         (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_VERIFY_TERMINAL_URL)));
-            logData("Updated Verify Terminal Url : %s", appConfig.verifyTerminalUrl);
+            logDataEx("L3-App", "Config", "Updated Verify Terminal Url : %s", appConfig.verifyTerminalUrl);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_REVERSAL_URL) != NULL)
         {
             safe_strcpy(appConfig.reversalUrl, sizeof(appConfig.reversalUrl),
                         (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_REVERSAL_URL)));
-            logData("Updated Reversal Url : %s", appConfig.reversalUrl);
+            logDataEx("L3-App", "Config", "Updated Reversal Url : %s", appConfig.reversalUrl);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_TERMINALID) != NULL)
         {
             safe_strcpy(appConfig.terminalId, sizeof(appConfig.terminalId),
                         (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_TERMINALID)));
-            logData("Updated Terminal Id : %s", appConfig.terminalId);
+            logDataEx("L3-App", "Config", "Updated Terminal Id : %s", appConfig.terminalId);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_MERCHANT_ID) != NULL)
         {
             safe_strcpy(appConfig.merchantId, sizeof(appConfig.merchantId),
                         (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_MERCHANT_ID)));
-            logData("Updated Merchant Id : %s", appConfig.merchantId);
+            logDataEx("L3-App", "Config", "Updated Merchant Id : %s", appConfig.merchantId);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_CLIENT_ID) != NULL)
         {
             safe_strcpy(appConfig.clientId, sizeof(appConfig.clientId),
                         (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_CLIENT_ID)));
-            logData("Updated Client Id : %s", appConfig.clientId);
+            logDataEx("L3-App", "Config", "Updated Client Id : %s", appConfig.clientId);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_CLIENT_NAME) != NULL)
         {
             safe_strcpy(appConfig.clientName, sizeof(appConfig.clientName),
                         (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_CLIENT_NAME)));
-            logData("Updated Client Name : %s", appConfig.clientName);
+            logDataEx("L3-App", "Config", "Updated Client Name : %s", appConfig.clientName);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_HOST_VERSION) != NULL)
         {
             safe_strcpy(appConfig.hostVersion, sizeof(appConfig.hostVersion),
                         (char *)json_object_get_string(json_object_object_get(jPsp, CONFIG_KEY_HOST_VERSION)));
-            logData("Updated Host Version : %s", appConfig.hostVersion);
+            logDataEx("L3-App", "Config", "Updated Host Version : %s", appConfig.hostVersion);
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_HOST_PROCESS_TIMEOUT) != NULL)
         {
             int timeOut = json_object_get_int(json_object_object_get(jPsp, CONFIG_KEY_HOST_PROCESS_TIMEOUT));
-            logData("Updated Host Process Timeout : %d", timeOut);
+            logDataEx("L3-App", "Config", "Updated Host Process Timeout : %d", timeOut);
             appConfig.hostProcessTimeInMinutes = timeOut;
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_REVERSAL_PROCESS_TIMEOUT) != NULL)
         {
             int timeOut = json_object_get_int(json_object_object_get(jPsp, CONFIG_KEY_REVERSAL_PROCESS_TIMEOUT));
-            logData("Updated Reversal Process Timeout : %d", timeOut);
+            logDataEx("L3-App", "Config", "Updated Reversal Process Timeout : %d", timeOut);
             appConfig.reversalTimeInMinutes = timeOut;
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_MAX_RETRY) != NULL)
         {
             int maxRetry = json_object_get_int(json_object_object_get(jPsp, CONFIG_KEY_MAX_RETRY));
-            logData("Updated Host Max Retry : %d", maxRetry);
+            logDataEx("L3-App", "Config", "Updated Host Max Retry : %d", maxRetry);
             appConfig.hostMaxRetry = maxRetry;
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_MAX_OFFLINE_TXN) != NULL)
         {
             int maxOffline = json_object_get_int(json_object_object_get(jPsp, CONFIG_KEY_MAX_OFFLINE_TXN));
-            logData("Updated maxOfflineTransactions : %d", maxOffline);
+            logDataEx("L3-App", "Config", "Updated maxOfflineTransactions : %d", maxOffline);
             appConfig.maxOfflineTransactions = maxOffline;
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_MIN_REQUIRED_ONLINE) != NULL)
         {
             int minRequired = json_object_get_int(json_object_object_get(jPsp, CONFIG_KEY_MIN_REQUIRED_ONLINE));
-            logData("Updated minRequiredForOnline : %d", minRequired);
+            logDataEx("L3-App", "Config", "Updated minRequiredForOnline : %d", minRequired);
             appConfig.minRequiredForOnline = minRequired;
         }
 
@@ -1849,7 +1849,7 @@ void readAndUpdateKeys(json_object *jConfig)
     {
         json_object *keys = json_object_object_get(jConfig, CONFIG_KEY_KEYS);
         int keyLen = json_object_array_length(keys);
-        logData("Length of keys : %d", keyLen);
+        logDataEx("L3-App", "Config", "Length of keys : %d", keyLen);
         appConfig.keysLength = keyLen;
 
         appConfig.keyDataList = malloc(keyLen * sizeof(KEYDATA));
@@ -1934,7 +1934,7 @@ void readAndUpdateLedConfigs(json_object *jConfig)
         json_object *ledList = json_object_object_get(jConfig, CONFIG_KEY_LED_CONFIGS);
 
         int ledLen = json_object_array_length(ledList);
-        logData("Length of Led Configs : %d", ledLen);
+        logDataEx("L3-App", "Config", "Length of Led Configs : %d", ledLen);
         appConfig.ledLength = ledLen;
 
         appConfig.ledDataList = malloc(ledLen * sizeof(LEDDATA));

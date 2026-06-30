@@ -94,6 +94,8 @@ int main(void)
 
     resetSecondTap();
 
+    registerMessageLayout();
+    registerPlainStdoutAppender();
     if (log4c_init())
     {
         printf("Log4c init Failed.....\n");
@@ -107,8 +109,8 @@ int main(void)
     char timeBuf[26];
     ctime_r(&t, timeBuf);
     timeBuf[strcspn(timeBuf, "\n")] = '\0';
-    logInfo("Starting L3 Transit Application (PML3) : %s", timeBuf);
-    logInfo("Log4c initialized successfully and with priority %d", logPriority);
+    logInfoEx("L3-App", "", "Starting L3 Transit Application (PML3) : %s", timeBuf);
+    logInfoEx("L3-App", "", "Log4c initialized successfully and with priority %d", logPriority);
 
     appConfig.isDebugEnabled = 0;
     if (logPriority == LOG4C_PRIORITY_DEBUG)
@@ -126,20 +128,20 @@ int main(void)
 
     if (pthread_mutex_init(&lock, NULL) != 0)
     {
-        logError("Lock Init Failed");
+        logErrorEx("L3-App", "", "Lock Init Failed");
         return EXIT_FAILURE;
     }
 
     if (pthread_mutex_init(&lockFeigTrx, NULL) != 0)
     {
-        logError("Lock Init lockFeigTrx Failed");
+        logErrorEx("L3-App", "", "Lock Init lockFeigTrx Failed");
         pthread_mutex_destroy(&lock);
         return EXIT_FAILURE;
     }
 
     if (pthread_mutex_init(&lockRupayService, NULL) != 0)
     {
-        logError("Lock Init lockRupayService Failed");
+        logErrorEx("L3-App", "", "Lock Init lockRupayService Failed");
         pthread_mutex_destroy(&lockFeigTrx);
         pthread_mutex_destroy(&lock);
         return EXIT_FAILURE;
@@ -147,7 +149,7 @@ int main(void)
 
     if (pthread_mutex_init(&lockGateOpen, NULL) != 0)
     {
-        logError("Lock Init lockGateOpen Failed");
+        logErrorEx("L3-App", "", "Lock Init lockGateOpen Failed");
         pthread_mutex_destroy(&lockRupayService);
         pthread_mutex_destroy(&lockFeigTrx);
         pthread_mutex_destroy(&lock);
@@ -156,13 +158,13 @@ int main(void)
 
     loadPayTmIndex();
     int result = initConfig();
-    logData("Result :: %d", result);
+    logDataEx("L3-App", "", "Result :: %d", result);
     if (result != 0)
     {
-        logError("Initialization failed.");
+        logErrorEx("L3-App", "", "Initialization failed.");
         return EXIT_FAILURE;
     }
-    logData("init config done");
+    logDataEx("L3-App", "", "init config done");
 
     initTimeLogData();
     printConfig();
@@ -177,7 +179,7 @@ int main(void)
     activePendingTxnCount = getActivePendingTransactions();
     if (activePendingTxnCount == -1)
     {
-        logError("Unable to get the active pending transactions.");
+        logErrorEx("L3-App", "", "Unable to get the active pending transactions.");
         goto cleanup;
     }
 
@@ -185,10 +187,10 @@ int main(void)
     int timeoutTxn = getActivePendingHostErrorCategoryTransactions(HOST_ERROR_CATEGORY_TIMEOUT);
     int pendingTxn = activePendingTxnCount - (failureTxn + timeoutTxn);
 
-    logInfo("Active Pending Transactions : %d", activePendingTxnCount);
-    logInfo("Pending with Failure : %d", failureTxn);
-    logInfo("Pending with Timeout : %d", timeoutTxn);
-    logInfo("Pending with not yet sent : %d", pendingTxn);
+    logInfoEx("L3-App", "", "Active Pending Transactions : %d", activePendingTxnCount);
+    logInfoEx("L3-App", "", "Pending with Failure : %d", failureTxn);
+    logInfoEx("L3-App", "", "Pending with Timeout : %d", timeoutTxn);
+    logInfoEx("L3-App", "", "Pending with not yet sent : %d", pendingTxn);
 
     if (activePendingTxnCount > appConfig.maxOfflineTransactions)
         DEVICE_STATUS = STATUS_OFFLINE;
@@ -201,7 +203,7 @@ int main(void)
 
     if (rc != 0)
     {
-        logError("Feig initialization failed.");
+        logErrorEx("L3-App", "", "Feig initialization failed.");
         goto cleanup;
     }
 
@@ -210,68 +212,68 @@ int main(void)
     appData.isKeyInjectionSuccess = false;
     if (appConfig.forceKeyInjection)
     {
-        logWarn("Starting key injection process as a thread in background");
+        logWarnEx("L3-App", "", "Starting key injection process as a thread in background");
         displayLight(LED_ST_WAITING_KEY_INJECTION);
         if (pthread_create(&keyInjectionThread, NULL, processKeyInjection, NULL) != 0)
         {
-            logError("Failed to create keyInjectionThread: %s", strerror(errno));
+            logErrorEx("L3-App", "", "Failed to create keyInjectionThread: %s", strerror(errno));
             goto cleanup;
         }
         started |= TH_KEY_INJECTION;
     }
     else
     {
-        logWarn("Key injection skipped as per config, so making key injection as success");
+        logWarnEx("L3-App", "", "Key injection skipped as per config, so making key injection as success");
         appData.isKeyInjectionSuccess = true;
     }
 
     if (appConfig.useConfigJson)
     {
-        logInfo("Going to read the emv config json file and parse it");
+        logInfoEx("L3-App", "", "Going to read the emv config json file and parse it");
         struct tlv *tlvConfig = parseEmvConfigFile();
         void *dataConfig = NULL;
         size_t dataConfigLen = 0;
         serializeTlv(tlvConfig, &dataConfig, &dataConfigLen);
-        logInfo("File read and parsed");
+        logInfoEx("L3-App", "", "File read and parsed");
 
-        logInfo("Going to configure Feig");
+        logInfoEx("L3-App", "", "Going to configure Feig");
         rc = fetpf_ep_configure(fetpf, dataConfig, dataConfigLen);
         if (rc != FETPF_RC_OK)
         {
             changeAppState(APP_STATUS_READY);
-            logError("fetpf_ep_configure failed (rc: %d)\n", rc);
+            logErrorEx("L3-App", "", "fetpf_ep_configure failed (rc: %d)\n", rc);
             free(dataConfig);
             tlv_free(tlvConfig);
             goto cleanup;
         }
-        logInfo("fetpf_ep_configure success");
+        logInfoEx("L3-App", "", "fetpf_ep_configure success");
         free(dataConfig);
         tlv_free(tlvConfig);
     }
     else
     {
-        logInfo("Going to read config file : %s, and configure kernel.", appConfig.emvConfigFile);
+        logInfoEx("L3-App", "", "Going to read config file : %s, and configure kernel.", appConfig.emvConfigFile);
         size_t configLen;
         void *config = NULL;
         rc = readEmvConfig(appConfig.emvConfigFile, &config, &configLen);
         if (rc)
         {
             changeAppState(APP_STATUS_READY);
-            logError("config failed (rc: %d)\n", rc);
+            logErrorEx("L3-App", "", "config failed (rc: %d)\n", rc);
             goto cleanup;
         }
-        logInfo("EMV Config read successfully.");
+        logInfoEx("L3-App", "", "EMV Config read successfully.");
 
-        logInfo("Going to configure Feig");
+        logInfoEx("L3-App", "", "Going to configure Feig");
         rc = fetpf_ep_configure(fetpf, config, configLen);
         if (rc != FETPF_RC_OK)
         {
             changeAppState(APP_STATUS_READY);
-            logError("fetpf_ep_configure failed (rc: %d)\n", rc);
+            logErrorEx("L3-App", "", "fetpf_ep_configure failed (rc: %d)\n", rc);
             free(config);
             goto cleanup;
         }
-        logInfo("fetpf_ep_configure success");
+        logInfoEx("L3-App", "", "fetpf_ep_configure success");
         free(config);
     }
 
@@ -281,7 +283,7 @@ int main(void)
 
     if (strlen(appConfig.terminalId) == 0 || strlen(appConfig.merchantId) == 0)
     {
-        logInfo("Terminal id or Merchant id is empty");
+        logInfoEx("L3-App", "", "Terminal id or Merchant id is empty");
         changeAppState(APP_STATUS_TID_MID_EMPTY);
     }
 
@@ -296,125 +298,133 @@ int main(void)
 
     if (pthread_create(&transactionThread, NULL, processTransaction, NULL) != 0)
     {
-        logError("Failed to create transactionThread: %s", strerror(errno));
+        logErrorEx("L3-App", "", "Failed to create transactionThread: %s", strerror(errno));
         goto cleanup;
     }
     started |= TH_TRANSACTION;
 
     if (pthread_create(&hostOfflineThread, NULL, handleHostOfflineTransactions, NULL) != 0)
     {
-        logError("Failed to create hostOfflineThread: %s", strerror(errno));
+        logErrorEx("L3-App", "", "Failed to create hostOfflineThread: %s", strerror(errno));
         goto cleanup;
     }
     started |= TH_HOST_OFFLINE;
 
     if (pthread_create(&reversalThread, NULL, startReversalThread, NULL) != 0)
     {
-        logError("Failed to create reversalThread: %s", strerror(errno));
+        logErrorEx("L3-App", "", "Failed to create reversalThread: %s", strerror(errno));
         goto cleanup;
     }
     started |= TH_REVERSAL;
 
     if (pthread_create(&abtHostThread, NULL, handleAbtTransactions, NULL) != 0)
     {
-        logError("Failed to create abtHostThread: %s", strerror(errno));
+        logErrorEx("L3-App", "", "Failed to create abtHostThread: %s", strerror(errno));
         goto cleanup;
     }
     started |= TH_ABT_HOST;
 
     if (pthread_create(&abtHouseKeepingThread, NULL, houseKeepingAbtTransactions, NULL) != 0)
     {
-        logError("Failed to create abtHouseKeepingThread: %s", strerror(errno));
+        logErrorEx("L3-App", "", "Failed to create abtHouseKeepingThread: %s", strerror(errno));
         goto cleanup;
     }
     started |= TH_ABT_HOUSEKEEP;
 
     if (pthread_create(&fetchDataThread, NULL, createAndListenForFetchData, NULL) != 0)
     {
-        logError("Failed to create fetchDataThread: %s", strerror(errno));
+        logErrorEx("L3-App", "", "Failed to create fetchDataThread: %s", strerror(errno));
         goto cleanup;
     }
     started |= TH_FETCH_DATA;
 
     if (pthread_create(&usbMessageThread, NULL, createAndListenForUSB, NULL) != 0)
     {
-        logError("Failed to create usbMessageThread: %s", strerror(errno));
+        logErrorEx("L3-App", "", "Failed to create usbMessageThread: %s", strerror(errno));
         goto cleanup;
     }
     started |= TH_USB_MESSAGE;
 
     if (pthread_create(&mainAppThread, NULL, createAndListenServer, NULL) != 0)
     {
-        logError("Failed to create mainAppThread: %s", strerror(errno));
+        logErrorEx("L3-App", "", "Failed to create mainAppThread: %s", strerror(errno));
         goto cleanup;
     }
     started |= TH_MAIN_APP;
+
+    // char deviceId[10];
+    // getDeviceId(deviceId);
+    // logInfoEx("L3-App", "", "Device Id : %s", deviceId);
+
+    // char ip[16];
+    // getLocalIP(ip, sizeof(ip));
+    // logInfoEx("L3-App", "", "Local IP : %s", ip);
 
     while (!shutdown_requested)
     {
         sleep(1);
     }
 
-    logError("Shutting down the application");
+    logErrorEx("L3-App", "", "Shutting down the application");
 
 cleanup:
     if (started & TH_KEY_INJECTION)
     {
         pthread_cancel(keyInjectionThread);
         pthread_join(keyInjectionThread, NULL);
-        logError("keyInjectionThread exited");
+        logErrorEx("L3-App", "", "keyInjectionThread exited");
     }
     if (started & TH_HOST_OFFLINE)
     {
         pthread_cancel(hostOfflineThread);
         pthread_join(hostOfflineThread, NULL);
-        logError("hostOfflineThread exited");
+        logErrorEx("L3-App", "", "hostOfflineThread exited");
     }
     if (started & TH_REVERSAL)
     {
         pthread_cancel(reversalThread);
         pthread_join(reversalThread, NULL);
-        logError("startReversalThread exited");
+        logErrorEx("L3-App", "", "startReversalThread exited");
     }
     if (started & TH_ABT_HOST)
     {
         pthread_cancel(abtHostThread);
         pthread_join(abtHostThread, NULL);
-        logError("abtHostThread exited");
+        logErrorEx("L3-App", "", "abtHostThread exited");
     }
     if (started & TH_ABT_HOUSEKEEP)
     {
         pthread_cancel(abtHouseKeepingThread);
         pthread_join(abtHouseKeepingThread, NULL);
-        logError("abtHouseKeepingThread exited");
+        logErrorEx("L3-App", "", "abtHouseKeepingThread exited");
     }
     if (started & TH_FETCH_DATA)
     {
         pthread_cancel(fetchDataThread);
         pthread_join(fetchDataThread, NULL);
-        logError("fetchDataThread exited");
+        logErrorEx("L3-App", "", "fetchDataThread exited");
     }
     if (started & TH_USB_MESSAGE)
     {
         pthread_cancel(usbMessageThread);
         pthread_join(usbMessageThread, NULL);
-        logError("usbMessageThread exited");
+        logErrorEx("L3-App", "", "usbMessageThread exited");
     }
     if (started & TH_MAIN_APP)
     {
         pthread_cancel(mainAppThread);
         pthread_join(mainAppThread, NULL);
-        logError("server thread exited");
+        logErrorEx("L3-App", "", "server thread exited");
     }
     if (started & TH_TRANSACTION)
     {
         pthread_cancel(transactionThread);
         pthread_join(transactionThread, NULL);
-        logError("transactionThread exited");
+        logErrorEx("L3-App", "", "transactionThread exited");
     }
 
     printDiskMemory();
-    logError("Application shut down");
+    logErrorEx("L3-App", "", "Application shut down");
     log4c_fini();
 
     int expectedThreads = TH_TRANSACTION | TH_HOST_OFFLINE | TH_REVERSAL | TH_ABT_HOST |

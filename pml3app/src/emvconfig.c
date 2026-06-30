@@ -16,13 +16,13 @@
 
 struct tlv *parseEmvConfigFile()
 {
-    logInfo("Going to read emv config json file");
+    logInfoEx("Config", "", "Going to read emv config json file");
     char *buffer;
     long length;
     FILE *file = fopen("config/emv_config.json", "r");
     fseek(file, 0, SEEK_END);
     length = ftell(file);
-    logData("File length : %d", length);
+    logDataEx("L3-App", "Config", "File length : %d", length);
     fseek(file, 0, SEEK_SET);
     buffer = (char *)malloc(length);
     if (buffer)
@@ -46,7 +46,7 @@ struct tlv *parseEmvConfigFile()
     json_object_put(jObject); // Clear the json memory
     free(buffer);
 
-    logInfo("Config file read and structure updated successfully.");
+    logInfoEx("Config", "", "Config file read and structure updated successfully.");
     // printEmvConfig(emvConfig);
 
     generateTlv(emvConfig);
@@ -628,7 +628,7 @@ EMV loadCombinations(json_object *jObject, EMV emv)
     json_object *combinationsObject = json_object_object_get(emvObject, "combinations");
 
     int combinationsLen = json_object_array_length(combinationsObject);
-    logData("Length of Combinations : %d", combinationsLen);
+    logDataEx("L3-App", "Config", "Length of Combinations : %d", combinationsLen);
     emv.combinationsLen = combinationsLen;
     emv.combinations = malloc(combinationsLen * sizeof(COMBINATIONS));
 
@@ -770,7 +770,7 @@ EMV loadKeys(json_object *jObject, EMV emv)
     json_object *keys = json_object_object_get(emvObject, "keys");
 
     int keysLen = json_object_array_length(keys);
-    logData("Length of keys : %d", keysLen);
+    logDataEx("L3-App", "Config", "Length of keys : %d", keysLen);
     emv.keysLen = keysLen;
     emv.keyList = malloc(keysLen * sizeof(KEYS));
 
@@ -793,7 +793,7 @@ EMV_CONFIG loadEncrypts(json_object *jObject, EMV_CONFIG emvConfig)
 {
     json_object *encrypts = json_object_object_get(jObject, "encrypts");
     int encryptsLen = json_object_array_length(encrypts);
-    logData("Length of encrypts : %d", encryptsLen);
+    logDataEx("L3-App", "Config", "Length of encrypts : %d", encryptsLen);
     emvConfig.encryptLen = encryptsLen;
     emvConfig.encryptList = malloc(encryptsLen * sizeof(ENCRYPT));
 
@@ -813,74 +813,74 @@ EMV_CONFIG loadEncrypts(json_object *jObject, EMV_CONFIG emvConfig)
 
 void printEmvConfig(EMV_CONFIG emvConfig)
 {
-    logData("===================================================");
-    logData("EMV Data");
-    logData("Trace Enabled : %s", emvConfig.traceEnabled);
-    logData("Total Encrypts : %d", emvConfig.encryptLen);
+    logDataEx("L3-App", "Config", "===================================================");
+    logDataEx("L3-App", "Config", "EMV Data");
+    logDataEx("L3-App", "Config", "Trace Enabled : %s", emvConfig.traceEnabled);
+    logDataEx("L3-App", "Config", "Total Encrypts : %d", emvConfig.encryptLen);
     for (int i = 0; i < emvConfig.encryptLen; i++)
     {
-        logData("");
-        logData("Item : %d", (i + 1));
-        logData("\tKey Label \t: %s", emvConfig.encryptList[i]->keyLabel);
-        logData("\tTags \t: %s", emvConfig.encryptList[i]->tags);
+        logDataEx("L3-App", "Config", "");
+        logDataEx("L3-App", "Config", "Item : %d", (i + 1));
+        logDataEx("L3-App", "Config", "\tKey Label \t: %s", emvConfig.encryptList[i]->keyLabel);
+        logDataEx("L3-App", "Config", "\tTags \t: %s", emvConfig.encryptList[i]->tags);
     }
 
-    logData("");
-    logData("Total Keys : %d", emvConfig.emv.keysLen);
+    logDataEx("L3-App", "Config", "");
+    logDataEx("L3-App", "Config", "Total Keys : %d", emvConfig.emv.keysLen);
 
     for (int i = 0; i < emvConfig.emv.keysLen; i++)
     {
-        logData("");
-        logData("Item : %d", (i + 1));
-        logData("\tAid \t: %s", emvConfig.emv.keyList[i]->aid);
-        logData("\tKey Index \t: %s", emvConfig.emv.keyList[i]->keyIndex);
-        logData("\tExponent \t: %s", emvConfig.emv.keyList[i]->exponent);
-        logData("\tModulus \t: %s", emvConfig.emv.keyList[i]->modulus);
+        logDataEx("L3-App", "Config", "");
+        logDataEx("L3-App", "Config", "Item : %d", (i + 1));
+        logDataEx("L3-App", "Config", "\tAid \t: %s", emvConfig.emv.keyList[i]->aid);
+        logDataEx("L3-App", "Config", "\tKey Index \t: %s", emvConfig.emv.keyList[i]->keyIndex);
+        logDataEx("L3-App", "Config", "\tExponent \t: %s", emvConfig.emv.keyList[i]->exponent);
+        logDataEx("L3-App", "Config", "\tModulus \t: %s", emvConfig.emv.keyList[i]->modulus);
     }
 
-    logData("");
-    logData("Online Tags");
-    logData("\tKernel Id \t: %s", emvConfig.emv.onlineTags.kernelId);
-    logData("\tTags \t\t: %s", emvConfig.emv.onlineTags.tags);
+    logDataEx("L3-App", "Config", "");
+    logDataEx("L3-App", "Config", "Online Tags");
+    logDataEx("L3-App", "Config", "\tKernel Id \t: %s", emvConfig.emv.onlineTags.kernelId);
+    logDataEx("L3-App", "Config", "\tTags \t\t: %s", emvConfig.emv.onlineTags.tags);
 
-    logData("");
-    logData("Combinations");
+    logDataEx("L3-App", "Config", "");
+    logDataEx("L3-App", "Config", "Combinations");
 
     for (int i = 0; i < emvConfig.emv.combinationsLen; i++)
     {
         COMBINATIONS *combinations = emvConfig.emv.combinations[i];
-        logData("");
-        logData("Item : %d", (i + 1));
-        logData("Entry Point");
-        logData("\tContactless Txn Limit \t: %s", combinations->entryPoint.clessTxnLimit);
-        logData("\tCVM Require Limit \t: %s", combinations->entryPoint.cvmRequireLimit);
-        logData("\tTerminal Floor Limit \t: %s", combinations->entryPoint.termFloorLimit);
+        logDataEx("L3-App", "Config", "");
+        logDataEx("L3-App", "Config", "Item : %d", (i + 1));
+        logDataEx("L3-App", "Config", "Entry Point");
+        logDataEx("L3-App", "Config", "\tContactless Txn Limit \t: %s", combinations->entryPoint.clessTxnLimit);
+        logDataEx("L3-App", "Config", "\tCVM Require Limit \t: %s", combinations->entryPoint.cvmRequireLimit);
+        logDataEx("L3-App", "Config", "\tTerminal Floor Limit \t: %s", combinations->entryPoint.termFloorLimit);
 
-        logData("");
-        logData("\tAID \t\t\t: %s", combinations->aid);
-        logData("\tPartial \t\t: %s", combinations->partial);
-        logData("\tKernel \t\t\t: %s", combinations->kernel);
-        logData("\tTxnType \t\t: %s", combinations->txnType);
+        logDataEx("L3-App", "Config", "");
+        logDataEx("L3-App", "Config", "\tAID \t\t\t: %s", combinations->aid);
+        logDataEx("L3-App", "Config", "\tPartial \t\t: %s", combinations->partial);
+        logDataEx("L3-App", "Config", "\tKernel \t\t\t: %s", combinations->kernel);
+        logDataEx("L3-App", "Config", "\tTxnType \t\t: %s", combinations->txnType);
 
-        logData("");
-        logData("Kernel Config");
-        logData("\tAdd Term Cap \t\t:%s", combinations->kernelConfig.addTermCap);
-        logData("\tAdd Term Cap Extn \t:%s", combinations->kernelConfig.addTermCapExt);
-        logData("\tApp Unblock Supp \t:%s", combinations->kernelConfig.appUnblockSupport);
-        logData("\tApp Version \t\t:%s", combinations->kernelConfig.appVersion);
-        logData("\tCountry Code \t\t:%s", combinations->kernelConfig.countryCode);
-        logData("\tMCC \t\t\t:%s", combinations->kernelConfig.mcc);
-        logData("\tService Data Format \t:%s", combinations->kernelConfig.serviceDataFormat);
-        logData("\tService Qualifier \t:%s", combinations->kernelConfig.serviceQualifier);
-        logData("\tTac Default \t\t:%s", combinations->kernelConfig.tacDefault);
-        logData("\tTac Denial \t\t:%s", combinations->kernelConfig.tacDenial);
-        logData("\tTan Online \t\t:%s", combinations->kernelConfig.tacOnline);
-        logData("\tTDOL \t\t\t:%s", combinations->kernelConfig.tdol);
-        logData("\tTerminal Cap \t\t:%s", combinations->kernelConfig.termCap);
-        logData("\tTerminal Floor Limit \t:%s", combinations->kernelConfig.terminalFloorLimit);
-        logData("\tTerminal Id \t\t:%s", combinations->kernelConfig.terminalId);
-        logData("\tTerminal Type \t\t:%s", combinations->kernelConfig.terminalType);
+        logDataEx("L3-App", "Config", "");
+        logDataEx("L3-App", "Config", "Kernel Config");
+        logDataEx("L3-App", "Config", "\tAdd Term Cap \t\t:%s", combinations->kernelConfig.addTermCap);
+        logDataEx("L3-App", "Config", "\tAdd Term Cap Extn \t:%s", combinations->kernelConfig.addTermCapExt);
+        logDataEx("L3-App", "Config", "\tApp Unblock Supp \t:%s", combinations->kernelConfig.appUnblockSupport);
+        logDataEx("L3-App", "Config", "\tApp Version \t\t:%s", combinations->kernelConfig.appVersion);
+        logDataEx("L3-App", "Config", "\tCountry Code \t\t:%s", combinations->kernelConfig.countryCode);
+        logDataEx("L3-App", "Config", "\tMCC \t\t\t:%s", combinations->kernelConfig.mcc);
+        logDataEx("L3-App", "Config", "\tService Data Format \t:%s", combinations->kernelConfig.serviceDataFormat);
+        logDataEx("L3-App", "Config", "\tService Qualifier \t:%s", combinations->kernelConfig.serviceQualifier);
+        logDataEx("L3-App", "Config", "\tTac Default \t\t:%s", combinations->kernelConfig.tacDefault);
+        logDataEx("L3-App", "Config", "\tTac Denial \t\t:%s", combinations->kernelConfig.tacDenial);
+        logDataEx("L3-App", "Config", "\tTan Online \t\t:%s", combinations->kernelConfig.tacOnline);
+        logDataEx("L3-App", "Config", "\tTDOL \t\t\t:%s", combinations->kernelConfig.tdol);
+        logDataEx("L3-App", "Config", "\tTerminal Cap \t\t:%s", combinations->kernelConfig.termCap);
+        logDataEx("L3-App", "Config", "\tTerminal Floor Limit \t:%s", combinations->kernelConfig.terminalFloorLimit);
+        logDataEx("L3-App", "Config", "\tTerminal Id \t\t:%s", combinations->kernelConfig.terminalId);
+        logDataEx("L3-App", "Config", "\tTerminal Type \t\t:%s", combinations->kernelConfig.terminalType);
     }
 
-    logData("===================================================");
+    logDataEx("L3-App", "Config", "===================================================");
 }

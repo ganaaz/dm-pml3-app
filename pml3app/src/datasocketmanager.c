@@ -32,24 +32,24 @@ void *createAndListenForFetchData()
     socklen_t addrlen = sizeof(address);
     char buffer[1024] = {0};
 
-    logInfo("Creating data socket and going to wait for client");
+    logInfoEx("Socket", "", "Creating data socket and going to wait for client");
 
     if ((serverFd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
     {
-        logError("Socket creation failed.");
+        logErrorEx("L3-App", "Socket", "Socket creation failed.");
         return NULL; // Don't exit() in threads — it kills the whole process
     }
 
     if (setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
     {
-        logError("Error setsockopt SO_REUSEADDR failed.");
+        logErrorEx("L3-App", "Socket", "Error setsockopt SO_REUSEADDR failed.");
         close(serverFd);
         return NULL;
     }
 
     if (setsockopt(serverFd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)))
     {
-        logError("Error setsockopt SO_REUSEPORT failed.");
+        logErrorEx("L3-App", "Socket", "Error setsockopt SO_REUSEPORT failed.");
         close(serverFd);
         return NULL;
     }
@@ -64,23 +64,23 @@ void *createAndListenForFetchData()
         tv.tv_sec = appConfig.socketTimeout;
         tv.tv_usec = 0;
         setsockopt(serverFd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof tv);
-        logData("Socket timeout is set as %d", appConfig.socketTimeout);
+        logDataEx("L3-App", "Socket", "Socket timeout is set as %d", appConfig.socketTimeout);
     }
     else
     {
-        logData("Socket timeout is set as -1, so not setting the timeout val");
+        logDataEx("L3-App", "Socket", "Socket timeout is set as -1, so not setting the timeout val");
     }
 
     if (bind(serverFd, (struct sockaddr *)&address, sizeof(address)) < 0)
     {
-        logError("Error bind failed");
+        logErrorEx("L3-App", "Socket", "Error bind failed");
         close(serverFd);
         return NULL;
     }
 
     if (listen(serverFd, 3) < 0)
     {
-        logError("Error listen failed");
+        logErrorEx("L3-App", "Socket", "Error listen failed");
         close(serverFd);
         return NULL;
     }
@@ -90,7 +90,7 @@ void *createAndListenForFetchData()
         // --- Shutdown check before accept ---
         if (shutdown_requested)
         {
-            logError("Shutdown requested, exiting fetch data socket listener");
+            logErrorEx("L3-App", "Socket", "Shutdown requested, exiting fetch data socket listener");
             break;
         }
 
@@ -103,20 +103,20 @@ void *createAndListenForFetchData()
         int activity = select(serverFd + 1, &readfds, NULL, NULL, &timeout);
         if (activity < 0)
         {
-            logError("select() error on server socket");
+            logErrorEx("L3-App", "Socket", "select() error on server socket");
             break;
         }
         if (activity == 0)
             continue; // Timeout — loop back and check shutdown_requested
 
-        logInfo("Waiting for the client socket for data ...");
+        logInfoEx("Socket", "", "Waiting for the client socket for data ...");
         if ((DATA_SOCKET_ID = accept(serverFd, (struct sockaddr *)&address, &addrlen)) < 0)
         {
-            logError("Error in accepting");
+            logErrorEx("L3-App", "Socket", "Error in accepting");
             continue;
         }
 
-        logInfo("Client connected on fetch data socket: %d", DATA_SOCKET_ID);
+        logInfoEx("Socket", "", "Client connected on fetch data socket: %d", DATA_SOCKET_ID);
 
         if (appConfig.socketTimeout != -1)
         {
@@ -124,11 +124,11 @@ void *createAndListenForFetchData()
             tv.tv_sec = appConfig.socketTimeout;
             tv.tv_usec = 0;
             setsockopt(DATA_SOCKET_ID, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof tv);
-            logData("Socket timeout is set as %d", appConfig.socketTimeout);
+            logDataEx("L3-App", "Socket", "Socket timeout is set as %d", appConfig.socketTimeout);
         }
         else
         {
-            logData("Socket timeout is set as -1, so not setting the timeout val");
+            logDataEx("L3-App", "Socket", "Socket timeout is set as -1, so not setting the timeout val");
         }
 
         // --- Inner read loop ---
@@ -136,7 +136,7 @@ void *createAndListenForFetchData()
         {
             if (shutdown_requested)
             {
-                logInfo("Shutdown requested, closing client fetch data socket");
+                logInfoEx("Socket", "", "Shutdown requested, closing client fetch data socket");
                 break;
             }
 
@@ -149,49 +149,49 @@ void *createAndListenForFetchData()
             int clientActivity = select(DATA_SOCKET_ID + 1, &clientfds, NULL, NULL, &readTimeout);
             if (clientActivity < 0)
             {
-                logError("select() error on client socket");
+                logErrorEx("L3-App", "Socket", "select() error on client socket");
                 break;
             }
             if (clientActivity == 0)
                 continue; // Timeout — loop back and check shutdown_requested
 
-            logData("Listening for data from client on Fetch Data socket id: %d ...", DATA_SOCKET_ID);
+            logDataEx("L3-App", "Socket", "Listening for data from client on Fetch Data socket id: %d ...", DATA_SOCKET_ID);
             reqstatus = read(DATA_SOCKET_ID, buffer, sizeof(buffer));
             if (reqstatus <= 0)
             {
-                logError("No data received, closing the data socket");
+                logErrorEx("L3-App", "Socket", "No data received, closing the data socket");
                 break;
             }
 
             char *data = (char *)malloc(reqstatus + 1);
             if (!data)
             {
-                logError("malloc failed for incoming data buffer");
+                logErrorEx("L3-App", "Socket", "malloc failed for incoming data buffer");
                 break;
             }
             memcpy(data, buffer, reqstatus);
             data[reqstatus] = '\0';
-            logData("Raw Data received from client (Len: %zd): %s", reqstatus, data);
+            logDataEx("L3-App", "Socket", "Raw Data received from client (Len: %zd): %s", reqstatus, data);
 
             char *response = handleClientFetchMessage(data);
             free(data);
 
             if (response == NULL)
             {
-                logData("Null response");
+                logDataEx("L3-App", "Socket", "Null response");
             }
             else
             {
-                logData("Length of response: %zu", strlen(response));
+                logDataEx("L3-App", "Socket", "Length of response: %zu", strlen(response));
                 if (strlen(response) == 0)
                 {
-                    logData("There is no response, nothing to send to client");
+                    logDataEx("L3-App", "Socket", "There is no response, nothing to send to client");
                 }
                 else
                 {
                     if (send(DATA_SOCKET_ID, response, strlen(response), 0) < 0)
                     {
-                        logError("Error sending response to client");
+                        logErrorEx("L3-App", "Socket", "Error sending response to client");
                     }
                 }
                 free(response);
@@ -203,7 +203,7 @@ void *createAndListenForFetchData()
     }
 
     // Clean shutdown — close server socket
-    logError("Closing fetch data server socket");
+    logErrorEx("L3-App", "Socket", "Closing fetch data server socket");
     close(serverFd);
     return NULL;
 }

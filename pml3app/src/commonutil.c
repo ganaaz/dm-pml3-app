@@ -20,6 +20,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
+#include <errno.h>
 
 #include <feig/fetrm.h>
 #include <feig/leds.h>
@@ -754,6 +755,60 @@ void generateNarrationData(char *stationId, char *acqTrxId,
 //     logDataEx("L3-App", "Util", "Narration data generated : %s", narration);
 //     logDataEx("L3-App", "Util", "Narration length : %d", strlen(narration));
 // }
+
+/**
+ * To check the required app files and ensure they have rw permission for
+ * owner, group and others; fixes the permission if its not already set.
+ **/
+void ensureRequiredFilePermissions(void)
+{
+    // Note: this runs before log4c_init() so that log4crc itself is readable
+    // by the time log4c tries to parse it, hence fprintf(stderr, ...) below
+    // instead of logInfo/logError - logCategory is still NULL at this point.
+
+    // logs/ isn't shipped with the app, unlike the other required paths, so create it if missing
+    if (mkdir("logs", 0777) != 0 && errno != EEXIST)
+        fprintf(stderr, "Failed to create logs directory: %s\n", strerror(errno));
+
+    static const char *requiredPaths[] = {
+        "trxdata-pml3.db",
+        "abttrxdata.db",
+        "config/app_config.json",
+        "config/app_data.json",
+        "config/emv_config.json",
+        "log4crc",
+        "log4crc.debug",
+        "log4crc.error",
+        "log4crc.info",
+        "l3start.sh",
+        "runl3.sh",
+        "autorun.sh",
+        "l3_log_mode",
+        "logs"};
+    const mode_t rwAllMode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
+    const mode_t rwxAllMode = rwAllMode | S_IXUSR | S_IXGRP | S_IXOTH;
+
+    for (size_t i = 0; i < sizeof(requiredPaths) / sizeof(requiredPaths[0]); i++)
+    {
+        const char *path = requiredPaths[i];
+        struct stat st;
+        if (stat(path, &st) != 0)
+        {
+            fprintf(stderr, "Permission check skipped, path not found: %s\n", path);
+            continue;
+        }
+
+        // Directories need the executable/search bit too, plain files just need rw
+        mode_t requiredMode = S_ISDIR(st.st_mode) ? rwxAllMode : rwAllMode;
+        if ((st.st_mode & requiredMode) != requiredMode)
+        {
+            if (chmod(path, st.st_mode | requiredMode) != 0)
+                fprintf(stderr, "Failed to set permission for %s: %s\n", path, strerror(errno));
+            else
+                fprintf(stderr, "Updated permission on %s\n", path);
+        }
+    }
+}
 
 /**
  * Generate a unique UUID

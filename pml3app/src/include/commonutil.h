@@ -261,4 +261,11 @@ int writeLogMode(int mode);
  */
 int getLogMode();
 
+/**
+ * To check the required app files and ensure they have rw permission for
+ * owner, group and others; fixes the permission if its not already set.
+ * This is done before log4c_init as log4crc itself needs to be readable.
+ */
+void ensureRequiredFilePermissions(void);
+
 #endif

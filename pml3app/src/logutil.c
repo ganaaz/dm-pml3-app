@@ -8,6 +8,9 @@
 #include <log4c.h>
 #include <log4c/appender.h>
 #include <log4c/layout.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <libpay/tlv.h>
 #include <feig/emvco_tags.h>
@@ -1826,9 +1829,13 @@ int generateLog(const void *outcome, size_t outcome_len, const char *fileName, i
     }
 
     sprintf(log_file_name, "logs/%s.txt", fileName);
-    fp = fopen(log_file_name, "a");
+    umask(0);
+    int fd = open(log_file_name, O_CREAT | O_WRONLY | O_APPEND, 0666);
+    fp = (fd < 0) ? NULL : fdopen(fd, "a");
     if (NULL == fp)
     {
+        if (fd >= 0)
+            close(fd);
         printf("%s: unable to create logfile\n", __func__);
         return TLV_RC_IO_ERROR;
     }

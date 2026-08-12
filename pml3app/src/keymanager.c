@@ -385,7 +385,15 @@ void *processKeyInjection()
         if (result == EXIT_SUCCESS)
         {
             appData.isKeyInjectionSuccess = true;
-            changeAppState(APP_STATUS_READY);
+            if (strlen(appConfig.terminalId) == 0 || strlen(appConfig.merchantId) == 0)
+            {
+                logInfo("Terminal id or Merchant id is empty");
+                changeAppState(APP_STATUS_TID_MID_EMPTY);
+            }
+            else
+            {
+                changeAppState(APP_STATUS_READY);
+            }
             displayLight(LED_ST_KEY_INJECT);
             break;
         }

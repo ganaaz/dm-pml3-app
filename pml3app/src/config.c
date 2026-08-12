@@ -20,8 +20,8 @@
 #include "ISO/utils.h"
 #include "include/abtinittable.h"
 
-#define VERSION "1.0.7"
-#define RELEASE_DATE "29-Jun-2026"
+#define VERSION "1.0.8"
+#define RELEASE_DATE "27-Jul-2026"
 
 struct applicationConfig appConfig;
 struct applicationData appData;
@@ -1974,5 +1974,18 @@ void readAndUpdateLedConfigs(json_object *jConfig)
             const char *l4 = json_object_get_string(ledData);
             safe_strcpy(appConfig.ledDataList[i]->led4, sizeof(appConfig.ledDataList[i]->led4), l4);
         }
+    }
+}
+
+void changeToReadyOrTidMissing()
+{
+    if (strlen(appConfig.terminalId) == 0 || strlen(appConfig.merchantId) == 0)
+    {
+        logInfo("Terminal id or Merchant id is empty");
+        changeAppState(APP_STATUS_TID_MID_EMPTY);
+    }
+    else
+    {
+        changeAppState(APP_STATUS_READY);
     }
 }

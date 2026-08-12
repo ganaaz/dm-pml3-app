@@ -105,14 +105,7 @@ char *handleClientFetchMessage(const char *data)
     if (strcmp(reqMessage.cmd, COMMAND_DOWNLOAD_FILE) == 0)
     {
         logDataEx("L3-App", "Command", "Download file received with file name : %s", reqMessage.dData.fileName);
-        if (access(reqMessage.dData.fileName, F_OK) != 0)
-        {
-            logDataEx("L3-App", "Command", "Requested file not found or no access");
-            return buildResponseMessage(STATUS_ERROR, ERR_FILE_NOT_FOUND);
-        }
-
-        sendFileToSocket(reqMessage.dData.fileName);
-        return NULL;
+        return buildDownloadFileMessage(reqMessage.dData.fileName);
     }
 
     if (strcmp(reqMessage.cmd, COMMAND_GET_DEVICE_ID) == 0)
@@ -754,10 +747,19 @@ struct message parseMessage(const char *data)
 {
     logDataEx("L3-App", "Command", "Going to parse the message : %s", data);
     struct message reqMessage;
+    memset(&reqMessage, 0, sizeof(reqMessage));
     json_object *jObject = json_tokener_parse(data);
+    if (jObject == NULL)
+    {
+        logWarn("Invalid or incomplete json received, returning empty command");
+        return reqMessage;
+    }
 
-    safe_strcpy(reqMessage.cmd, sizeof(reqMessage.cmd),
-                (char *)json_object_get_string(json_object_object_get(jObject, COMMAND)));
+    const char *cmd = json_object_get_string(json_object_object_get(jObject, COMMAND));
+    if (cmd != NULL)
+    {
+        safe_strcpy(reqMessage.cmd, sizeof(reqMessage.cmd), cmd);
+    }
 
     logDataEx("L3-App", "Command", "Command : %s", reqMessage.cmd);
 
@@ -765,7 +767,8 @@ struct message parseMessage(const char *data)
     {
         if (json_object_get_string(json_object_object_get(jObject, DISK_SPACE_PATH)) != NULL)
         {
-            safe_strcpy(reqMessage.dSpace.path, sizeof(reqMessage.dSpace.path), (char *)json_object_get_string(json_object_object_get(jObject, DISK_SPACE_PATH)));
+            safe_strcpy(reqMessage.dSpace.path, sizeof(reqMessage.dSpace.path),
+                        (char *)json_object_get_string(json_object_object_get(jObject, DISK_SPACE_PATH)));
         }
         else
         {

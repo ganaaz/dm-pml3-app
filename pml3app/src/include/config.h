@@ -368,4 +368,6 @@ void readAndUpdateKeys(json_object *jObject);
  **/
 KEYDATA *getMacKey();
 
+void changeToReadyOrTidMissing();
+
 #endif

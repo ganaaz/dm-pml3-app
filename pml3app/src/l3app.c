@@ -93,6 +93,7 @@ int main(void)
     appData.status = APP_STATUS_KEY_MISSING;
 
     resetSecondTap();
+    ensureRequiredFilePermissions();
 
     registerMessageLayout();
     registerPlainStdoutAppender();
@@ -240,7 +241,7 @@ int main(void)
         rc = fetpf_ep_configure(fetpf, dataConfig, dataConfigLen);
         if (rc != FETPF_RC_OK)
         {
-            changeAppState(APP_STATUS_READY);
+            changeToReadyOrTidMissing();
             logErrorEx("L3-App", "", "fetpf_ep_configure failed (rc: %d)\n", rc);
             free(dataConfig);
             tlv_free(tlvConfig);
@@ -258,7 +259,7 @@ int main(void)
         rc = readEmvConfig(appConfig.emvConfigFile, &config, &configLen);
         if (rc)
         {
-            changeAppState(APP_STATUS_READY);
+            changeToReadyOrTidMissing();
             logErrorEx("L3-App", "", "config failed (rc: %d)\n", rc);
             goto cleanup;
         }
@@ -268,7 +269,7 @@ int main(void)
         rc = fetpf_ep_configure(fetpf, config, configLen);
         if (rc != FETPF_RC_OK)
         {
-            changeAppState(APP_STATUS_READY);
+            changeToReadyOrTidMissing();
             logErrorEx("L3-App", "", "fetpf_ep_configure failed (rc: %d)\n", rc);
             free(config);
             goto cleanup;
@@ -277,7 +278,7 @@ int main(void)
         free(config);
     }
 
-    changeAppState(APP_STATUS_READY);
+    changeToReadyOrTidMissing();
     if (!appData.isKeyInjectionSuccess)
         changeAppState(APP_STATUS_KEY_MISSING);
 

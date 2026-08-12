@@ -1,3 +1,15 @@
+Version : 1.0.8
+Date : 27-Jul-26
+
+Changes
+
+- File download done with Base 64 data and json response
+- TID / MID Missing status is updated correctly
+- Sending partial command or wrong json will not crash and return error response
+- File perm are set to rw for all the files used by l3
+
+=============================================================================================
+
 Version : 1.0.7
 Date : 29-Jun-26
 

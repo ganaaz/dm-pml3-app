@@ -2,6 +2,7 @@
 #include <json-c/json.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <openssl/evp.h>
 
 #include <feig/fetrm.h>
 
@@ -19,7 +20,6 @@
 extern struct applicationData appData;
 extern struct applicationConfig appConfig;
 extern int CLIENT_SOCKET;
-extern int DATA_SOCKET_ID;
 extern int SERIAL_PORT;
 extern _Atomic int activePendingTxnCount;
 extern int IS_SERIAL_CONNECTED;
@@ -183,27 +183,51 @@ char *buildCommandResponseMessage(const char *command, const char *status, int e
 }
 
 /**
- * To send the file in socket
+ * Build the download file response message, with the file contents
+ * base64 encoded in the data field
  */
-void sendFileToSocket(const char fileName[])
+char *buildDownloadFileMessage(const char *fileName)
 {
+    if (access(fileName, F_OK) != 0)
+    {
+        logDataEx(currentTrxType, lastPanDigit, "Requested file not found or no access : %s", fileName);
+        return buildCommandResponseMessage(COMMAND_DOWNLOAD_FILE, STATUS_FAILURE, ERR_FILE_NOT_FOUND);
+    }
+
     unsigned char *data = readFile(fileName);
     long int size = findSize(fileName);
-    logDataEx(currentTrxType, lastPanDigit, "Going to send the data with size : %d", size);
+    if (data == NULL)
+    {
+        logDataEx(currentTrxType, lastPanDigit, "Failed to read file : %s", fileName);
+        return buildCommandResponseMessage(COMMAND_DOWNLOAD_FILE, STATUS_FAILURE, ERR_GENERIC);
+    }
 
-    // Allocate single buffer: 4-byte header + file data
-    unsigned char *sendBuf = (unsigned char *)malloc(4 + size);
-    sendBuf[0] = (size >> 24) & 0xFF;
-    sendBuf[1] = (size >> 16) & 0xFF;
-    sendBuf[2] = (size >> 8) & 0xFF;
-    sendBuf[3] = size & 0xFF;
-    memcpy(sendBuf + 4, data, size);
+    logDataEx(currentTrxType, lastPanDigit, "Going to encode the data with size : %ld", size);
 
-    int sent = send(DATA_SOCKET_ID, sendBuf, 4 + size, 0);
-    logDataEx(currentTrxType, lastPanDigit, "Total Bytes sent : %d", sent - 4);
-
-    free(sendBuf);
+    int encodedLen = 4 * ((size + 2) / 3) + 1;
+    char *encoded = (char *)malloc(encodedLen);
+    EVP_EncodeBlock((unsigned char *)encoded, data, (int)size);
     free(data);
+
+    json_object *jobj = json_object_new_object();
+    json_object_object_add(jobj, COMMAND, json_object_new_string(COMMAND_DOWNLOAD_FILE));
+    json_object_object_add(jobj, COMMAND_STATE, json_object_new_string(STATUS_SUCCESS));
+    json_object_object_add(jobj, COMMAND_ERROR_CODE, json_object_new_int(0));
+
+    json_object *jData = json_object_new_object();
+    json_object_object_add(jData, "fileData", json_object_new_string(encoded));
+    json_object_object_add(jobj, COMMAND_DATA, jData);
+    free(encoded);
+
+    const char *jsonData = json_object_to_json_string(jobj);
+    int len = strlen(jsonData);
+    char *result = malloc(len + 1);
+    safe_strncpy(result, len + 1, jsonData, len);
+    logDataEx(currentTrxType, lastPanDigit, "Total bytes in base64 response : %d", len);
+
+    json_object_put(jobj); // Clear JSON memory
+
+    return result;
 }
 
 /**

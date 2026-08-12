@@ -28,9 +28,10 @@ void sendDeviceOfflineMessage();
 char *buildSetTimeResponse(const char *status);
 
 /**
- * To send the file in socket
+ * Build the download file response message, with the file contents
+ * base64 encoded in the data field
  */
-void sendFileToSocket(const char fileName[]);
+char *buildDownloadFileMessage(const char *fileName);
 
 /**
  * To send a message when there is no reversal

@@ -57,6 +57,7 @@ typedef struct KERNEL_CONFIG_STRUCT
     char cvmCapCVM[3];
     char cvmCapNoCVM[3];
     char secCap[3];
+    char tornTrxInterval[7];
 
 } KERNEL_CONFIG;
 

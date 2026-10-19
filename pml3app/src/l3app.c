@@ -66,6 +66,7 @@ extern struct applicationConfig appConfig;
 extern int IS_SERIAL_CONNECTED;
 extern struct pkcs11 *crypto;
 extern volatile __sig_atomic_t shutdown_requested;
+extern volatile __sig_atomic_t reboot_requested;
 
 /**
  * Main entry point
@@ -78,6 +79,8 @@ extern volatile __sig_atomic_t shutdown_requested;
  **/
 int main(void)
 {
+    installCrashHandler();
+
     leds_init();
     buzzer_init();
 
@@ -426,7 +429,17 @@ cleanup:
 
     printDiskMemory();
     logErrorEx("L3-App", "", "Application shut down");
+    if (reboot_requested)
+    {
+        logError("Cleanup complete, issuing terminal reboot");
+    }
     log4c_fini();
+
+    // To handle reboot
+    if (reboot_requested)
+    {
+        fetrm_reboot();
+    }
 
     int expectedThreads = TH_TRANSACTION | TH_HOST_OFFLINE | TH_REVERSAL | TH_ABT_HOST |
                           TH_ABT_HOUSEKEEP | TH_FETCH_DATA | TH_USB_MESSAGE | TH_MAIN_APP;

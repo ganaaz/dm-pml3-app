@@ -28,7 +28,6 @@ extern volatile __sig_atomic_t shutdown_requested;
 extern char currentTrxType[100];
 extern char lastPanDigit[10];
 
-bool isReversalOngoing = false;
 bool isOfflineTrxOngoing = false;
 
 /**

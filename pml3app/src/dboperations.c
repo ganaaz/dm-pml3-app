@@ -25,6 +25,10 @@
 #define MAX_FETCH_COUNT 50
 #define HMAC_HEX_SIZE (EVP_MAX_MD_SIZE * 2 + 1)
 
+#define HOST_PENDING_BATCH_SIZE 10
+#define STRINGIFY_HELPER(x) #x
+#define STRINGIFY(x) STRINGIFY_HELPER(x)
+
 extern sqlite3 *sqlite3Db;
 extern struct applicationConfig appConfig;
 extern struct applicationData appData;
@@ -93,7 +97,7 @@ int addColumnIfNotExists(sqlite3 *db,
 
     if (rc != SQLITE_OK)
     {
-        logDataEx(currentTrxType, lastPanDigit, "Failed to add column %s: %s", columnName, errMsg);
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to add column %s: %s", columnName, errMsg);
         sqlite3_free(errMsg);
         return rc;
     }
@@ -115,7 +119,7 @@ void checkRecordCount()
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare checkRecordCount query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare checkRecordCount query !!!");
         return;
     }
 
@@ -241,12 +245,12 @@ void createTransactionData(struct transactionData *trxData)
         }
         else
         {
-            logWarnEx(currentTrxType, lastPanDigit, "Insert data failed !!!");
+            logErrorEx(currentTrxType, lastPanDigit, "createTransactionData : Insert data failed !!!");
         }
     }
     else
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Unable to prepare the insert query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "createTransactionData : Unable to prepare the insert query !!!");
     }
 }
 
@@ -370,12 +374,12 @@ void createTxnDataForOnline(struct transactionData trxData)
         }
         else
         {
-            logWarnEx(currentTrxType, lastPanDigit, "Insert data failed for online txn !!!");
+            logErrorEx(currentTrxType, lastPanDigit, "createTxnDataForOnline : Insert data failed for online txn !!!");
         }
     }
     else
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Unable to prepare the insert query for online txn !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "createTxnDataForOnline : Unable to prepare the insert query for online txn !!!");
     }
 }
 
@@ -392,7 +396,7 @@ int getActivePendingTransactions()
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare getActivePendingTransactions query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare getActivePendingTransactions query !!!");
         return -1;
     }
 
@@ -421,7 +425,7 @@ double getActivePendingTransactionsAmount()
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare getActivePendingTransactionsAmount query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare getActivePendingTransactionsAmount query !!!");
         return -1;
     }
 
@@ -451,7 +455,7 @@ int getActivePendingHostErrorCategoryTransactions(const char *errorCategory)
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare getActivePendingTransactions query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare getActivePendingHostErrorCategoryTransactions query !!!");
         return -1;
     }
 
@@ -483,7 +487,7 @@ double getActivePendingHostErrorCategoryTransactionsAmount(const char *errorCate
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare getActivePendingHostErrorCategoryTransactionsAmount query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare getActivePendingHostErrorCategoryTransactionsAmount query !!!");
         return -1;
     }
 
@@ -516,7 +520,7 @@ int getOfflinePendingTrxCount()
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare getOfflinePendingTrxCount query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare getOfflinePendingTrxCount query !!!");
         return 0;
     }
 
@@ -541,63 +545,74 @@ void processHostPendingTransactions()
     int trxDataCount = getOfflinePendingTrxCount();
     logDataEx(currentTrxType, lastPanDigit, "Total pending offline transaction count received : %d", trxDataCount);
 
-    const char *query = "SELECT * FROM Transactions WHERE "
-                        "HostStatus = 'Pending' "
-                        "and ProcessingCode = '000000' "
-                        "and TxnStatus = 'Success' order by RowId asc";
-    sqlite3_stmt *statement;
-
-    if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, 0) != SQLITE_OK)
-    {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare read query !!!");
-        return;
-    }
-
-    TransactionTable trxDataList[trxDataCount + 100];
-    int index = 0;
-    while (sqlite3_step(statement) != SQLITE_DONE)
-    {
-        if (index > trxDataCount)
-        {
-            logErrorEx("Offline", "processHostPendingTransactions",
-                       "Extra data found on getting offline transactions, ignoring and picked up next.");
-            break;
-        }
-        TransactionTable trxData = populateTableData(statement);
-        trxDataList[index] = trxData;
-        index++;
-    }
-
-    sqlite3_finalize(statement);
-
-    logDataEx(currentTrxType, lastPanDigit, "Total transactions available : %d", trxDataCount);
-    for (int i = 0; i < trxDataCount; i++)
-    {
-        logDataEx(currentTrxType, lastPanDigit, "======================================================");
-        printTransactionRow(trxDataList[i]);
-    }
-
     if (trxDataCount == 0)
     {
         logInfoEx(currentTrxType, lastPanDigit, "There are no offline transactions available to send to host");
+        return;
     }
-    else
+
+    const char *query = "SELECT TransactionId, RowId FROM Transactions WHERE "
+                        "HostStatus = 'Pending' "
+                        "and ProcessingCode = '000000' "
+                        "and TxnStatus = 'Success' "
+                        "and RowId > ? "
+                        "order by RowId asc "
+                        "LIMIT " STRINGIFY(HOST_PENDING_BATCH_SIZE);
+
+    char transactionIds[HOST_PENDING_BATCH_SIZE][40];
+    sqlite3_int64 rowIds[HOST_PENDING_BATCH_SIZE];
+    sqlite3_int64 lastRowId = 0;
+    int totalProcessed = 0;
+
+    while (totalProcessed < trxDataCount)
     {
-        if (appConfig.useISOHost)
+        sqlite3_stmt *statement;
+
+        if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, 0) != SQLITE_OK)
         {
-            logDataEx(currentTrxType, lastPanDigit, "Using ISO Host for sending offline transactions");
-            for (int index = 0; index < trxDataCount; index++)
+            logErrorEx(currentTrxType, lastPanDigit, "processHostPendingTransactions : Failed to prepare read query !!!");
+            return;
+        }
+
+        sqlite3_bind_int64(statement, 1, lastRowId);
+
+        int index = 0;
+        while (sqlite3_step(statement) == SQLITE_ROW)
+        {
+            snprintf(transactionIds[index], sizeof(transactionIds[index]), "%s", sqlite3_column_text(statement, 0));
+            rowIds[index] = sqlite3_column_int64(statement, 1);
+            index++;
+        }
+
+        sqlite3_finalize(statement);
+
+        if (index == 0)
+        {
+            break;
+        }
+
+        logDataEx(currentTrxType, lastPanDigit, "Total records to be sent in this batch : %d", index);
+        for (int i = 0; i < index; i++)
+        {
+            TransactionTable trxTable = getTransactionTableData(transactionIds[i]);
+            printTransactionRow(trxTable);
+            if (appConfig.useISOHost)
             {
-                TransactionTable trxData = trxDataList[index];
-                trxData = processHostOfflineTxn(trxData);
+                logDataEx(currentTrxType, lastPanDigit, "Using ISO Host for sending offline transactions");
+                TransactionTable trxData = processHostOfflineTxn(trxTable);
                 updateHostResponse(trxData);
             }
+            else
+            {
+                logDataEx(currentTrxType, lastPanDigit, "Not supported");
+            }
         }
-        else
-        {
-            logDataEx(currentTrxType, lastPanDigit, "Not supported");
-        }
+
+        lastRowId = rowIds[index - 1];
+        totalProcessed += index;
     }
+
+    logDataEx(currentTrxType, lastPanDigit, "Total offline transactions processed : %d", totalProcessed);
 }
 
 /**
@@ -668,7 +683,7 @@ void updateOfflineTransactionStatus(const char *transactionId, OfflineSaleRespon
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateOfflineTransactionStatus query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare updateOfflineTransactionStatus query !!!");
         return;
     }
 
@@ -725,7 +740,7 @@ TransactionTable getTransactionTableData(const char *transactionId)
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare read query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "getTransactionTableData : Failed to prepare read query !!!");
         return trxData;
     }
 
@@ -760,7 +775,7 @@ int getTrxTableDataCount(const char *orderId, const char *stan, const char *trxB
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare getTrxTableDataCount query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare getTrxTableDataCount query !!!");
         return 0;
     }
 
@@ -801,7 +816,7 @@ void updateHostErrorCategory(const char *transactionId, const char *hostErrorCat
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateHostErrorCategory query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare updateHostErrorCategory query !!!");
         return;
     }
 
@@ -811,7 +826,7 @@ void updateHostErrorCategory(const char *transactionId, const char *hostErrorCat
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
+        logErrorEx(currentTrxType, lastPanDigit, "updateHostErrorCategory : Failed to update record : %d", result);
         return;
     }
     logDataEx(currentTrxType, lastPanDigit, "updateHostErrorCategory success");
@@ -835,7 +850,7 @@ void updateTransactionStatus(const char *transactionId, const char *txnStatus, c
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateTransactionStatus query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare updateTransactionStatus query !!!");
         return;
     }
 
@@ -846,7 +861,7 @@ void updateTransactionStatus(const char *transactionId, const char *txnStatus, c
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
+        logErrorEx(currentTrxType, lastPanDigit, "updateTransactionStatus : Failed to update record : %d", result);
         return;
     }
     logDataEx(currentTrxType, lastPanDigit, "updateTransactionStatus success");
@@ -869,7 +884,7 @@ void updateReversalStatusOnly(const char *transactionId, const char *reversalSta
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateReversalStatus only status query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare updateReversalStatus only status query !!!");
         return;
     }
 
@@ -879,7 +894,7 @@ void updateReversalStatusOnly(const char *transactionId, const char *reversalSta
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
+        logErrorEx(currentTrxType, lastPanDigit, "updateReversalStatusOnly : Failed to update record : %d", result);
         return;
     }
     logDataEx(currentTrxType, lastPanDigit, "updateReversalStatus only status is success");
@@ -909,7 +924,7 @@ void updateReversalStatus(const char *transactionId, const char *reversalStatus,
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateReversalStatus query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare updateReversalStatus query !!!");
         return;
     }
 
@@ -924,7 +939,7 @@ void updateReversalStatus(const char *transactionId, const char *reversalStatus,
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
+        logErrorEx(currentTrxType, lastPanDigit, "updateReversalStatus : Failed to update record : %d", result);
         return;
     }
     logDataEx(currentTrxType, lastPanDigit, "updateReversalStatus success");
@@ -950,7 +965,7 @@ void updateReversalResponse(ReversalResponse reversalResponse, const char *trans
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateReversalResponse query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare updateReversalResponse query !!!");
         return;
     }
 
@@ -964,7 +979,7 @@ void updateReversalResponse(ReversalResponse reversalResponse, const char *trans
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
+        logErrorEx(currentTrxType, lastPanDigit, "updateReversalResponse : Failed to update record : %d", result);
         return;
     }
     logDataEx(currentTrxType, lastPanDigit, "updateReversalResponse success");
@@ -986,7 +1001,7 @@ void resetReversalStatus(const char *status, const char *transactionId)
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare resetReversalStatus query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare resetReversalStatus query !!!");
         return;
     }
 
@@ -996,7 +1011,7 @@ void resetReversalStatus(const char *status, const char *transactionId)
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
+        logErrorEx(currentTrxType, lastPanDigit, "resetReversalStatus : Failed to update record : %d", result);
         return;
     }
     logDataEx(currentTrxType, lastPanDigit, "resetReversalStatus success");
@@ -1023,7 +1038,7 @@ void updateReversalPreData(TransactionTable trxTable)
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateReversalPreData only status query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare updateReversalPreData only status query !!!");
         return;
     }
 
@@ -1038,7 +1053,7 @@ void updateReversalPreData(TransactionTable trxTable)
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
+        logErrorEx(currentTrxType, lastPanDigit, "updateReversalPreData : Failed to update record : %d", result);
         return;
     }
     logDataEx(currentTrxType, lastPanDigit, "updateReversalPreData success");
@@ -1058,7 +1073,7 @@ bool isTherePendingReversal(char *transactionId)
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logDataEx(currentTrxType, lastPanDigit, "Failed to prepare isTherePendingReversal query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare isTherePendingReversal query !!!");
         return false;
     }
 
@@ -1135,7 +1150,7 @@ void clearReversalManual()
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare clearReversalManual only status query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare clearReversalManual only status query !!!");
         return;
     }
 
@@ -1145,7 +1160,7 @@ void clearReversalManual()
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
+        logErrorEx(currentTrxType, lastPanDigit, "clearReversalManual : Failed to update record : %d", result);
         return;
     }
     logDataEx(currentTrxType, lastPanDigit, "clearReversalManual status is success");
@@ -1179,7 +1194,7 @@ void updateHostResponseInDb(HostResponse hostResponse, char transactionId[40])
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateHostResponseInDb query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare updateHostResponseInDb query !!!");
         return;
     }
 
@@ -1213,7 +1228,7 @@ void updateHostResponseInDb(HostResponse hostResponse, char transactionId[40])
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
+        logErrorEx(currentTrxType, lastPanDigit, "updateHostResponseInDb : Failed to update record : %d", result);
         return;
     }
     logDataEx(currentTrxType, lastPanDigit, "Update success");
@@ -1245,7 +1260,7 @@ void updateHostResponse(TransactionTable trxData)
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare update query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "updateHostResponse : Failed to prepare update query !!!");
         return;
     }
 
@@ -1263,7 +1278,7 @@ void updateHostResponse(TransactionTable trxData)
     int result = sqlite3_step(statement);
     if (result != SQLITE_DONE)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to update record : %d", result);
+        logErrorEx(currentTrxType, lastPanDigit, "updateHostResponse : Failed to update record : %d", result);
         return;
     }
     logDataEx(currentTrxType, lastPanDigit, "Update success");
@@ -1285,7 +1300,7 @@ char *clearFetchedData()
 
         if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
         {
-            logErrorEx("FetchData", "Clear", "Failed to prepare delete query !!!");
+            logErrorEx("FetchData", "Clear", "clearFetchedData : Failed to prepare delete query !!!");
             return buildResponseMessage(STATUS_ERROR, ERR_SQL_STATEMENT_PREPARE_FAILED);
         }
 
@@ -1295,7 +1310,7 @@ char *clearFetchedData()
         int result = sqlite3_step(statement);
         if (result != SQLITE_DONE)
         {
-            logErrorEx("FetchData", "Clear", "Failed to delete record : %d", result);
+            logErrorEx("FetchData", "Clear", "clearFetchedData : Failed to delete record : %d", result);
             return buildResponseMessage(STATUS_ERROR, ERR_SQL_DELETE_FAILED);
         }
         logInfoEx(currentTrxType, lastPanDigit, "Delete success");
@@ -1491,7 +1506,7 @@ void performMacRecalculation()
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, 0) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare read query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "performMacRecalculation : Failed to prepare read query !!!");
         return;
     }
 
@@ -1577,7 +1592,7 @@ void updateReCalcMacData(struct transactionData trxData)
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
     {
-        logWarnEx(currentTrxType, lastPanDigit, "Failed to prepare updateReversalPreData only status query !!!");
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare updateReCalcMacData only status query !!!");
         return;
     }
 
@@ -1614,7 +1629,7 @@ TransactionTable populateTableData(sqlite3_stmt *statement)
     sprintf(trxData.time, "%s", sqlite3_column_text(statement, 9));
     sprintf(trxData.date, "%s", sqlite3_column_text(statement, 10));
     sprintf(trxData.year, "%s", sqlite3_column_text(statement, 11));
-    sprintf(trxData.aid, "%s", sqlite3_column_text(statement, 12));
+    snprintf(trxData.aid, sizeof(trxData.aid), "%s", sqlite3_column_text(statement, 12));
     sprintf(trxData.maskPAN, "%s", sqlite3_column_text(statement, 13));
 
     if (sqlite3_column_text(statement, 14) != NULL)

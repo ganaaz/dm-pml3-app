@@ -1,3 +1,18 @@
+Version : 1.0.9
+Date : 05-Oct-26
+
+Changes
+
+- Crash data is written to log file
+- Offline trx are fetched in batches and not loaded at once on memory
+- Reboot command will close all resources properly
+- Download file will also return the file name back
+- Torn config support is added,
+    - Under kernelConfig section json this one needs to be added in all the combinations (refer to the emv_config.json)
+    "tornTrxInterval": "960000"
+
+=============================================================================================
+
 Version : 1.0.8
 Date : 27-Jul-26
 

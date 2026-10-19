@@ -33,6 +33,13 @@ void safe_strncat(char *dest, size_t dest_size, const char *src, size_t n);
 void signalCallbackHandler(int signum);
 
 /**
+ * Install handlers for fatal signals (SIGSEGV/SIGBUS/SIGABRT/SIGFPE/SIGILL)
+ * that log the crashing thread's backtrace to crash.log before the process
+ * terminates.
+ **/
+void installCrashHandler(void);
+
+/**
  * To print disk and memory
  */
 void printDiskMemory();

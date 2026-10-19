@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -21,6 +23,9 @@
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <errno.h>
+#include <signal.h>
+#include <execinfo.h>
+#include <ucontext.h>
 
 #include <feig/fetrm.h>
 #include <feig/leds.h>
@@ -38,6 +43,7 @@ extern pthread_mutex_t lock;
 extern struct transactionData currentTxnData;
 extern struct serviceMetadata *selectedService;
 
+volatile __sig_atomic_t reboot_requested = 0;
 volatile __sig_atomic_t shutdown_requested = 0;
 
 mode_t allPerm = S_IRUSR | S_IWUSR | S_IRGRP; // 0640 — owner rw, group r
@@ -51,6 +57,94 @@ void signalCallbackHandler(int signum)
     displayLight(LED_ST_APP_EXITING);
     shutdown_requested = 1;
     // exit(signum);
+}
+
+#define CRASH_LOG_FILE "crash.log"
+#define CRASH_BT_MAX_FRAMES 64
+#define CRASH_ALT_STACK_SIZE (64 * 1024)
+
+static unsigned char crashAltStack[CRASH_ALT_STACK_SIZE];
+
+static void crashSignalHandler(int signum, siginfo_t *info, void *ucontextPtr)
+{
+    ucontext_t *uc = (ucontext_t *)ucontextPtr;
+    void *pc = NULL;
+    void *lr = NULL;
+#if defined(__arm__)
+    if (uc != NULL)
+    {
+        pc = (void *)uc->uc_mcontext.arm_pc;
+        lr = (void *)uc->uc_mcontext.arm_lr;
+    }
+#endif
+
+    const char *signame = "UNKNOWN";
+    switch (signum)
+    {
+    case SIGSEGV:
+        signame = "SIGSEGV";
+        break;
+    case SIGBUS:
+        signame = "SIGBUS";
+        break;
+    case SIGABRT:
+        signame = "SIGABRT";
+        break;
+    case SIGFPE:
+        signame = "SIGFPE";
+        break;
+    case SIGILL:
+        signame = "SIGILL";
+        break;
+    }
+
+    void *frames[CRASH_BT_MAX_FRAMES];
+    int frameCount = backtrace(frames, CRASH_BT_MAX_FRAMES);
+
+    int fd = open(CRASH_LOG_FILE, O_CREAT | O_WRONLY | O_APPEND, allPerm);
+    if (fd < 0)
+        fd = STDERR_FILENO;
+
+    char msg[256];
+    int len = snprintf(msg, sizeof(msg),
+                       "\n=== Crash: signal %d (%s), pc %p, lr %p, fault addr %p, pid %d, thread %lu, frames %d ===\n",
+                       signum, signame, pc, lr, info != NULL ? info->si_addr : NULL,
+                       (int)getpid(), (unsigned long)pthread_self(), frameCount);
+    if (len > 0)
+        write(fd, msg, (size_t)len);
+
+    backtrace_symbols_fd(frames, frameCount, fd);
+
+    if (fd != STDERR_FILENO)
+        close(fd);
+
+    raise(signum);
+}
+
+void installCrashHandler(void)
+{
+    stack_t altStack;
+    altStack.ss_sp = crashAltStack;
+    altStack.ss_size = sizeof(crashAltStack);
+    altStack.ss_flags = 0;
+    sigaltstack(&altStack, NULL);
+
+    // glibc's backtrace() can lazily dlopen unwind support on its first
+    // call; do that now instead of inside the signal handler.
+    void *warmup[1];
+    backtrace(warmup, 1);
+
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_sigaction = crashSignalHandler;
+    sa.sa_flags = SA_SIGINFO | SA_ONSTACK | SA_RESETHAND;
+    sigemptyset(&sa.sa_mask);
+
+    sigaction(SIGSEGV, &sa, NULL);
+    sigaction(SIGBUS, &sa, NULL);
+    sigaction(SIGABRT, &sa, NULL);
+    sigaction(SIGFPE, &sa, NULL);
+    sigaction(SIGILL, &sa, NULL);
 }
 
 void printDiskMemory()

@@ -213,6 +213,7 @@ char *buildDownloadFileMessage(const char *fileName)
     json_object_object_add(jobj, COMMAND, json_object_new_string(COMMAND_DOWNLOAD_FILE));
     json_object_object_add(jobj, COMMAND_STATE, json_object_new_string(STATUS_SUCCESS));
     json_object_object_add(jobj, COMMAND_ERROR_CODE, json_object_new_int(0));
+    json_object_object_add(jobj, "file_name", json_object_new_string(fileName));
 
     json_object *jData = json_object_new_object();
     json_object_object_add(jData, "fileData", json_object_new_string(encoded));

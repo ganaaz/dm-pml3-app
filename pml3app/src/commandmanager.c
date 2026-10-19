@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <libpay/tlv.h>
 #include <feig/fetpf.h>
@@ -36,6 +37,7 @@ extern bool canRunTransaction;
 extern int IS_SERIAL_CONNECTED;
 extern _Atomic enum device_status DEVICE_STATUS;
 extern char currentTrxType[100];
+extern volatile __sig_atomic_t reboot_requested;
 
 int isWriteCardCommand = 0;
 int isServiceDataAvailable = 0;
@@ -1130,12 +1132,22 @@ struct message parseMessage(const char *data)
 
 /**
  * Do a reboot
+ *
+ * The actual fetrm_reboot() call is deferred to l3app.c's main(): we
+ * request the same graceful shutdown used for SIGTERM (thread joins, db
+ * connections closed, logs flushed) so an in-progress reboot doesn't skip
+ * that cleanup. main() issues the hardware reboot once cleanup completes.
  **/
 int performReboot()
 {
-    logDataEx("L3-App", "Command", "Going to reboot the terminal");
-    int result = fetrm_reboot();
-    logDataEx("L3-App", "Command", "Reboot Result : %d", result);
+    logData("Going to reboot the terminal, requesting graceful shutdown first");
+    reboot_requested = 1;
+    int result = raise(SIGTERM);
+    if (result != 0)
+    {
+        logWarn("Failed to raise SIGTERM for reboot, result : %d", result);
+        reboot_requested = 0;
+    }
     return result;
 }
 

@@ -47,7 +47,7 @@ struct tlv *parseEmvConfigFile()
     free(buffer);
 
     logInfoEx("Config", "", "Config file read and structure updated successfully.");
-    // printEmvConfig(emvConfig);
+    printEmvConfig(emvConfig);
 
     generateTlv(emvConfig);
 
@@ -462,6 +462,16 @@ struct tlv *generateKernelConfig(KERNEL_CONFIG kernelConfig)
         tlv_tail = tlv_insert_after(tlv_tail, tlv);
     }
 
+    if (strlen(kernelConfig.tornTrxInterval) > 0)
+    {
+        int sqLen = strlen(kernelConfig.tornTrxInterval) / 2;
+        uint8_t sq[sqLen];
+        hexToByte(kernelConfig.tornTrxInterval, sq);
+
+        tlv = tlv_new(FEIG_C13_ID_TORN_TRX_INTERVALS, sqLen, sq);
+        tlv_tail = tlv_insert_after(tlv_tail, tlv);
+    }
+
     if (strlen(kernelConfig.trmData) > 0)
     {
         int trmDataLen = strlen(kernelConfig.trmData) / 2;
@@ -671,6 +681,8 @@ KERNEL_CONFIG loadKernelConfig(json_object *combObject)
                 getString(kernelConfigObject, "serviceDataFormat"));
     safe_strcpy(kernelConfig.serviceQualifier, sizeof(kernelConfig.serviceQualifier),
                 getString(kernelConfigObject, "serviceQualifier"));
+    safe_strcpy(kernelConfig.tornTrxInterval, sizeof(kernelConfig.tornTrxInterval),
+                getString(kernelConfigObject, "tornTrxInterval"));
     safe_strcpy(kernelConfig.tacDefault, sizeof(kernelConfig.tacDefault),
                 getString(kernelConfigObject, "tacDefault"));
     safe_strcpy(kernelConfig.tacDenial, sizeof(kernelConfig.tacDenial),
@@ -872,6 +884,7 @@ void printEmvConfig(EMV_CONFIG emvConfig)
         logDataEx("L3-App", "Config", "\tMCC \t\t\t:%s", combinations->kernelConfig.mcc);
         logDataEx("L3-App", "Config", "\tService Data Format \t:%s", combinations->kernelConfig.serviceDataFormat);
         logDataEx("L3-App", "Config", "\tService Qualifier \t:%s", combinations->kernelConfig.serviceQualifier);
+        logDataEx("L3-App", "Config", "\tTorn Trx Interval \t:%s", combinations->kernelConfig.tornTrxInterval);
         logDataEx("L3-App", "Config", "\tTac Default \t\t:%s", combinations->kernelConfig.tacDefault);
         logDataEx("L3-App", "Config", "\tTac Denial \t\t:%s", combinations->kernelConfig.tacDenial);
         logDataEx("L3-App", "Config", "\tTan Online \t\t:%s", combinations->kernelConfig.tacOnline);

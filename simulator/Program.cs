@@ -20,7 +20,7 @@ namespace Simulator
 {
     class Program
     {
-        private static DateTime releaseDate = new DateTime(2026, 10, 05);
+        private static DateTime releaseDate = new DateTime(2026, 11, 19);
         private static bool requestUser = true;
         public static string LocalIPForAirtel = "192.168.50.20";
         //public static string LocalIPForPayTM = "192.168.29.248";
@@ -54,7 +54,7 @@ namespace Simulator
         {
             Console.WriteLine("-------------------------------------------");
             Console.WriteLine("Datamatics Transit Gate Application for PML3");
-            Console.WriteLine("Version : 1.0.9");
+            Console.WriteLine("Version : 1.0.10");
             Console.WriteLine($"Release Date : {releaseDate.ToLongDateString()}");
             Console.WriteLine("-------------------------------------------");
 
@@ -408,6 +408,13 @@ namespace Simulator
                         }
                         break;
 
+                    case "50":
+                        if (ValidateConnect())
+                        {
+                            GetReversalSummary();
+                        }
+                        break;
+
                     case "42":
                         if (ValidateConnect())
                         {
@@ -458,6 +465,12 @@ namespace Simulator
                         }
                         break;
 
+                    case "49":
+                        if (ValidateConnect())
+                        {
+                            GetKSN();
+                        }
+                        break;
 
                     case "99":
                         if (ValidateConnect())
@@ -815,6 +828,8 @@ namespace Simulator
             Console.WriteLine("46. Fetch Auth Online Failure");
             Console.WriteLine("47. Get Disk Space");
             Console.WriteLine("48. Test Wrong Data");
+            Console.WriteLine("49. Get KSN");
+            Console.WriteLine("50. Get Reversal Summary");
             Console.WriteLine("101. Stop Search");
             Console.WriteLine("100. Reboot");
             Console.WriteLine("Q. Quit");
@@ -1316,6 +1331,17 @@ namespace Simulator
             SendDataSocketMessage(strData);
         }
 
+        private static void GetKSN()
+        {
+            var command = new Command
+            {
+                Cmd = "get_ksn"
+            };
+
+            var strData = JsonConvert.SerializeObject(command);
+            SendDataSocketMessage(strData);
+        }
+
         private static void GetProductOrderNumber()
         {
             var command = new Command
@@ -1491,6 +1517,7 @@ namespace Simulator
                     {
                         hostProcessTimeInMinutes = 100,
                         reversalTimeInMinutes = 11,
+                        reversalRetryCount = 5,
                         ip = "1.7.140.58",
                         maxRetry = 10,
                         merchantId = "ING000000000006",
@@ -1746,6 +1773,25 @@ namespace Simulator
                 Console.WriteLine("Enter the RRN (max 12 characters) : ");
                 rrn = Console.ReadLine();
                 if (rrn.Length > 12 || string.IsNullOrWhiteSpace(tid))
+                {
+                    Console.WriteLine("RRN cannot be more than 12 characters or empty");
+                    return;
+                }
+            }
+
+            if (addTypeStr == "02")
+            {
+                Console.WriteLine("Enter the TID (max 8 characters) or empty to skip : ");
+                tid = Console.ReadLine();
+                if (tid != "" && tid.Length != 8)
+                {
+                    Console.WriteLine("TID cannot be more than 8 characters or empty");
+                    return;
+                }
+
+                Console.WriteLine("Enter the RRN (max 12 characters) or empty to skip : ");
+                rrn = Console.ReadLine();
+                if (rrn.Length > 12 && rrn != "")
                 {
                     Console.WriteLine("RRN cannot be more than 12 characters or empty");
                     return;
@@ -2117,6 +2163,16 @@ namespace Simulator
 
             var strData = JsonConvert.SerializeObject(command);
             SendDataSocketMessage(strData);
+        }
+
+        private static void GetReversalSummary()
+        {
+            var command = new Command
+            {
+                Cmd = "get_reversal_summary"
+            };
+            var strData = JsonConvert.SerializeObject(command);
+            SendMessage(strData);
         }
 
         private static void ClearReversal()

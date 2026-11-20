@@ -1,3 +1,20 @@
+Version : 1.0.10
+Date : 19-Nov-26
+
+Changes
+
+- DE 63 for money add trx type 02, if RRN and TID is sent by validator then those are used instead of 00
+- New command to get the last used KSN with "get_ksn"
+- Index are added to the table, so huge records wont have performance issues on db
+- reversalRetryCount is added to the config, based on that number of times reversal is retried after that it is marked as Failed
+- When Reversal marked as failed, reversalAutoCleared field is set
+- New command get_reversal_summary is added to get the summary of reversal details
+- Reversal failed data can be retrieved using the fetch auth failure
+- When preprocess failed, loop wont get stuck it will proceed for next transaction
+
+
+=============================================================================================
+
 Version : 1.0.9
 Date : 05-Oct-26
 

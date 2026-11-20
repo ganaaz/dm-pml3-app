@@ -129,6 +129,11 @@ char *buildAirtelHealthCheckResponseMessage(AirtelHealthCheckResponse response, 
 char *buildLogModeResponseMessage(const char *status, const char *logMode, int errorCode);
 
 /**
+ * Get KSN response string
+ */
+char *buildKsnResponseMessage(const char *status, const char *ksn, int errorCode);
+
+/**
  * Build the disk space message
  **/
 char *buildDiskSpaceMessage(const char path[200]);

@@ -20,8 +20,8 @@
 #include "ISO/utils.h"
 #include "include/abtinittable.h"
 
-#define VERSION "1.0.9"
-#define RELEASE_DATE "05-Oct-2026"
+#define VERSION "1.0.10"
+#define RELEASE_DATE "19-Nov-2026"
 
 struct applicationConfig appConfig;
 struct applicationData appData;
@@ -191,12 +191,28 @@ void initTransactionTable()
         exit(-1);
     }
 
-    const char *indexQuery = "CREATE UNIQUE INDEX IF NOT EXISTS Txn_id_index ON Transactions(TransactionId);";
+    addColumnIfNotExists(sqlite3Db, "Transactions", "IsReversalAutoCleared", "INT");
+    addColumnIfNotExists(sqlite3Db, "Transactions", "ReversalRetryCount", "INT");
 
-    if (sqlite3_exec(sqlite3Db, indexQuery, NULL, NULL, &errormsg) != SQLITE_OK)
+    const char *secondaryIndexQueries[] = {
+        "CREATE INDEX IF NOT EXISTS Txn_status_idx ON Transactions(HostStatus, TxnStatus, ProcessingCode);",
+        "CREATE INDEX IF NOT EXISTS Txn_order_idx ON Transactions(OrderId, TrxBin, TxnStatus, HostStatus);",
+        "CREATE INDEX IF NOT EXISTS Txn_host_bin_idx ON Transactions(HostStatus, TrxBin);",
+        "CREATE INDEX IF NOT EXISTS Txn_reversal_idx ON Transactions(ReversalStatus);",
+    };
+
+    for (size_t i = 0; i < sizeof(secondaryIndexQueries) / sizeof(secondaryIndexQueries[0]); i++)
     {
-        fprintf(stderr, "Can't execute: %s\n", sqlite3_errmsg(sqlite3Db));
-        exit(-1);
+        if (sqlite3_exec(sqlite3Db, secondaryIndexQueries[i], NULL, NULL, &errormsg) != SQLITE_OK)
+        {
+            // Indexes are a performance aid only; log and continue rather than exit.
+            logError("Failed to create index : %s", sqlite3_errmsg(sqlite3Db));
+            if (errormsg)
+            {
+                sqlite3_free(errormsg);
+                errormsg = NULL;
+            }
+        }
     }
 
     logInfoEx("Config", "", "Table created / avaialble success");
@@ -262,6 +278,7 @@ void printConfig()
     logInfoEx("Config", "", "Host Max Retry : %d", appConfig.hostMaxRetry);
     logInfoEx("Config", "", "Host Process Thread Time : %d", appConfig.hostProcessTimeInMinutes);
     logInfoEx("Config", "", "Reversal Process Check Time : %d", appConfig.reversalTimeInMinutes);
+    logInfoEx("Config", "", "Reversal Retry Count : %d", appConfig.reversalRetryCount);
     logInfoEx("Config", "", "Write Card Wait (ms) : %d", appConfig.writeCardWaitTimeMs);
     logInfoEx("Config", "", "Max Transactions Before Device goes offline : %d", appConfig.maxOfflineTransactions);
     logInfoEx("Config", "", "Min Txn for Device to be online : %d", appConfig.minRequiredForOnline);
@@ -539,6 +556,15 @@ void loadAppConfig()
     else
     {
         appConfig.reversalTimeInMinutes = 100;
+    }
+
+    if (json_object_object_get(jObject, CONFIG_KEY_REVERSAL_RETRY_COUNT) != NULL)
+    {
+        appConfig.reversalRetryCount = json_object_get_int(json_object_object_get(jObject, CONFIG_KEY_REVERSAL_RETRY_COUNT));
+    }
+    else
+    {
+        appConfig.reversalRetryCount = 5;
     }
 
     if (json_object_object_get(jObject, CONFIG_KEY_MAX_OFFLINE_TXN) != NULL)
@@ -1109,6 +1135,7 @@ void saveConfig()
     json_object *jHostMaxRetry = json_object_new_int(appConfig.hostMaxRetry);
     json_object *jHostProcessTime = json_object_new_int(appConfig.hostProcessTimeInMinutes);
     json_object *jReversalTime = json_object_new_int(appConfig.reversalTimeInMinutes);
+    json_object *jReversalRetryCount = json_object_new_int(appConfig.reversalRetryCount);
     json_object *jMaxKeyInjectionTry = json_object_new_int(appConfig.maxKeyInjectionTry);
     json_object *jKeyInjectionRetryDelay = json_object_new_int(appConfig.keyInjectRetryDelaySec);
     json_object *jForceKeyInjection = json_object_new_boolean(appConfig.forceKeyInjection);
@@ -1150,6 +1177,7 @@ void saveConfig()
     json_object_object_add(jobj, CONFIG_KEY_HOST_MAX_RETRY, jHostMaxRetry);
     json_object_object_add(jobj, CONFIG_KEY_HOST_PROCESS_TIMEOUT, jHostProcessTime);
     json_object_object_add(jobj, CONFIG_KEY_REVERSAL_PROCESS_TIMEOUT, jReversalTime);
+    json_object_object_add(jobj, CONFIG_KEY_REVERSAL_RETRY_COUNT, jReversalRetryCount);
     json_object_object_add(jobj, CONFIG_KEY_MAX_OFFLINE_TXN, jMaxOfflineTrx);
     json_object_object_add(jobj, CONFIG_KEY_MIN_REQUIRED_ONLINE, jMinRequiredForOnline);
     json_object_object_add(jobj, CONFIG_KEY_KLD_IP, jKldIP);
@@ -1808,6 +1836,13 @@ int parseConfigAndUpdate(const char *data)
             int timeOut = json_object_get_int(json_object_object_get(jPsp, CONFIG_KEY_REVERSAL_PROCESS_TIMEOUT));
             logDataEx("L3-App", "Config", "Updated Reversal Process Timeout : %d", timeOut);
             appConfig.reversalTimeInMinutes = timeOut;
+        }
+
+        if (json_object_object_get(jPsp, CONFIG_KEY_REVERSAL_RETRY_COUNT) != NULL)
+        {
+            int retryCount = json_object_get_int(json_object_object_get(jPsp, CONFIG_KEY_REVERSAL_RETRY_COUNT));
+            logDataEx("L3-App", "Config", "Updated Reversal Retry Count : %d", retryCount);
+            appConfig.reversalRetryCount = retryCount;
         }
 
         if (json_object_object_get(jPsp, CONFIG_KEY_MAX_RETRY) != NULL)

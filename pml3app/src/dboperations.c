@@ -300,10 +300,12 @@ void createTxnDataForOnline(struct transactionData trxData)
                         "MoneyAddRRN, "
                         "MoneyAddTid, "
                         "AcqTransactionId, "
-                        "AcqUniqueTransactionId "
+                        "AcqUniqueTransactionId, "
+                        "IsReversalAutoCleared, "
+                        "ReversalRetryCount "
                         ") "
                         "VALUES("
-                        "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+                        "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     sqlite3_stmt *statement;
     int result = sqlite3_prepare_v2(
@@ -361,6 +363,8 @@ void createTxnDataForOnline(struct transactionData trxData)
         sqlite3_bind_text(statement, 39, trxData.moneyAddTid, -1, SQLITE_STATIC);
         sqlite3_bind_text(statement, 40, trxData.acqTransactionId, -1, SQLITE_STATIC);       // Acq Trx Id
         sqlite3_bind_text(statement, 41, trxData.acqUniqueTransactionId, -1, SQLITE_STATIC); // Acq Unit trx id
+        sqlite3_bind_int(statement, 42, 0);                                                  // isReversalAutoCleared
+        sqlite3_bind_int(statement, 43, 0);                                                  // reversalRetryCount
 
         logDataEx(currentTrxType, lastPanDigit, "Going to perform insert of transaction for online");
         int result = sqlite3_step(statement);
@@ -513,7 +517,7 @@ int getOfflinePendingTrxCount()
     const char *query = "SELECT Count(*) FROM Transactions WHERE "
                         "HostStatus = 'Pending' "
                         "and ProcessingCode = '000000' "
-                        "and TxnStatus = 'Success' order by RowId asc";
+                        "and TxnStatus = 'Success'";
 
     sqlite3_stmt *statement;
     logDataEx(currentTrxType, lastPanDigit, "Going to get the count for %s", query);
@@ -1068,7 +1072,7 @@ bool isTherePendingReversal(char *transactionId)
     bool result = false;
     logInfoEx(currentTrxType, lastPanDigit, "Going to check is there a pending reversal data");
 
-    const char *query = "Select * from Transactions where ReversalStatus = 'Pending' ";
+    const char *query = "Select * from Transactions where ReversalStatus = 'Pending' LIMIT 1";
     sqlite3_stmt *statement;
 
     if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
@@ -1123,6 +1127,79 @@ char *getReversal()
 }
 
 /**
+ * Get the reversal failure summary (total failed, manually cleared, auto cleared)
+ **/
+char *getReversalSummary()
+{
+    logInfoEx(currentTrxType, lastPanDigit, "Going to get the reversal summary");
+
+    int totalFailed = 0;
+    int manualCleared = 0;
+    int autoCleared = 0;
+    int pending = 0;
+    bool isSuccess = false;
+
+    const char *query = "SELECT "
+                        "IFNULL(SUM(CASE WHEN ReversalStatus = ? THEN 1 ELSE 0 END), 0), "
+                        "IFNULL(SUM(CASE WHEN ReversalStatus = ? AND ReversalManualCleared = 1 THEN 1 ELSE 0 END), 0), "
+                        "IFNULL(SUM(CASE WHEN ReversalStatus = ? AND IsReversalAutoCleared = 1 THEN 1 ELSE 0 END), 0), "
+                        "IFNULL(SUM(CASE WHEN ReversalStatus = ? THEN 1 ELSE 0 END), 0) "
+                        "FROM Transactions";
+
+    sqlite3_stmt *statement;
+
+    if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
+    {
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare getReversalSummary query !!!");
+    }
+    else
+    {
+        sqlite3_bind_text(statement, 1, STATUS_FAILURE, -1, SQLITE_STATIC);
+        sqlite3_bind_text(statement, 2, STATUS_FAILURE, -1, SQLITE_STATIC);
+        sqlite3_bind_text(statement, 3, STATUS_FAILURE, -1, SQLITE_STATIC);
+        sqlite3_bind_text(statement, 4, STATUS_PENDING, -1, SQLITE_STATIC);
+
+        if (sqlite3_step(statement) == SQLITE_ROW)
+        {
+            totalFailed = sqlite3_column_int(statement, 0);
+            manualCleared = sqlite3_column_int(statement, 1);
+            autoCleared = sqlite3_column_int(statement, 2);
+            pending = sqlite3_column_int(statement, 3);
+            isSuccess = true;
+        }
+        else
+        {
+            logErrorEx(currentTrxType, lastPanDigit, "getReversalSummary : Failed to read summary");
+        }
+        sqlite3_finalize(statement);
+    }
+
+    logInfoEx(currentTrxType, lastPanDigit, "Reversal Summary - Total Failed : %d, Manual Cleared : %d, Auto Cleared : %d, Pending : %d",
+              totalFailed, manualCleared, autoCleared, pending);
+
+    json_object *jobj = json_object_new_object();
+    json_object *jData = json_object_new_object();
+
+    json_object_object_add(jData, "status", json_object_new_string(isSuccess ? STATUS_SUCCESS : STATUS_FAILURE));
+    json_object_object_add(jData, "totalFailed", json_object_new_int(totalFailed));
+    json_object_object_add(jData, "manualCleared", json_object_new_int(manualCleared));
+    json_object_object_add(jData, "autoCleared", json_object_new_int(autoCleared));
+    json_object_object_add(jData, "pending", json_object_new_int(pending));
+
+    json_object_object_add(jobj, COMMAND, json_object_new_string(COMMAND_GET_REVERSAL_SUMMARY));
+    json_object_object_add(jobj, COMMAND_DATA, jData);
+
+    const char *jsonData = json_object_to_json_string(jobj);
+
+    int len = strlen(jsonData);
+    char *data = malloc(len + 1);
+
+    safe_strncpy(data, len + 1, jsonData, len);
+    json_object_put(jobj); // Clear JSON memory
+    return data;
+}
+
+/**
  * Clear the reversal manually
  */
 void clearReversalManual()
@@ -1165,6 +1242,71 @@ void clearReversalManual()
     }
     logDataEx(currentTrxType, lastPanDigit, "clearReversalManual status is success");
     sqlite3_finalize(statement);
+}
+
+/**
+ * Increment the reversal retry count for the transaction
+ **/
+void incrementReversalRetryCount(const char *transactionId)
+{
+    logDataEx(currentTrxType, lastPanDigit, "Going to increment the reversal retry count for : %s", transactionId);
+
+    const char *query = "UPDATE Transactions "
+                        "SET ReversalRetryCount = IFNULL(ReversalRetryCount, 0) + 1 "
+                        "WHERE TransactionId = ?";
+
+    sqlite3_stmt *statement;
+
+    if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
+    {
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare incrementReversalRetryCount query !!!");
+        return;
+    }
+
+    sqlite3_bind_text(statement, 1, transactionId, -1, SQLITE_STATIC);
+
+    int result = sqlite3_step(statement);
+    sqlite3_finalize(statement);
+    if (result != SQLITE_DONE)
+    {
+        logErrorEx(currentTrxType, lastPanDigit, "incrementReversalRetryCount : Failed to update record : %d", result);
+        return;
+    }
+    logDataEx(currentTrxType, lastPanDigit, "incrementReversalRetryCount is success");
+}
+
+/**
+ * Clear the reversal automatically once the retry limit is reached
+ **/
+void clearReversalAuto(const char *transactionId)
+{
+    logDataEx(currentTrxType, lastPanDigit, "Going to auto clear the reversal for : %s", transactionId);
+    logDataEx(currentTrxType, lastPanDigit, "Status : Failure");
+
+    const char *query = "UPDATE Transactions "
+                        "SET ReversalStatus = ?, "
+                        "IsReversalAutoCleared = 1 "
+                        "WHERE TransactionId = ?";
+
+    sqlite3_stmt *statement;
+
+    if (sqlite3_prepare_v2(sqlite3Db, query, -1, &statement, NULL) != SQLITE_OK)
+    {
+        logErrorEx(currentTrxType, lastPanDigit, "Failed to prepare clearReversalAuto query !!!");
+        return;
+    }
+
+    sqlite3_bind_text(statement, 1, STATUS_FAILURE, -1, SQLITE_STATIC);
+    sqlite3_bind_text(statement, 2, transactionId, -1, SQLITE_STATIC);
+
+    int result = sqlite3_step(statement);
+    sqlite3_finalize(statement);
+    if (result != SQLITE_DONE)
+    {
+        logErrorEx(currentTrxType, lastPanDigit, "clearReversalAuto : Failed to update record : %d", result);
+        return;
+    }
+    logDataEx(currentTrxType, lastPanDigit, "clearReversalAuto status is success");
 }
 
 /**
@@ -1906,6 +2048,9 @@ TransactionTable populateTableData(sqlite3_stmt *statement)
     else
         memset(trxData.moneyAddTid, 0, sizeof(trxData.moneyAddTid));
 
+    trxData.isReversalAutoCleared = sqlite3_column_int(statement, 75);
+    trxData.reversalRetryCount = sqlite3_column_int(statement, 76);
+
     return trxData;
 }
 
@@ -1997,6 +2142,8 @@ json_object *getJsonTxnData(TransactionTable trxData)
     json_object_object_add(jDataObject, "moneyAddTrxType", json_object_new_string(trxData.moneyAddTrxType));
     json_object_object_add(jDataObject, "moneyAddRRN", json_object_new_string(trxData.moneyAddRRN));
     json_object_object_add(jDataObject, "moneyAddTid", json_object_new_string(trxData.moneyAddTid));
+    json_object_object_add(jDataObject, "isReversalAutoCleared", json_object_new_int(trxData.isReversalAutoCleared));
+    json_object_object_add(jDataObject, "reversalRetryCount", json_object_new_int(trxData.reversalRetryCount));
     // json_object_object_add(jDataObject, "airtelTxnStatus", json_object_new_int(trxData.airtelTxnStatus));
     // json_object_object_add(jDataObject, "airtelTxnId", json_object_new_string(trxData.airtelTxnId));
     // json_object_object_add(jDataObject, "airtelRequestData", json_object_new_string(trxData.airtelRequestData));
@@ -2093,7 +2240,9 @@ void printTransactionRow(TransactionTable trxTable)
     logDataEx(currentTrxType, lastPanDigit, "Acquirer Transaction Id : %s", trxTable.acqTransactionId);
     logDataEx(currentTrxType, lastPanDigit, "Acquirer Unique Transaction Id : %s", trxTable.acqUniqueTransactionId);
     logDataEx(currentTrxType, lastPanDigit, "Money Add TID : %s", trxTable.moneyAddTid);
-    logDataEx(currentTrxType, lastPanDigit, "Mony Add RRN : %s", trxTable.moneyAddRRN);
+    logDataEx(currentTrxType, lastPanDigit, "Money Add RRN : %s", trxTable.moneyAddRRN);
+    logDataEx(currentTrxType, lastPanDigit, "Reversal Auto Cleared : %d", trxTable.isReversalAutoCleared);
+    logDataEx(currentTrxType, lastPanDigit, "Reversal Retry Count : %d", trxTable.reversalRetryCount);
 
     logDataEx(currentTrxType, lastPanDigit, "===========================================");
 }

@@ -4,6 +4,13 @@
 #include <feig/fepkcs11.h>
 #include "config.h"
 
+#define LAST_KSN_FILE "last_ksn"
+
+/**
+ * To read the last generated KSN from the last ksn file, returns 0 on success
+ */
+int readLastKsn(char ksnHex[21]);
+
 /**
  * To encrypt the pan and exp date available in current txn data and pouplate the ksn
  * in the same current txn data object, used for offline sale

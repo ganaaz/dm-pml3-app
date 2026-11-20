@@ -149,12 +149,17 @@ void *processTransaction(void *arg)
                   appData.currCodeBin);
 
         logDataEx(currentTrxType, lastPanDigit, "Doing pre processing ...");
+        bool isPreprocessFailed = false;
 
         rc = generatePreProcessData(&data, &dataLen);
         if (rc)
         {
+            // Do not exit the thread, otherwise no further search card will ever be processed
             logWarnEx(currentTrxType, lastPanDigit, "Preprocess data generation failed");
-            break;
+            free(data);
+            data = NULL;
+            isPreprocessFailed = true;
+            goto next;
         }
 
         rc = fetpf_ep_preprocess(fetpf, data, dataLen, outcome, &outcome_len);
@@ -163,8 +168,9 @@ void *processTransaction(void *arg)
 
         if (rc != FETPF_RC_OK)
         {
-            logErrorEx("L3-App", "FeigPreProcess", "fetpf_ep_preprocess failed with rc:  %d", rc);
-            break;
+            logErrorEx("L3-App", "FeigPreProcess", "fetpf_ep_preprocess failed with rc:  %d, aborting this transaction", rc);
+            isPreprocessFailed = true;
+            goto next;
         }
 
         tlv_parse(outcome, outcome_len, &tlv_pre_outcome_tmp);
@@ -246,14 +252,14 @@ void *processTransaction(void *arg)
 
         // Only for debug printing
         processOutcome(outcome, outcome_len);
-        logErrorEx(currentTrxType, lastPanDigit, "Completed count : %d", index++);
+        logInfoEx(currentTrxType, lastPanDigit, "Completed count : %d", index++);
         safe_strcpy(currentTrxType, sizeof(currentTrxType), "");
         safe_strcpy(lastPanDigit, sizeof(lastPanDigit), "");
 
     next:
         pthread_mutex_lock(&lockFeigTrx);
 
-        if (appData.searchMode == SEARCH_MODE_SINGLE || retVal == EXIT_FAILURE)
+        if (appData.searchMode == SEARCH_MODE_SINGLE || retVal == EXIT_FAILURE || isPreprocessFailed)
         {
             logInfoEx(currentTrxType, lastPanDigit, "Thread stop requested, so setting the value of not to run txn");
             canRunTransaction = false;

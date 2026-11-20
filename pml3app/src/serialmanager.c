@@ -248,5 +248,10 @@ bool isDataSocketCommand(const char data[1024 * 2])
         return true;
     }
 
+    if (strstr(data, COMMAND_GET_KSN) != NULL)
+    {
+        return true;
+    }
+
     return false;
 }

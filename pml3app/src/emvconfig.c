@@ -61,7 +61,7 @@ void generateTlv(EMV_CONFIG emvConfig)
     void *data = NULL;
     size_t dataLen = 0;
     serializeTlv(tlvConfig, &data, &dataLen);
-    // logHexDataNoSpace("Value: ", data, dataLen);
+    logHexDataNoSpace("Value: ", data, dataLen);
 }
 
 struct tlv *generatePaymentConfig(EMV_CONFIG emvConfig)

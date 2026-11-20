@@ -74,6 +74,7 @@ struct applicationConfig
     int hostMaxRetry;
     int hostProcessTimeInMinutes;
     int reversalTimeInMinutes;
+    int reversalRetryCount;
     int maxOfflineTransactions;
     int minRequiredForOnline;
     int maxKeyInjectionTry;

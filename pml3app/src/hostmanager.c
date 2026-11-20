@@ -337,6 +337,15 @@ void performReversal(const char *transactionId, bool isTimeOut, const char *resp
 
     TransactionTable trxTable = getTransactionTableData(transactionId);
     logDataEx(currentTrxType, lastPanDigit, "STAN : %s", trxTable.stan);
+    logInfoEx(currentTrxType, lastPanDigit, "Reversal retry count : %d, Max allowed : %d",
+              trxTable.reversalRetryCount, appConfig.reversalRetryCount);
+
+    if (appConfig.reversalRetryCount > 0 && trxTable.reversalRetryCount >= appConfig.reversalRetryCount)
+    {
+        logWarnEx(currentTrxType, lastPanDigit, "Reversal retry limit reached, auto clearing the reversal for : %s", transactionId);
+        clearReversalAuto(transactionId);
+        return;
+    }
 
     REVERSAL_REQUEST reversal_request;
 
@@ -412,10 +421,16 @@ void performReversal(const char *transactionId, bool isTimeOut, const char *resp
                                  reversal_response.DE37_RRN, reversal_response.DE38_AUTH_CODE,
                                  reversal_response.DE39_RESPONSE_CODE);
         }
+        else
+        {
+            logWarnEx(currentTrxType, lastPanDigit, "Reversal declined by host with response code : %s", reversal_response.DE39_RESPONSE_CODE);
+            incrementReversalRetryCount(transactionId);
+        }
     }
     else
     {
         logDataEx(currentTrxType, lastPanDigit, "Reversal Error  : %d", ret);
+        incrementReversalRetryCount(transactionId);
     }
 }
 
@@ -923,8 +938,23 @@ void performHostMoneyAdd(struct transactionData trxData, long batchCounter,
     }
     else
     {
-        safe_strcat(de63StrData, sizeof(de63StrData), "00000000");     // Empty TID
-        safe_strcat(de63StrData, sizeof(de63StrData), "000000000000"); // Empty RRN
+        if (strlen(trxData.moneyAddTid) != 0)
+        {
+            safe_strcat(de63StrData, sizeof(de63StrData), trxData.moneyAddTid);
+        }
+        else
+        {
+            safe_strcat(de63StrData, sizeof(de63StrData), "00000000"); // Empty TID
+        }
+
+        if (strlen(trxData.moneyAddRRN) != 0)
+        {
+            safe_strcat(de63StrData, sizeof(de63StrData), trxData.moneyAddRRN);
+        }
+        else
+        {
+            safe_strcat(de63StrData, sizeof(de63StrData), "000000000000"); // Empty RRN
+        }
     }
 
     logDataEx(currentTrxType, lastPanDigit, "Money add data for DE63 : %s", de63StrData);

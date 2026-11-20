@@ -60,6 +60,7 @@
 #define COMMAND_DESTROY_KEY "destroy_key"
 #define COMMAND_DOWNLOAD_FILE "download_file"
 #define COMMAND_GET_REVERSAL "get_reversal"
+#define COMMAND_GET_REVERSAL_SUMMARY "get_reversal_summary"
 #define COMMAND_DELETE_FILE "delete_file"
 #define COMMAND_GET_FIRMWARE_VERSION "get_firmware_version"
 #define COMMAND_GET_PRODUCT_ORDER_NUMBER "get_product_order_number"
@@ -68,6 +69,7 @@
 #define COMMAND_ABT_SUMMARY "abt_summary"
 #define COMMAND_ABT_FETCH "abt_fetch"
 #define COMMAND_GET_DISK_SPACE "get_disk_space"
+#define COMMAND_GET_KSN "get_ksn"
 
 #define DISK_SPACE_PATH "disk_space_path"
 
@@ -79,6 +81,7 @@
 #define LOG_MODE_DEBUG "Debug"
 #define LOG_MODE_ERROR "Error"
 #define LOG_MODE "logMode"
+#define KSN_KEY "ksn"
 
 #define CHANGE_IP_MODE "ip_mode"
 #define CHANGE_IP_DNS "dns"
@@ -151,6 +154,7 @@
 #define CONFIG_KEY_MAX_RETRY "maxRetry"
 #define CONFIG_KEY_HOST_PROCESS_TIMEOUT "hostProcessTimeInMinutes"
 #define CONFIG_KEY_REVERSAL_PROCESS_TIMEOUT "reversalTimeInMinutes"
+#define CONFIG_KEY_REVERSAL_RETRY_COUNT "reversalRetryCount"
 #define CONFIG_KEY_WAIT_WRITE_CARD "nsec_awaiting_write"
 #define CONFIG_KEY_PSP "psp"
 #define CONFIG_KEY_GENERAL "general"

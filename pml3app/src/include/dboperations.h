@@ -87,6 +87,8 @@ typedef struct TransactionTableType
     char acqUniqueTransactionId[21];
     char moneyAddRRN[13];
     char moneyAddTid[9];
+    int isReversalAutoCleared;
+    int reversalRetryCount;
 } TransactionTable;
 
 typedef struct host_response
@@ -296,6 +298,11 @@ void createTxnDataForOnline(struct transactionData trxData);
 char *getReversal();
 
 /**
+ * Get the reversal failure summary (total failed, manually cleared, auto cleared)
+ **/
+char *getReversalSummary();
+
+/**
  * Make the reversal status empty
  **/
 void resetReversalStatus(const char *status, const char *transactionId);
@@ -339,6 +346,16 @@ bool isTherePendingReversal(char *transactionId);
  * Clear the reversal manually
  */
 void clearReversalManual();
+
+/**
+ * Increment the reversal retry count for the transaction
+ **/
+void incrementReversalRetryCount(const char *transactionId);
+
+/**
+ * Clear the reversal automatically once the retry limit is reached
+ **/
+void clearReversalAuto(const char *transactionId);
 
 /**
  * To perform mac recalculation

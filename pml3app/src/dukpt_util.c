@@ -101,6 +101,48 @@ static char *bin2hex(char *out, const void *in, size_t len)
     return out;
 }
 
+/**
+ * To store the given KSN as hex in the last ksn file
+ */
+static void saveLastKsn(const unsigned char ksn[10])
+{
+    FILE *fp = fopen(LAST_KSN_FILE, "w");
+    if (fp == NULL)
+    {
+        logErrorEx("L3-App", "Dukpt", "saveLastKsn: fopen failed");
+        return;
+    }
+
+    for (int i = 0; i < 10; i++)
+    {
+        fprintf(fp, "%02X", ksn[i]);
+    }
+
+    fflush(fp);
+    fclose(fp);
+}
+
+/**
+ * To read the last generated KSN from the last ksn file, returns 0 on success
+ */
+int readLastKsn(char ksnHex[21])
+{
+    FILE *fp = fopen(LAST_KSN_FILE, "r");
+    if (fp == NULL)
+    {
+        return -1;
+    }
+
+    if (fscanf(fp, "%20s", ksnHex) != 1 || strlen(ksnHex) != 20)
+    {
+        fclose(fp);
+        return -1;
+    }
+
+    fclose(fp);
+    return 0;
+}
+
 static unsigned char *get_key_serial_number(CK_SESSION_HANDLE hSession,
                                             CK_OBJECT_HANDLE hIKey, unsigned char ksn[10])
 {
@@ -111,6 +153,8 @@ static unsigned char *get_key_serial_number(CK_SESSION_HANDLE hSession,
     rv = C_GetAttributeValue(hSession, hIKey, ksn_template,
                              ARRAY_SIZE(ksn_template));
     assert(rv == CKR_OK);
+
+    saveLastKsn(ksn);
 
     return ksn;
 }

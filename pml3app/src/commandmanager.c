@@ -26,6 +26,7 @@
 #include "include/responsemanager.h"
 #include "include/timeutil.h"
 #include "include/abtdbmanager.h"
+#include "include/dukpt-util.h"
 
 extern struct applicationData appData;
 extern struct applicationConfig appConfig;
@@ -115,6 +116,18 @@ char *handleClientFetchMessage(const char *data)
         return buildDeviceIdMessage();
     }
 
+    if (strcmp(reqMessage.cmd, COMMAND_GET_KSN) == 0)
+    {
+        char ksn[21] = {0};
+        if (readLastKsn(ksn) != 0)
+        {
+            logDataEx("L3-App", "Command", "Last KSN not available");
+            return buildKsnResponseMessage(STATUS_ERROR, "", ERR_FILE_NOT_FOUND);
+        }
+
+        return buildKsnResponseMessage(STATUS_SUCCESS, ksn, 0);
+    }
+
     if (strcmp(reqMessage.cmd, COMMAND_GET_PENDING_OFFLINE) == 0)
     {
         return buildPendingOfflineSummaryMessage();
@@ -197,7 +210,7 @@ char *handleClientMessage(const char *data)
 
     struct message reqMessage = parseMessage(data);
 
-    logDataEx("L3-App", "Command", "Handling client message in normal socket");
+    logDataEx("L3-App", "Command", "Handling client message in normal data socket");
     logDataEx("L3-App", "Command", "Command : %s", reqMessage.cmd);
     logDataEx("L3-App", "Command", "Current Status : %s", getStatusString(appData.status));
 
@@ -301,6 +314,14 @@ char *handleClientMessage(const char *data)
             return buildResponseMessage(STATUS_KEYS_NOT_LOADED, 0);
 
         return getReversal();
+    }
+
+    if (strcmp(reqMessage.cmd, COMMAND_GET_REVERSAL_SUMMARY) == 0)
+    {
+        if (appData.isKeyInjectionSuccess == false)
+            return buildResponseMessage(STATUS_KEYS_NOT_LOADED, 0);
+
+        return getReversalSummary();
     }
 
     if (strcmp(reqMessage.cmd, COMMAND_REBOOT) == 0)

@@ -16,6 +16,7 @@ namespace Simulator
         public int maxRetry { get; set; }
         public int hostProcessTimeInMinutes { get; set; }
         public int reversalTimeInMinutes { get; set; }
+        public int reversalRetryCount { get; set; }
         public string httpsHostName { get; set; }
         public string offlineUrl { get; set; }
         public string serviceCreationUrl { get; set; }

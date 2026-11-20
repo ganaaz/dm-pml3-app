@@ -297,6 +297,35 @@ char *buildLogModeResponseMessage(const char *status, const char *logMode, int e
 }
 
 /**
+ * Get KSN response string
+ */
+char *buildKsnResponseMessage(const char *status, const char *ksn, int errorCode)
+{
+    json_object *jobj = json_object_new_object();
+    json_object *jCommand = json_object_new_string(COMMAND_GET_KSN);
+    json_object *jState = json_object_new_string(status);
+    json_object *jErrorCode = json_object_new_int(errorCode);
+
+    json_object_object_add(jobj, COMMAND, jCommand);
+    json_object_object_add(jobj, COMMAND_STATE, jState);
+    json_object_object_add(jobj, COMMAND_ERROR_CODE, jErrorCode);
+
+    json_object *jData = json_object_new_object();
+
+    json_object_object_add(jData, KSN_KEY, json_object_new_string(ksn));
+    json_object_object_add(jobj, COMMAND_DATA, jData);
+
+    const char *jsonData = (char *)json_object_to_json_string(jobj);
+    int len = strlen(jsonData);
+    char *data = malloc(len + 1);
+
+    safe_strncpy(data, len + 1, jsonData, len);
+    json_object_put(jobj); // Clear JSON memory
+
+    return data;
+}
+
+/**
  * Build destroy key message
  **/
 char *buildDestroyKeyMessage(int result, char *label, bool isBdk)
@@ -984,6 +1013,7 @@ char *buildGetConfigMessage()
     json_object_object_add(jPSPObject, CONFIG_KEY_MAX_RETRY, jHostMaxRetry);
     json_object_object_add(jPSPObject, CONFIG_KEY_HOST_PROCESS_TIMEOUT, jHostProcessTime);
     json_object_object_add(jPSPObject, CONFIG_KEY_REVERSAL_PROCESS_TIMEOUT, jReversalTime);
+    json_object_object_add(jPSPObject, CONFIG_KEY_REVERSAL_RETRY_COUNT, json_object_new_int(appConfig.reversalRetryCount));
     json_object_object_add(jPSPObject, CONFIG_KEY_MAX_OFFLINE_TXN, jMaxOffline);
     json_object_object_add(jPSPObject, CONFIG_KEY_MIN_REQUIRED_ONLINE, jMinRequired);
 
